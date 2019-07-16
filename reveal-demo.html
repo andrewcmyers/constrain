@@ -1,0 +1,238 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Constrain/Reveal Integration Demo</title>
+
+    <link rel="stylesheet" href="reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="andru.css">
+
+    <!-- Theme used for syntax highlighting of code 
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css"> -->
+    <style>
+        span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px }
+        em { color: #889ee5 }
+        #fig1, #fig2, #fig3 { position: fixed; left: 0; top: 0;
+                width: 100%; height: 100%; z-index: -1 }
+        /* #fig1 { background-color: #eef;  } */
+        section {width: 1024px; height:768px}
+    </style>
+    <script src="numeric-1.2.6.js"></script>
+    <script src="uncmin.js"></script>
+    <script src="constrain.js"></script>
+</head>
+<body>
+    <div class="reveal">
+    <span class="footer">Constrain/Reveal integration</span>
+    <div class="slides">
+        <section>
+          <h1><em>Constrain:</em> A Constraint-Based System for Animated Figures</h1>
+        </section>
+        <section>
+          <h2><span id="title">Constrain</span></h2>
+          <ul>
+            <li>JavaScript/ES package for animated figures</li>
+            <li>Embeds figures into regular web pages</li>
+            <li>Integrates into Reveal presentations with Constrain/Reveal</li>
+            <li>Declarative constraint-based layout</li>
+            <li class="fragment">Figure can have multiple frames</li>
+            <li class="fragment">Graphical content can constrain against HTML content</li>
+          </ul>
+          <canvas class="fragment" id="fig1" data-fragment-index=0 ></canvas>
+          <script>
+            const fig1 = new Figure("fig1")
+            var f0, f1, s1, s2, s3
+            with (fig1) {
+                setLineWidth(2)
+                f0 = addFrame("start"), f1 = addFrame("next").setLength(1000)
+                s1 = square("white"), s3 = drawAfter(f1, square("#fdd")), s2 = square("#dfd"),
+                t1 = new DOMElementBox("title")
+                ensure(aligned("center", "none", s1, fig1.canvasSize()),
+                       aligned("center", "center", s1.lr(), s2),
+                       equal(s1.w(), s2.w()),
+                       equal(s1.y0(), new Minus(t1.y0(), 10)),
+                       equal(s1.w(), new Plus(t1.w(), 10)),
+                       equal(s3.y0(), smooth(f1, s2.y0(), s1.y1())),
+                       equal(s3.x0(), smooth(f1, s2.x0(), s1.x0())),
+                       equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
+                )
+                start()
+            }
+          </script>
+        </section>
+        <section>
+        <h2>Rendering capabilities</h2>
+          <ul id=bullets>
+            <li>Several graphical objects are supported:
+            <span id=rect class=fragment>rectangles</span><span class=fragment>,</span> <span class=fragment>lines</span><span class=fragment>, circles</span>
+            <li class=fragment>Automatic connectors support diagrams</li>
+            <li class=fragment>Full power of JavaScript 2D canvas rendering</li>
+            <li class=fragment>Constraint-based ⇒ responsive to display changes, font availability</li>
+            </li>
+          </ul>
+          <canvas id="fig2"></canvas>
+          <script>
+            const fig2 = new Figure("fig2")
+            with (fig2) {
+                const f0 = new Frame(fig2), f1 = new Frame(fig2,"rectangles"), f1a = new Frame(fig2, "rect2"),
+                    f2 = new Frame(fig2,"lines"), f3 = new Frame(fig2,"circles"), f4 = new Frame(fig2, "connect"),
+                    s1 = square().setFillStyle("#f88"), r1 = rectangle().setFillStyle("#8f8").setCornerRadius(8),
+                    rect_w = new DOMElementBox("rect"),
+                    bullets = new DOMElementBox("bullets"),
+                    l1 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray"),
+                    l2 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray")
+                drawAfter(f1, s1)
+                drawAfter(f1a, r1)
+                drawAfter(f2, l1)
+                drawAfter(f2, l2)
+                ensure(equal(s1.x0(), bullets.x0()),
+                       equal(s1.y0(), bullets.y1()),
+                       equal(s1.w(), 100),
+                       equal(r1.w(), s1.w()),
+                       equal(r1.x0(), new Plus(s1.x1(), 50)),
+                       equal(r1.y(), s1.y()),
+                       equal(r1.w(), new Times(1.618, r1.h()))
+                       )
+                pin(s1.ur(), l1.p1())
+                pin(r1.ul(), l1.p2())
+                pin(s1.lr(), l2.p1())
+                pin(r1.ll(), l2.p2())
+                let p1, p2
+                let c1 = drawAfter(f4,
+                    connector([s1, p1 = point(), p2 = point(), r1]).setEndArrow("arrow").setLineWidth(2))
+                ensure(equal(p1.x(), s1.x()),
+                       equal(p2.x(), r1.x()),
+                       equal(p1.y(), new Average(s1.y(), canvasSize().y1())),
+                       equal(p1.y(), p2.y1()))
+                const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
+                grd.addColorStop(0, "purple")
+                grd.addColorStop(1, "yellow")
+                let e1 = new Ellipse(fig2).setLineWidth(2).setFillStyle(grd), p3 = point(),
+                    c2 = drawAfter(f4, connector([e1, r1]).setLineDash([2,2])),
+                    t2 = label("green", 18, "sans-serif", "black")
+                drawAfter(f3, e1)
+                drawAfter(f1a, t2)
+                pin(t2, r1)
+                ensure(aligned("distribute", "center", s1, r1, e1), equal(e1.w(), e1.h()),
+                       equal(p3.x(), e1.x()), equal(e1.w(), s1.w()),
+                       equal(p3.y(), new Minus(e1.y(), 50)))
+                start()
+            }
+          </script>
+        </section>
+        <section>
+          <h2>Extensible</h2>
+          <ul id=bullets3>
+          <li>Constrain is a JavaScript (ES6) library
+          <li>General-purpose constraint solver ⇒ can add/modify graphical objects
+          </ul>
+          <canvas id="fig3"></canvas>
+          <script>
+              let fig3 = new Figure("fig3")
+
+              class Fireworks extends GraphicalObject {
+                constructor(figure) {
+                /* set up fireworks explosion */
+                    super(figure)
+                    this.rocket_dir = []
+                    this.num_rockets = 120
+
+                    for (let i = 0; i < this.num_rockets; i++) {
+                        while (true) {
+                            let x = Math.random()-0.5,
+                                y = Math.random()-0.5,
+                                z = Math.random()-0.5,
+                                s = x*x+y*y+z*z
+                            if (s < 0.25) {
+                                s = Math.sqrt(s)
+                                this.rocket_dir[i] = {x: x/s, y: y/s}
+                                break
+                            }
+                        }
+                    }
+                }
+                render() {
+                    const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+                    const [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation)
+                    const framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0
+                    if (framepos < rise_time) {
+                        circlePath(ctx, x, y1 - framepos*rise_height/rise_time, 3)
+                        ctx.fillStyle = "red"
+                        ctx.fill()
+                    } else {
+                        const colors = [ 'red', 'green', 'blue', 'purple', 'orange']
+                        const t = (framepos - rise_time)/(1 - rise_time),
+                            k = 4,
+                            shardv = 60,
+                            r = shardv*(1 - Math.exp(-k*t)),
+                            top = y1 - rise_height,
+                            g = 80
+                        for (let i = 0; i < this.num_rockets; i++) {
+                            var xr = x + this.rocket_dir[i].x * r,
+                                yr = top + this.rocket_dir[i].y * r + g*t*t
+                            ctx.fillStyle = colors[i % colors.length]
+                            circlePath(ctx, xr, yr, 3)
+                            console.log(ctx.fillStyle + " " + i)
+                            ctx.fill()
+                        }
+                    }
+                }
+              }
+              {
+                let f1 = fig3.addFrame().setLength(2900),
+                    bullets3 = new DOMElementBox("bullets3")
+                with (fig3) {
+                   const fireworks = drawAfter(f1, new Fireworks(fig3))
+                   ensure(equal(fireworks.y1(), canvasSize().y1()),
+                          equal(fireworks.w(), 300), equal(fireworks.x(), canvasSize().x()),
+                          equal(fireworks.y0(), bullets3.y1()))
+                   fig3.start()
+                }
+              }
+            </script>
+        </div> <!-- end of slides -->
+
+        <script src="reveal.js/lib/js/head.min.js"></script>
+        <script src="reveal.js/js/reveal.js"></script>
+        <script src="constrainreveal.js"></script>
+
+        <script>
+                // Set up Reveal
+                Reveal.initialize({
+                        history: true,
+                        controls: false,
+                        progress: false,
+                        center: false,
+
+                        // More info https://github.com/hakimel/reveal.js#dependencies
+                        dependencies: [
+                                { src: 'reveal.js/plugin/markdown/marked.js' },
+                                { src: 'reveal.js/plugin/markdown/markdown.js' },
+                                { src: 'reveal.js/plugin/notes/notes.js', async: true },
+                                { src: 'reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+                        ],
+
+                        keyboard: {
+                            // override N and P to jump by whole slides
+                            78: function() {
+                                if (!Reveal.isLastSlide())
+                                    Reveal.slide(Reveal.getIndices().h + 1,
+                                                Reveal.getIndices().v, 0);
+                            },
+                            80: function() {
+                                if (!Reveal.isFirstSlide())
+                                    Reveal.slide(Reveal.getIndices().h - 1,
+                                                 Reveal.getIndices().v, 0);
+                            }
+                        },
+                        width: 1024,
+                        height: 768
+                });
+
+            // Set up figures
+            ConstrainReveal.initialize()
+        </script>
+</body>
+</html>

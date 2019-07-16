@@ -1,0 +1,70 @@
+<html>
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="uncmin.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        position: fixed; left:0; top: 0;
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+</style>
+  
+</head>
+<body>
+<h1>Constrain demo (this should be hidden)</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+fullWindowCanvas(canvas)
+
+const figure = new Figure(canvas)
+
+canvas.style.backgroundColor = "#eee"
+
+const grd = figure.ctx.createLinearGradient(0, 0, 1000, 200)
+grd.addColorStop(0, "red")
+grd.addColorStop(1, "blue")
+
+function lstack() {
+}
+
+with (figure) {
+    let s1 = square("#afa"), s2 = square("#ccf")
+    let t1 = label("Constrain: A JS package for animated figures", 48, "Optima-Bold", grd )
+        .setStrokeStyle("black")
+        .setLineWidth(2),
+        t2 = label("Con", 48, "Optima-Bold")
+        t2b = label("strain", 48, "Optima-Bold")
+
+    ensure(equal(t1.y0(), 20),
+           equal(t1.x(), canvasSize().x()),
+           equal(s1.y0(), new Minus(t1.y0(), 10)),
+           equal(s1.x0(), t1.x0()),
+           equal(s1.w(), t2.w()),
+           equal(s2.w(), t2b.w()),
+           equal(s2.y0(), s1.y0()),
+           equal(s2.x0(), s1.x1())
+    )
+    t2.visible = t2b.visible = () => false
+    figure.fillStyle = "black"
+    figure.fontSize = 24
+
+
+    let bullet1, bullet2, bullet3
+    ensure(aligned("left", "distribute",
+        (bullet1 = label("Allows web pages to include 2D animated, interactive figures")),
+        label("• Reveal presentations can contain Constrain animations"),
+        bullet3 = label("• Good for diagrams in course notes and other online documents")),
+      equal(bullet1.x0(), new Plus(canvasSize().x0(), 100)),
+      equal(bullet1.y0(), new Plus(t1.y1(), 40)),
+      equal(bullet3.y1(), new Minus(canvasSize().y1(), 40))
+    )
+
+}
+
+</script>
+</body>
+</html>

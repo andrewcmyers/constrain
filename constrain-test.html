@@ -1,0 +1,101 @@
+<html>
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="uncmin.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+</style>
+  
+</head>
+<body>
+<h1>Constrain Test Page</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+fullWindowCanvas(canvas)
+
+const figure = new Figure(canvas)
+
+canvas.style.backgroundColor = "#eee"
+
+const grd = figure.ctx.createLinearGradient(0, 0, 200, 200)
+grd.addColorStop(0, "red")
+grd.addColorStop(1, "yellow")
+
+figure.frameRate = 10
+
+with (figure) {
+
+let s3 = square (grd, "black", 3),
+    s1 = square ().setCornerRadius(20).setLineWidth(3),
+    s2 = square ("yellow", "black", 3).setCornerRadius(10),
+    s4 = square ("green", "black", 3).setLineDash([6,3]),
+    h = handle(),
+    canvSize = canvasSize()
+
+    ensure(
+        aligned("abut", "top", s1, s2),
+        aligned("none", "bottom", s1, s2),
+        aligned("left", "top", [s1, s3]),
+        aligned("right", "top", [s2, s3]),
+        aligned("none", "top", s3, s4))
+    ensure(
+        equal(s4.h(), 100),
+        equal(s4.x1(), new Minus(canvSize.x1(), 50)))
+
+    const l1 = line("black", 3).setEndArrow("bullet").setArrowSize(15).setStartArrow("arrow")
+    samePt(l1.p1(), s3.cr())
+    samePt(l1.p2(), s4.cl())
+    var t1 = label("Three Squares", 12, "Menlo", "black")
+
+    ensure(equal(t1.y0(), new Plus(s3.y1(), 12)),
+           geq(h.x(), 0))
+
+    const c1 = connector([s1, handle("red"), handle("blue"), s4], "black")
+               .setEndArrow("arrow").setStrokeStyle("black").setStartArrow("arrow")
+               .setLineDash([10,10]).setLineWidth(3).setArrowSize(20)
+
+    let frame0 = addFrame().setLength(3000), frame1 = addFrame().setAutoAdvance(true),
+        frame2 = addFrame()
+    let adv = drawAfter(frame1, advanceButton())
+    samePt(adv, point(30, 20))
+
+    const s5 = drawAfter(frame2, square("blue", "red"))
+    ensure(aligned("left", "abut", s4, s5))
+    ensure(aligned("right", "none", s4, canvSize))
+
+    // want to scope the frame dynamically -- implies implicit argument?
+    // Just use dynamic scoping?
+    // Make frame objects? But 'smooth' is actually something that works across all frames here.
+
+    ensure(
+        equal(new Distance(s1.ul(), s2.ur()), smooth(frame0, 25, 200)),
+        equal(s1.x0(), smooth(frame0, 0, 250)))
+    ensure(
+        after(frame1, new ConstraintGroup(
+            equal(h.x(), t1.x1()),
+            equal(s3.y(), h.y()),
+            leq(s3.y(), canvSize.y()))))
+    figure.drawAfter(frame1, new Corners(figure))
+
+    let txt = new FormattedText(figure, "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair").setFillStyle("black")
+    ensure(equal(txt.x0(), s1.x0()),
+           equal(txt.x1(), h.x()),
+           equal(txt.y0(), new Plus(t1.y1(), 20)))
+
+    const l2 = vertLine()
+    ensure(aligned("right", "none", l2, txt),
+           equal(l2.y0(), h.y0()))
+}
+
+</script>
+</body>
+<script>
+    figure.start()
+</script>
+</html>
