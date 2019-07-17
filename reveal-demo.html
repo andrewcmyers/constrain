@@ -154,9 +154,9 @@
                 render() {
                     const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
                     const [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation)
-                    const framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0
+                    const framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0 - 40
                     if (framepos < rise_time) {
-                        circlePath(ctx, x, y1 - framepos*rise_height/rise_time, 3)
+                        Paths.ellipse(ctx, x, y1 - framepos*rise_height/rise_time, 3, 3)
                         ctx.fillStyle = "red"
                         ctx.fill()
                     } else {
@@ -171,8 +171,7 @@
                             var xr = x + this.rocket_dir[i].x * r,
                                 yr = top + this.rocket_dir[i].y * r + g*t*t
                             ctx.fillStyle = colors[i % colors.length]
-                            circlePath(ctx, xr, yr, 3)
-                            console.log(ctx.fillStyle + " " + i)
+                            Paths.circle(ctx, xr, yr, 3)
                             ctx.fill()
                         }
                     }

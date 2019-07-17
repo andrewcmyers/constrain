@@ -12,6 +12,7 @@ var ConstrainReveal = function() {
     let currentFigure = null, slideFigures = []
 
     function newSlideHook() {
+        console.log("new slide hook")
         currentFigure = null
         const slide = Reveal.getCurrentSlide() 
         canvases = slide.querySelectorAll('canvas')
@@ -24,8 +25,8 @@ var ConstrainReveal = function() {
                 }
             }
         }
-        // console.log(Figures.length + " figures")
-        // console.log(slideFigures.length + " figures on this slide")
+         console.log(Figures.length + " figures")
+         console.log(slideFigures.length + " figures on this slide")
     }
 
     function hasClass(elem, cls) {
