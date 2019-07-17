@@ -411,10 +411,12 @@ class Figure {
         return new NearZero(new Relu(new Minus(e1, e2)))
     }
 
+    // short for ensure(pinned(...))
     pin(...objects) {
         this.ensure(this.pinned(objects))
     }
 
+    // constraints to pin all the objects at the same location
     pinned(...objects) {
         objects = objects.flat()
         const r = []
@@ -531,6 +533,7 @@ class Figure {
     smooth(frame, e1, e2) {
         return new Smooth(this, frame, e1, e2)
     }
+    // Create a point with variables for its coordinates
     point() {
         const x = new Variable(this, "px"), y = new Variable(this, "py")
         return new Point(x, y)
@@ -1103,6 +1106,13 @@ class ConstraintGroup extends Constraint {
         })
         return [cost, dc]
       }
+    }
+    variables() {
+        let r = []
+        this.constraints.forEach(c => {
+            r = r.concat(c.variables())
+        })
+        return r
     }
 }
 

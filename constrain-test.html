@@ -49,8 +49,8 @@ let s3 = square (grd, "black", 3),
         equal(s4.x1(), new Minus(canvSize.x1(), 50)))
 
     const l1 = line("black", 3).setEndArrow("bullet").setArrowSize(15).setStartArrow("arrow")
-    samePt(l1.p1(), s3.cr())
-    samePt(l1.p2(), s4.cl())
+    pin(l1.p1(), s3.cr())
+    pin(l1.p2(), s4.cl())
     var t1 = label("Three Squares", 12, "Menlo", "black")
 
     ensure(equal(t1.y0(), new Plus(s3.y1(), 12)),
@@ -63,7 +63,7 @@ let s3 = square (grd, "black", 3),
     let frame0 = addFrame().setLength(3000), frame1 = addFrame().setAutoAdvance(true),
         frame2 = addFrame()
     let adv = drawAfter(frame1, advanceButton())
-    samePt(adv, point(30, 20))
+    pin(adv, new Point(30, 20))
 
     const s5 = drawAfter(frame2, square("blue", "red"))
     ensure(aligned("left", "abut", s4, s5))
