@@ -182,11 +182,11 @@
                 let f1 = fig3.addFrame().setLength(2900),
                     bullets3 = new DOMElementBox("bullets3")
                 with (fig3) {
-                   const fireworks = drawAfter(f1, new Fireworks(fig3))
+                   const r1 = rectangle().setFillStyle("black"),
+                         fireworks = drawAfter(f1, new Fireworks(fig3))
                    ensure(equal(fireworks.y1(), canvasSize().y1()),
                           equal(fireworks.w(), 300), equal(fireworks.x(), canvasSize().x()),
                           equal(fireworks.y0(), bullets3.y1()))
-                   const r1 = rectangle().setFillStyle("black")
                    pin(r1.ul(), fireworks.ul())
                    pin(r1.lr(), fireworks.lr())
                 }
