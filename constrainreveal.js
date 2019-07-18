@@ -92,6 +92,15 @@ var ConstrainReveal = function() {
         })
     }
 
+    function completeNonFragments() {
+        slideFigures.forEach(f => {
+            if (!fragmentFigure(f) && !f.isComplete()) {
+                f.reset()
+                f.complete()
+            }
+        })
+    }
+
     function rewindableFragment() {
         let r = false
         slideFigures.forEach(fig => {
@@ -141,9 +150,7 @@ var ConstrainReveal = function() {
             }
             Reveal.navigatePrev = function() {
                 if (!rewindableFragment()) {
-                    resetActiveFragments()
                     reveal_prev.call(this)
-                    rewindNonFragments()
                 } else {
                     rewindActiveFragments()
                 }

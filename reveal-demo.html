@@ -43,10 +43,10 @@
           <canvas class="fragment" id="fig1" data-fragment-index=0 ></canvas>
           <script>
             const fig1 = new Figure("fig1")
-            var f0, f1, s1, s2, s3
+            var f0, f1, s1, s2, s3, l1
             with (fig1) {
                 setLineWidth(2)
-                f0 = addFrame("start"), f1 = addFrame("next").setLength(1000)
+                f0 = addFrame("start"), f1 = addFrame("next").setLength(1000), f2 = addFrame().setLength(1000)
                 s1 = square("white"), s3 = drawAfter(f1, square("#fdd")), s2 = square("#dfd"),
                 t1 = new DOMElementBox("title")
                 ensure(aligned("center", "none", s1, fig1.canvasSize()),
@@ -58,6 +58,12 @@
                        equal(s3.x0(), smooth(f1, s2.x0(), s1.x0())),
                        equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
                 )
+                drawAfter(f2, l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30))
+                ensure(after(f2,
+                    pinned(l1.p1(), s3.ll()),
+                    equal(new Distance(l1.p1(), l1.p2()),
+                          new Distance(s3.ll(), s3.ul()))
+                ))
             }
           </script>
         </section>

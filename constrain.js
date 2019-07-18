@@ -527,8 +527,8 @@ class Figure {
         return result
     }
 
-    after(frame, constr) {
-        return new After(frame, constr)
+    after(frame, ...constr) {
+        return new After(this, frame, ...constr)
     }
 
 // ---- Utility methods for creating figure objects ----
@@ -1067,8 +1067,8 @@ function cubicInterpWeight(t) {
 // is visible in every frame.
 //
 class Temporal {
-    constructor(obj) {
-        this.obj = obj
+    constructor(...objects) {
+        this.objects = objects
     }
     // Is this object active (exists in) frame f?
     active(f) { return true }
@@ -1082,13 +1082,14 @@ function zeroCost(valuation, doGrad) {
 }
 
 class After extends Temporal {
-    constructor(figure, obj) {
-        super(obj)
+    constructor(figure, frame, ...obj) {
+        super(...obj)
+        this.frame = frame
         this.figure = figure
     }
     getCost(valuation, doGrad) {
-        if (this.active(figure.currentFrame)) {
-            return this.obj.getCost(valuation, doGrad)
+        if (this.active(this.figure.currentFrame)) {
+            return constraintsCost(obj, valuation, doGrad)
         } else {
             return zeroCost(valuation, doGrad)
         }
@@ -1096,6 +1097,9 @@ class After extends Temporal {
     variables() { return [] }
     evaluate(valuation, doGrad) {
         return this.obj.evaluate(valuation, doGrad)
+    }
+    active() {
+        return this.frame.isAfter(this.figure.currentFrame)
     }
 }
 
@@ -1133,25 +1137,32 @@ class NearZero extends Constraint {
     }
 }
 
+function constraintsCost(a, valuation, doGrad) {
+    if (a.constructor !== Array) console.error("constraintsCost expects an array of constraints")
+    if (a.length == 0) return zeroCost(valuation, doGrad)
+    if (a.length == 1) return a[0].getCost(valuation, doGrad)
+    if (!doGrad) {
+        let cost = 0
+        a.forEach(c => { cost += c.getCost(valuation, doGrad) })
+        return cost
+    } else {
+        let cost = 0, dc = getZeros(valuation.length)
+        a.forEach(c => {
+            const [cc, cd] = c.getCost(valuation, true)
+            cost += cc
+            dc = numeric.add(dc, cd)
+        })
+        return [cost, dc]
+    }
+}
+
 class ConstraintGroup extends Constraint {
     constructor(...constraints) {
         super()
         this.constraints = constraints.flat()
     }
     getCost(valuation, doGrad) {
-      if (!doGrad) {
-        let cost = 0
-        this.constraints.forEach(c => { cost += c.getCost(valuation, doGrad) })
-        return cost
-      } else {
-        let cost = 0, dc = getZeros(valuation.length)
-        this.constraints.forEach(c => {
-            const [cc, cd] = c.getCost(valuation, true)
-            cost += cc
-            dc = numeric.add(dc, cd)
-        })
-        return [cost, dc]
-      }
+        return constraintsCost(this.constraints, valuation, doGrad)
     }
     variables() {
         let r = []
