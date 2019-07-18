@@ -230,6 +230,10 @@ class Figure {
 
 // Rendering
     renderIfDirty() {
+        if (this.currentFrame === undefined) {
+            console.log("current frame not defined yet, skipping render")
+            return
+        }
         if (this.renderNeeded) {
             this.render(this.animationTime)
             this.tempConstraints = []
@@ -265,11 +269,21 @@ class Figure {
     // Start this figure. If no frames have been defined, create a
     // single non-animated frame.
     start() {
+        console.log("starting figure")
         if (this.Frames.length == 0)
             this.Frames[0] = new Frame(this)
         this.currentFrame = this.Frames[0]
-        this.startCurrentFrame()
-        window.addEventListener('load', () => this.startCurrentFrame())
+        if (!this.currentFrame) { console.error("No current frame!?") }
+        if (document.readyState == "complete") {
+            console.log("document is ready, starting first frame")
+            this.startCurrentFrame()
+        } else {
+            console.log("document is not ready, starting listener")
+            window.addEventListener('load', () => {
+                console.log("Document loaded, starting frame")
+                this.startCurrentFrame()
+            })
+        }
     }
 
     // Reset this figure back to the first frame
@@ -338,6 +352,9 @@ class Figure {
     startCurrentFrame() {
         this.animationTime = 0
         this.stopTimer()
+        if (!this.currentFrame) {
+            console.error("no current frame")
+        }
         if (this.currentFrame.length > 0) {
             console.log("starting animated frame " + this.name + " in " + this.figure.name)
             const t0 = new Date().getTime()
@@ -357,11 +374,12 @@ class Figure {
         } else {
             console.log("starting static frame " + this.name + " in " + this.figure.name)
             delete this.interval
-            this.figure.render()
+            this.render()
         }
     }
 
     endCurrentFrame() {
+        if (this.currentFrame === undefined) return
         console.log("Ending frame " + this.name)
         this.animationTime = 1
         this.stopTimer()

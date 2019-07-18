@@ -11,11 +11,12 @@ var ConstrainReveal = function() {
 
     let currentFigure = null, slideFigures = []
 
-    function newSlideHook() {
-        console.log("new slide hook")
+    function newSlideHook(e) {
+        console.log("new slide hook: " + e.type)
         currentFigure = null
         const slide = Reveal.getCurrentSlide() 
         canvases = slide.querySelectorAll('canvas')
+        slideFigures.forEach(f => f.endCurrentFrame())
         slideFigures = []
         for (let i = 0; i < canvases.length; i++) {
             for (let j = 0; j < Figures.length; j++) {

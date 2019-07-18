@@ -56,7 +56,7 @@ with (figure) {
     let bullet1, bullet2, bullet3
     ensure(aligned("left", "distribute",
         (bullet1 = label("Allows web pages to include 2D animated, interactive figures")),
-        label("• Reveal presentations can contain Constrain animations"),
+        label("• Reveal.js presentations can contain Constrain animations"),
         bullet3 = label("• Good for diagrams in course notes and other online documents")),
       equal(bullet1.x0(), new Plus(canvasSize().x0(), 100)),
       equal(bullet1.y0(), new Plus(t1.y1(), 40)),
