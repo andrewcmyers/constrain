@@ -46,7 +46,7 @@
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
                 setLineWidth(2)
-                f0 = addFrame("start"), f1 = addFrame("next").setLength(1000), f2 = addFrame().setLength(2000)
+                f0 = addFrame("start"), f1 = addFrame("next").setLength(1000), f2 = addFrame().setLength(1500)
                 s1 = square("white"), s3 = drawAfter(f1, square("#fdd")), s2 = square("#dfd"),
                 t1 = new DOMElementBox("title")
                 ensure(aligned("center", "none", s1, fig1.canvasSize()),
@@ -61,6 +61,7 @@
                 drawAfter(f2, l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30))
                 ensure(after(f2,
                     pinned(l1.p1(), s3.ll()),
+                    geq(l1.p2().x(), s3.x0()),
                     equal(new Distance(l1.p1(), l1.p2()),
                           new Distance(s3.ll(), s3.ul())),
                     equal(new Distance(l1.p2(), s3.ul()), smooth(f2, 0, new Distance(s3.ul(), s3.lr())))
