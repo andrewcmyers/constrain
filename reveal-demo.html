@@ -14,10 +14,12 @@
     <style>
         span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px }
         em { color: #889ee5 }
-        #fig1, #fig2, #fig3 { position: fixed; left: 0; top: 0;
-                width: 100%; height: 100%; z-index: -1 }
+        canvas { position: fixed; left: 0; top: 0;
+                 width: 100%; height: 100%; z-index: -1 }
         /* #fig1 { background-color: #eef;  } */
         section {width: 1024px; height:768px}
+        kbd {font-size: 90%; color: #468}
+        pre {background-color: #efd; color: #236}
     </style>
     <script src="numeric-1.2.6.js"></script>
     <script src="uncmin.js"></script>
@@ -197,6 +199,61 @@
                    pin(r1.ul(), fireworks.ul())
                    pin(r1.lr(), fireworks.lr())
                 }
+              }
+            </script>
+          </section>
+          <section><h2>Programming with Constrain</h2>
+          <ul>
+            <li>Web page can contain multiple Figures, each tied to a canvas.<br>
+<pre>&lt;canvas id=canv1&gt;&lt;/canvas&gt;
+fig = new Figure("canv1")</pre>
+            </li>
+            <li class="fragment">Graphical objects created declaratively using builder pattern:<br>
+            <pre>
+with (fig) {
+  s = square()<span class=fragment>.setFillStyle("yellow")</span><span class=fragment>.setLineWidth(3)</span></pre>
+            <li class="fragment">Graphical objects introduce variables for their position:
+            <ul>
+               <li><kbd>.x()</kbd> : x position (min/max x position: <kbd>.x0(), .x1()</kbd></li>
+               <li><kbd>.y()</kbd> : y position (min/max y position: <kbd>.y0(), .y1()</kbd></li>
+               <li><kbd>.w()</kbd> : width, <kbd>.h()</kbd> : height</li>
+            </ul>
+            </li>
+            <li class="fragment">Variable values are determined by solving constraints:
+            <pre>
+ensure(equal(s.w(), 150),    // w = 150
+       equal(s.x0(), s.w()), // x0 = w
+       equal(s.y0(), new Times(2, s.h()))) // y0 = 2*h</pre>
+            </li>
+
+            <canvas id="programming"></canvas>
+            <script>
+              let fig4 = new Figure("programming")
+              with (fig4) {
+                let f0 = addFrame("start"),
+                    f1 = addFrame("square"),
+                    f2 = addFrame("yellow")
+                    f3 = addFrame("thick"),
+                    addFrame(),
+                    f4 = addFrame("constraints").setLength(500)
+
+                let s1 = drawBetween(f1, f4, square().setFillStyle("white")),
+                    s2 = drawBetween(f2, f4, square().setFillStyle("yellow")),
+                    s3 = drawAfter(f3, square().setFillStyle("yellow").setLineWidth(3))
+                let lh, lv
+                drawAfter(f4, lh = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")),
+                drawAfter(f4, lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow"))
+
+                ensure(equal(s3.w(), smooth(f4, 100, 150)), // w = 150
+                       pinned(s1.ul(), s2.ul(), s3.ul()),
+                       equal(s1.w(), s2.w(), s3.w()),
+                       equal(s3.y0(), smooth(f4, 100, new Times(2, s3.h()))), // y0 = 2*h
+                       equal(s3.x0(), smooth(f4, 100, s3.w())), // x0 = w
+                       pinned(lh.p1(), new Point(0, s3.y())),
+                       pinned(lh.p2(), new Point(s3.x0(), s3.y())),
+                       pinned(lv.p1(), new Point(s3.x(), 0)),
+                       pinned(lv.p2(), new Point(s3.x(), s3.y0()))
+                )
               }
             </script>
           </section>

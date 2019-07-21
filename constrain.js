@@ -49,6 +49,7 @@ class Figure {
             this.canvas = canvas
         } else if (typeof canvas == "string") {
             this.canvas = canvas = document.getElementById(canvas)
+            this.name = canvas
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
             return
@@ -377,7 +378,7 @@ class Figure {
               1000/this.frameRate)
             console.log("started interval timer " + this.interval)
         } else {
-            console.log("starting static frame " + this.name + " in " + this.figure.name)
+            console.log("starting static frame " + this.currentFrame.name + " in " + this.figure.name)
             delete this.interval
             this.render()
         }
@@ -585,6 +586,9 @@ class Figure {
     drawBefore(frame, g) {
         return new DrawBefore(this, frame, g)
     }
+    drawBetween(frame1, frame2, g) {
+        return new DrawBetween(this, frame1, frame2, g)
+    }
 }
 
 // Determines whether a frame satisfies some condition
@@ -626,6 +630,9 @@ class Frame extends FrameTest {
     }
     isBefore(f) {
         return this.index < f.index
+    }
+    toString() {
+        return "Frame " + this.name
     }
 }
 
@@ -1952,7 +1959,10 @@ class Global extends Expression {
 class DOMElementBox extends LayoutObject {
     constructor(id) {
         super()
-        this.obj = document.getElementById(id)
+        if (typeof id == "string")
+            this.obj = document.getElementById(id)
+        else
+            this.obj = id
     }
     boundingRect() {
         return this.obj.getBoundingClientRect()
@@ -2010,11 +2020,12 @@ class DrawAfter extends ConditionallyDrawn {
     }
     conditionHolds() {
         if (this.figure.currentFrame === undefined) {
-            console.error("Testing drawafter when there is no frame")
+            console.error("Testing DrawAfter when there is no frame")
         }
         return this.figure.currentFrame.isAfter(this.frame)
     }
 }
+
 // A DrawBefore is an object that is not rendered before the
 // specified frame.
 class DrawBefore extends ConditionallyDrawn {
@@ -2023,7 +2034,32 @@ class DrawBefore extends ConditionallyDrawn {
         this.figure = figure
         this.frame = frame
     }
+    conditionHolds() {
+        if (this.figure.currentFrame === undefined) {
+            console.error("Testing DrawBefore when there is no frame")
+        }
+        return !this.figure.currentFrame.isAfter(this.frame)
+    }
 }
+
+// A DrawBetween is an object that is only rendered over some range
+// of frames starting from frame1 and ending before frame2
+class DrawBetween extends ConditionallyDrawn {
+    constructor(figure, frame1, frame2, obj) {
+        super(figure, obj)
+        this.figure = figure
+        this.frame1 = frame1
+        this.frame2 = frame2
+    }
+    conditionHolds() {
+        if (this.figure.currentFrame === undefined) {
+            console.error("Testing DrawBefore when there is no frame")
+        }
+        return this.figure.currentFrame.isAfter(this.frame1) &&
+              !this.figure.currentFrame.isAfter(this.frame2)
+    }
+}
+
 
 function fullWindowCanvas(canvas) {
     const resizeCanvasToWindow = () => {
