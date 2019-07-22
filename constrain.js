@@ -566,6 +566,9 @@ class Figure {
     connector(objects) {
         return new Connector(this, objects)
     }
+    DOMElement(id) {
+        return new DOMElementBox(this, id)
+    }
     linear(frame, e1, e2) {
         return new Linear(this, frame, e1, e2)
     }
@@ -1957,30 +1960,34 @@ class Global extends Expression {
 }
 
 class DOMElementBox extends LayoutObject {
-    constructor(id) {
+    constructor(figure, id) {
         super()
         if (typeof id == "string")
             this.obj = document.getElementById(id)
         else
             this.obj = id
+        if (figure.constructor !== Figure) {
+            console.error("DOMElementBox requires a figure to compute coordinates relative to")
+        }
+        this.figure = figure
     }
     boundingRect() {
         return this.obj.getBoundingClientRect()
     }
     x() { return this.centerX() }
     y() { return this.centerY() }
-    x0() { return new Global(() => this.boundingRect().left) }
-    y0() { return new Global(() => this.boundingRect().top) }
+    x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left) }
+    y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top) }
     w() { return new Global(() => this.boundingRect().width) }
     h() { return new Global(() => this.boundingRect().height) }
     x1() { return new Global(() => {
              const b = this.boundingRect()
-             return b.right
+             return b.right - this.figure.canvas.getBoundingClientRect().left
            })
          }
     y1() { return new Global(() => {
              const b = this.boundingRect()
-             return b.bottom
+             return b.bottom - this.figure.canvas.getBoundingClientRect().top
            })
          }
 }
