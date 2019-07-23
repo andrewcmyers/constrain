@@ -48,26 +48,26 @@
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
                 setLineWidth(2)
-                f0 = addFrame("start"), f1 = addFrame("next").setLength(1000), f2 = addFrame().setLength(1500)
-                s1 = square("white"), s3 = drawAfter(f1, square("#fdd")), s2 = square("#dfd"),
+                f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500)
+                s1 = square("white"); s3 = square("#fdd"); after(f1, s3); s2 = square("#dfd")
                 t1 = DOMElement("title")
-                ensure(aligned("center", "none", s1, fig1.canvasSize()),
-                       aligned("center", "center", s1.lr(), s2),
-                       equal(s1.w(), s2.w()),
-                       equal(s1.y0(), new Minus(t1.y0(), 10)),
-                       equal(s1.w(), new Plus(t1.w(), 10)),
-                       equal(s3.y0(), smooth(f1, s2.y0(), s1.y1())),
-                       equal(s3.x0(), smooth(f1, s2.x0(), s1.x0())),
-                       equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
-                )
-                drawAfter(f2, l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30))
-                ensure(after(f2,
-                    pinned(l1.p1(), s3.ll()),
+                align("center", "none", s1, fig1.canvasSize())
+                align("center", "center", s1.lr(), s2)
+                equal(s1.w(), s2.w())
+                equal(s1.y0(), new Minus(t1.y0(), 10))
+                equal(s1.w(), new Plus(t1.w(), 10))
+                equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
+                equal(s3.x0(), smooth(f1, s2.x0(), s1.x0()))
+                equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
+                after(f2,
+                    l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30),
+                    pin(l1.p1(), s3.ll()),
                     geq(l1.p2().x(), s3.x0()),
-                    equal(new Distance(l1.p1(), l1.p2()),
-                          new Distance(s3.ll(), s3.ul())),
-                    equal(new Distance(l1.p2(), s3.ul()), smooth(f2, 0, new Distance(s3.ul(), s3.lr())))
-                ))
+                    equal(distance(l1.p1(), l1.p2()),
+                          distance(s3.ll(), s3.ul())),
+                    equal(distance(l1.p2(), s3.ul()),
+                        smooth(f2, 0, new Distance(s3.ul(), s3.lr())))
+               )
             }
           </script>
         </section>
@@ -85,48 +85,47 @@
           <script>
             const fig2 = new Figure("fig2")
             with (fig2) {
-                const f0 = new Frame(fig2), f1 = new Frame(fig2,"rectangles"), f1a = new Frame(fig2, "rect2"),
-                    f2 = new Frame(fig2,"lines"), f3 = new Frame(fig2,"circles"), f4 = new Frame(fig2, "connect"),
-                    s1 = square().setFillStyle("#f88"), r1 = rectangle().setFillStyle("#8f8").setCornerRadius(8),
+                const [f0, f1, f1a, f2, f3, f4] = addFrame(null, "rectangles", "rect2", "lines", "circles", "connect")
+                const s1 = square().setFillStyle("#f88"), r1 = rectangle().setFillStyle("#8f8").setCornerRadius(8),
                     rect_w = DOMElement("rect"),
                     bullets = DOMElement("bullets"),
                     l1 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray"),
                     l2 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray")
-                drawAfter(f1, s1)
-                drawAfter(f1a, r1)
-                drawAfter(f2, l1)
-                drawAfter(f2, l2)
-                ensure(equal(s1.x0(), bullets.x0()),
-                       equal(s1.y0(), bullets.y1()),
-                       equal(s1.w(), 100),
-                       equal(r1.w(), s1.w()),
-                       equal(r1.x0(), new Plus(s1.x1(), 50)),
-                       equal(r1.y(), s1.y()),
-                       equal(r1.w(), new Times(1.618, r1.h()))
-                )
+                after(f1, s1)
+                after(f1a, r1)
+                after(f2, l1)
+                after(f2, l2)
+                equal(s1.x0(), bullets.x0())
+                equal(s1.y0(), bullets.y1())
+                equal(s1.w(), 100)
+                equal(r1.w(), s1.w())
+                equal(r1.x0(), new Plus(s1.x1(), 50))
+                equal(r1.y(), s1.y())
+                equal(r1.w(), new Times(1.618, r1.h()))
                 pin(s1.ur(), l1.p1())
                 pin(r1.ul(), l1.p2())
                 pin(s1.lr(), l2.p1())
                 pin(r1.ll(), l2.p2())
                 let p1, p2
-                let c1 = drawAfter(f4,
+                let c1 = after(f4,
                     connector([s1, p1 = point(), p2 = point(), r1]).setEndArrow("arrow").setLineWidth(2))
-                ensure(equal(p1.x(), s1.x()),
-                       equal(p2.x(), r1.x()),
-                       equal(p1.y(), new Average(s1.y(), canvasSize().y1())),
-                       equal(p1.y(), p2.y1()))
+                equal(p1.x(), s1.x())
+                equal(p2.x(), r1.x())
+                equal(p1.y(), new Average(s1.y(), canvasSize().y1()))
+                equal(p1.y(), p2.y1())
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
                 grd.addColorStop(1, "yellow")
                 let e1 = new Ellipse(fig2).setLineWidth(2).setFillStyle(grd), p3 = point(),
-                    c2 = drawAfter(f4, connector([e1, r1]).setLineDash([2,2])),
+                    c2 = after(f4, connector([e1, r1]).setLineDash([2,2])),
                     t2 = label("green", 18, "sans-serif", "black")
-                drawAfter(f3, e1)
-                drawAfter(f1a, t2)
+                after(f3, e1)
+                after(f1a, t2)
                 pin(t2, r1)
-                ensure(aligned("distribute", "center", s1, r1, e1), equal(e1.w(), e1.h()),
-                       equal(p3.x(), e1.x()), equal(e1.w(), s1.w()),
-                       equal(p3.y(), new Minus(e1.y(), 50)))
+                align("distribute", "center", s1, r1, e1)
+                equal(e1.w(), e1.h())
+                equal(p3.x(), e1.x()), equal(e1.w(), s1.w())
+                equal(p3.y(), new Minus(e1.y(), 50))
             }
           </script>
         </section>
@@ -162,9 +161,9 @@
                     }
                 }
                 render() {
-                    const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
-                    const [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation)
-                    const framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0 - 40
+                    const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation,
+                          [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation)
+                          framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0 - 40
                     if (framepos < rise_time) {
                         Paths.ellipse(ctx, x, y1 - framepos*rise_height/rise_time, 3, 3)
                         ctx.fillStyle = "red"
@@ -178,8 +177,8 @@
                             top = y1 - rise_height,
                             g = 80
                         for (let i = 0; i < this.num_rockets; i++) {
-                            var xr = x + this.rocket_dir[i].x * r,
-                                yr = top + this.rocket_dir[i].y * r + g*t*t
+                            const xr = x + this.rocket_dir[i].x * r,
+                                  yr = top + this.rocket_dir[i].y * r + g*t*t
                             ctx.fillStyle = colors[i % colors.length]
                             Paths.circle(ctx, xr, yr, 3)
                             ctx.fill()
@@ -187,15 +186,16 @@
                     }
                 }
               }
+
               {
                 let f1 = fig3.addFrame().setLength(2900),
                     bullets3 = fig3.DOMElement("bullets3")
                 with (fig3) {
                    const r1 = rectangle().setFillStyle("black"),
-                         fireworks = drawAfter(f1, new Fireworks(fig3))
-                   ensure(equal(fireworks.y1(), canvasSize().y1()),
-                          equal(fireworks.w(), 300), equal(fireworks.x(), canvasSize().x()),
-                          equal(fireworks.y0(), bullets3.y1()))
+                         fireworks = after(f1, new Fireworks(fig3))
+                   align("center", "bottom", fireworks, canvasSize())
+                   align("none", "abut", bullets3, fireworks)
+                   equal(fireworks.w(), new Min(300, canvasSize().w()/2))
                    pin(r1.ul(), fireworks.ul())
                    pin(r1.lr(), fireworks.lr())
                 }
@@ -230,30 +230,25 @@ ensure(equal(s.w(), 150),    // w = 150
             <script>
               let fig4 = new Figure("programming")
               with (fig4) {
-                let f0 = addFrame("start"),
-                    f1 = addFrame("square"),
-                    f2 = addFrame("yellow")
-                    f3 = addFrame("thick"),
-                    addFrame(),
+                let [f0, f1, f2, f3, _] = addFrame("start", "square", "yellow", "thick", null) 
                     f4 = addFrame("constraints").setLength(500)
 
-                let s1 = drawBetween(f1, f4, square().setFillStyle("white")),
-                    s2 = drawBetween(f2, f4, square().setFillStyle("yellow")),
-                    s3 = drawAfter(f3, square().setFillStyle("yellow").setLineWidth(3))
-                let lh, lv
-                drawAfter(f4, lh = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")),
-                drawAfter(f4, lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow"))
+                let s1 = between(f1, f4, square().setFillStyle("white")),
+                    s2 = between(f2, f4, square().setFillStyle("yellow")),
+                    s3 = after(f3, square().setFillStyle("yellow").setLineWidth(3))
+                let lh = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow"),
+                    lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
+                after(f4, lh, lv)
 
-                ensure(equal(s3.w(), smooth(f4, 100, 150)), // w = 150
-                       pinned(s1.ul(), s2.ul(), s3.ul()),
-                       equal(s1.w(), s2.w(), s3.w()),
-                       equal(s3.y0(), smooth(f4, 100, new Times(2, s3.h()))), // y0 = 2*h
-                       equal(s3.x0(), smooth(f4, 100, s3.w())), // x0 = w
-                       pinned(lh.p1(), new Point(0, s3.y())),
-                       pinned(lh.p2(), new Point(s3.x0(), s3.y())),
-                       pinned(lv.p1(), new Point(s3.x(), 0)),
-                       pinned(lv.p2(), new Point(s3.x(), s3.y0()))
-                )
+                equal(s3.w(), smooth(f4, 100, 150)) // w = 150
+                pin(s1.ul(), s2.ul(), s3.ul())
+                equal(s1.w(), s2.w(), s3.w())
+                equal(s3.y0(), smooth(f4, 100, new Times(2, s3.h()))) // y0 = 2*h
+                equal(s3.x0(), smooth(f4, 100, s3.w())) // x0 = w
+                pin(lh.p1(), new Point(0, s3.y()))
+                pin(lh.p2(), new Point(s3.x0(), s3.y()))
+                pin(lv.p1(), new Point(s3.x(), 0))
+                pin(lv.p2(), new Point(s3.x(), s3.y0()))
               }
             </script>
           </section>

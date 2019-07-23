@@ -165,7 +165,8 @@ class Figure {
     // If an array is passed as an argument, each element is added
     // as a constraint.
     // A constraint should return a nonnegative cost
-    ensure(...constraints) {
+    // Normally, constraints call this method themselves
+    addConstraints(...constraints) {
         constraints.flat().forEach(c => this.Constraints.push(c))
     }
 
@@ -180,6 +181,7 @@ class Figure {
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
         this.Constraints.forEach(con => {
+            if (con.parent !== undefined) return
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -193,6 +195,7 @@ class Figure {
             cost += c
         })
         this.tempConstraints.forEach(con => {
+            if (con.parent !== undefined) return
             let c, dc
             const result = con.getCost(valuation, doGrad)
             if (doGrad) {
@@ -214,7 +217,7 @@ class Figure {
         if (this.currentValuation === undefined || this.currentValuation.length < this.activeVariables.length)
             this.resetValuation()
         if (this.currentValuation.length > this.activeVariables.length)
-            this.currentValuation = this.currentValuation.slice(0, this.activeVariables.length())
+            this.currentValuation = this.currentValuation.slice(0, this.activeVariables.length)
         const result = this.solveConstraints(this.currentValuation)
         // console.log("Solved for " + this.currentValuation.length + " variables with " +
         //  + this.Constraints.length + " constraints in " + result.iterations + " iterations:")
@@ -268,8 +271,14 @@ class Figure {
 
 // Frame management
 
-    addFrame(name) {
-        return new Frame(this, name)
+    // create one or more new frames, returning either the
+    // single new frame or an array of the new frames.
+    addFrame(...names) {
+        if (names.length > 1) {
+            return names.flat().map(n => new Frame(this, n))
+        } else {
+            return new Frame(this, names)
+        }
     }
 
     // Start this figure. If no frames have been defined, create a
@@ -433,30 +442,25 @@ class Figure {
 // ---- utility functions for creating constraints ----
 
     equal(...e) {
-        if (e.length == 2) return new NearZero(new Minus(e[0], e[1]))
+        if (e.length == 2) return new NearZero(this, new Minus(e[0], e[1]))
         const a = []
         for (let i = 1; i < e.length; i++) {
-            a.push(new NearZero(new Minus(e[0], e[i])))
+            a.push(new NearZero(this, new Minus(e[0], e[i])))
         }
-        return new ConstraintGroup(a)
+        return new ConstraintGroup(this, a)
     }
     geq(e1, e2) {
-        return new NearZero(new Relu(new Minus(e2, e1)))
+        return new NearZero(this, new Relu(new Minus(e2, e1)))
     }
     positive(e) {
         return this.geq(e, 0)
     }
     leq(e1, e2) {
-        return new NearZero(new Relu(new Minus(e1, e2)))
-    }
-
-    // short for ensure(pinned(...))
-    pin(...objects) {
-        this.ensure(this.pinned(objects))
+        return new NearZero(this, new Relu(new Minus(e1, e2)))
     }
 
     // constraints to pin all the objects at the same location
-    pinned(...objects) {
+    pin(...objects) {
         objects = objects.flat()
         const r = []
         for (let i = 1; i < objects.length; i++) {
@@ -464,7 +468,11 @@ class Figure {
             r.push(this.equal(objects[0].y(), objects[i].y()))
         }
         if (r.length == 1) return r[0]
-        else return new ConstraintGroup(r)
+        else return new ConstraintGroup(this, r)
+    }
+
+    distance(p1, p2) {
+        return new Distance(p1, p2)
     }
 
     // Return a list of contraints that align a variable number of objects both
@@ -478,7 +486,7 @@ class Figure {
     //    replace "left" and "right".
     // Objects can either be passed as an array or as a variable number of arguments
     // starting from the third argument.
-    aligned(horizontal, vertical, objlist) {
+    align(horizontal, vertical, objlist) {
         const result = []
         if (objlist.constructor != Array) 
             objlist = argsToArray(arguments, 2)
@@ -533,8 +541,17 @@ class Figure {
         return result
     }
 
-    after(frame, ...constr) {
-        return new After(this, frame, ...constr)
+    after(frame, ...objs) {
+        if (objs.length == 1) return new After(this, frame, objs[0])
+        return objs.flat().map(o => new After(this, frame, o))
+    }
+    before(frame, ...objs) {
+        if (objs.length == 1) return new Before(this, frame, objs[0])
+        objs.flat().map(o => new Before(this, frame, o))
+    }
+    between(frame1, frame2, ...objs) {
+        if (objs.length == 1) return new Before(this, frame2, new After(this, frame1, objs[0]))
+        objs.flat().map(o => new Before(this, frame2, new After(this, frame1, o)))
     }
 
 // ---- Utility methods for creating figure objects ----
@@ -583,31 +600,14 @@ class Figure {
     advanceButton() {
         return new AdvanceButton(this)
     }
-    drawAfter(frame, g) {
-        return new DrawAfter(this, frame, g)
-    }
-    drawBefore(frame, g) {
-        return new DrawBefore(this, frame, g)
-    }
-    drawBetween(frame1, frame2, g) {
-        return new DrawBetween(this, frame1, frame2, g)
-    }
-}
-
-// Determines whether a frame satisfies some condition
-class FrameTest {
-    constructor() {
-    }
-    includeFrame(f) { return true }
 }
 
 // A frame of the animation. Frames can auto-advance
 // to the next frame or require manual advancing.
 // frame.index gives the index of the frame in the
 // current figure.
-class Frame extends FrameTest {
+class Frame {
     constructor(figure, name) {
-        super()
         if (name === undefined) name = figure.Frames.length
         if (figure.constructor != Figure) {
             console.error("First argument to new Frame() must be a figure")
@@ -627,7 +627,6 @@ class Frame extends FrameTest {
         this.autoAdvance = a
         return this
     }
-    includeFrame(f) { return f == this }
     isAfter(f) {
         return this.index >= f.index
     }
@@ -636,29 +635,6 @@ class Frame extends FrameTest {
     }
     toString() {
         return "Frame " + this.name
-    }
-}
-
-// XXX not used yet
-class AfterFrame extends FrameTest {
-    constructor(figure, frame) {
-        this.figure = figure
-        this.frame = frame
-    }
-    includesFrame(f) {
-        if (this == f) return true
-        return this.figure.frameIndex(f) >= this.figure.frameIndex(this)
-    }
-}
-
-class BeforeFrame extends FrameTest {
-    constructor(figure, frame) {
-        this.figure = figure
-        this.frame = frame
-    }
-    includesFrame(f) {
-        if (this == f) return true
-        return this.figure.frameIndex(f) < this.figure.frameIndex(this)
     }
 }
 
@@ -1082,54 +1058,126 @@ function cubicInterpWeight(t) {
 // is visible in every frame.
 //
 class Temporal {
-    constructor(...objects) {
-        this.objects = objects
+    constructor(figure) {
+        this.figure = figure
     }
-    // Is this object active (exists in) frame f?
     active(f) { return true }
 
     // Is this object visible in frame f?
     visible(f) { return true }
 }
 
-function zeroCost(valuation, doGrad) {
-    return doGrad ? [0, getZeros(valuation.length)] : 0
-}
-
-class After extends Temporal {
-    constructor(figure, frame, ...obj) {
-        super(...obj)
-        this.frame = frame
-        this.figure = figure
+// A TemporalFilter contains a graphical object or a constraint.
+class TemporalFilter extends Temporal {
+    constructor(figure, obj) {
+        super(figure)
+        if (obj.constructor == Array) {
+            console.error("Sorry, a Temporal can only hold one graphical object or one constraint. Use a Group or ConstraintGroup instead.")
+        }
+        if (figure.constructor !== Figure) {
+            console.error("A Temporal must be constructed with a Figure")
+        }
+        this.obj = obj
+        obj.installHolder(figure, this, obj) // tell the figure to install this object in the appropriate way
+    }
+    x() { return this.obj.x() }
+    y() { return this.obj.y() }
+    x0() { return this.obj.x0() }
+    x1() { return this.obj.x1() }
+    y0() { return this.obj.y0() }
+    y1() { return this.obj.y1() }
+    w() { return this.obj.w() }
+    h() { return this.obj.h() }
+    ul() { return this.obj.ul() }
+    ll() { return this.obj.ll() }
+    lr() { return this.obj.lr() }
+    ur() { return this.obj.ur() }
+    p1() { return this.obj.p1() }
+    p2() { return this.obj.p2() }
+    render() {
+        if (this.visible(this.figure.currentFrame))
+            obj.render()
     }
     getCost(valuation, doGrad) {
         if (this.active(this.figure.currentFrame)) {
-            return constraintsCost(this.objects, valuation, doGrad)
+            return this.obj.getCost(valuation, doGrad)
         } else {
             return zeroCost(valuation, doGrad)
         }
     }
-    variables() { return [] }
+    variables() {
+        if (this.active(this.figure.currentFrame)) return this.obj.variables() 
+        else return []
+    }
+    installHolder(figure, holder, child) {
+        this.obj.installHolder(figure, holder, child)
+    }
+}
+
+function zeroCost(valuation, doGrad) {
+    return doGrad ? [0, getZeros(valuation.length)] : 0
+}
+
+class After extends TemporalFilter {
+    constructor(figure, frame, obj) {
+        super(figure, obj)
+        this.frame = frame
+    }
     active() {
         return this.frame.isAfter(this.figure.currentFrame)
     }
 }
 
+class Before extends TemporalFilter {
+    constructor(figure, frame, obj) {
+        super(figure, obj)
+        this.frame = frame
+    }
+    active() {
+        return !this.frame.isAfter(this.figure.currentFrame)
+    }
+}
+
 // A Constraint has a cost that the system tries to minimize
 class Constraint extends Temporal {
-    constructor() {
-        super()
+    constructor(figure) {
+        super(figure)
+        if (figure.constructor != Figure) {
+            console.error("Constraints require an associated Figure")
+            throw "no"
+        }
+        this.figure = figure
+        figure.addConstraints(this)
     }
     getCost(valuation, doGrad) {
         console.error("No cost function defined for this constraint " + this.constructor)
         return zeroCost(valuation, doGrad)
     }
     variables() { return [] }
+    installHolder(figure, holder, child) {
+        if (child.parent !== undefined) {
+            console.error("Child Constraint already has a parent")
+            return
+        }
+        child.parent = holder
+        figure.addConstraints(holder)
+        for (let i = 0; i < figure.Constraints.length; i++) {
+            if (figure.Constraints[i] === child) {
+                figure.Constraints[i] = holder
+                child.parent = holder
+                break
+            }
+        }
+        if (child.parent !== holder) {
+            console.error("Child constraint not at top level")
+            figure.Constraints.push(holder)
+        }
+    }
 }
 
 class NearZero extends Constraint {
-    constructor(expr, cost) {
-        super()
+    constructor(figure, expr, cost) {
+        super(figure)
         this.expr = expr
         this.cost = cost
     }
@@ -1169,8 +1217,8 @@ function constraintsCost(a, valuation, doGrad) {
 }
 
 class ConstraintGroup extends Constraint {
-    constructor(...constraints) {
-        super()
+    constructor(figure, ...constraints) {
+        super(figure)
         this.constraints = constraints.flat()
     }
     getCost(valuation, doGrad) {
@@ -1187,10 +1235,8 @@ class ConstraintGroup extends Constraint {
 
 // A LayoutObject does not support rendering and does not necessarily
 // know what figure it is part of. Its size is 0 by default.
-class LayoutObject extends Temporal {
-    constructor() {
-        super()
-    }
+class LayoutObject {
+    constructor() { }
     x0() { return new Minus(this.x(), new Times(this.w(), 0.5)) }
     x1() { return new Plus(this.x(), new Times(this.w(), 0.5)) }
     y0() { return new Minus(this.y(), new Times(this.h(), 0.5)) }
@@ -1286,6 +1332,23 @@ class GraphicalObject extends LayoutObject {
         if (this.visible(this.figure.currentFrame))
             this.render()
     }
+    installHolder(figure, holder, child) {
+        if (child.parent !== undefined) {
+            console.error("Child GraphicalObject already has a parent")
+            return
+        }
+        for (let i = 0; i < figure.GraphicalObjects.length; i++) {
+            if (figure.GraphicalObjects[i] === child) {
+                figure.GraphicalObjects[i] = holder
+                child.parent = holder
+                break
+            }
+        }
+        if (child.parent !== holder) {
+            console.error("Child object not in top-level list")
+            figure.GraphicalObjects.push(holder)
+        }
+    }
 }
 
 // A Point acts like a graphical object wrt layout but has no rendering, so it
@@ -1318,7 +1381,8 @@ class Point extends LayoutObject {
 
 class Group extends GraphicalObject {
     constructor(...objects) {
-        this.objects = objects
+        this.objects = objects.flat()
+        this.objects.forEach(o => { o.parent = g })
     }
     variables() {
         const result = [], g = this
@@ -1326,7 +1390,6 @@ class Group extends GraphicalObject {
             o.variables.forEach(v => {
                 result.push(v)
             })
-            o.parent = g
         })
     }
     x() { return centerX() }
@@ -1343,8 +1406,8 @@ class Group extends GraphicalObject {
 class Rectangle extends GraphicalObject {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y, w_hint, h_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y, w_hint, h_hint)
-        figure.ensure(figure.positive(this.h()),
-                      figure.positive(this.w()))
+        figure.positive(this.h())
+        figure.positive(this.w())
         this.cornerRadius = 0
     }
     render() {
@@ -1438,15 +1501,15 @@ const Paths = {
 class Square extends Rectangle {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
-        figure.ensure(figure.equal(this.w(), this.h()))
+        figure.equal(this.w(), this.h())
     }
 }
 
 class Ellipse extends GraphicalObject {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
-        figure.ensure(figure.positive(this.h()),
-                      figure.positive(this.w()))
+        figure.positive(this.h())
+        figure.positive(this.w())
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -1596,14 +1659,14 @@ class Line extends GraphicalObject {
 class HorzLine extends Line {
     constructor(figure, strokeStyle, lineWidth, x0, x1, y) {
         super(figure, strokeStyle, lineWidth, x0, y, x1, y)
-        figure.ensure(figure.equal(this.h(), 0))
+        figure.equal(this.h(), 0)
     }
 }
 
 class VertLine extends Line {
     constructor(figure, strokeStyle, lineWidth, x, y0, y1) {
         super(figure, strokeStyle, lineWidth, x, y0, x, y1)
-        figure.ensure(figure.equal(this.w(), 0))
+        figure.equal(this.w(), 0)
     }
 }
 
@@ -1808,9 +1871,9 @@ class Handle extends InteractiveObject {
         this.strokeStyle = strokeStyle
         this.isActive = true
         this.isVisible = true
-        figure.ensure(figure.positive(vx, 0),
-                      figure.leq(vx, figure.canvasSize().x1()),
-                      figure.leq(vy, figure.canvasSize().y1()))
+        figure.positive(vx, 0)
+        figure.leq(vx, figure.canvasSize().x1())
+        figure.leq(vy, figure.canvasSize().y1())
     }
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame)) this.render()
@@ -1847,8 +1910,8 @@ class Handle extends InteractiveObject {
         }
     }
     mousemove(x, y, e) {
-        this.figure.tempConstraints = [ new NearZero(new Minus(this.x(), x), 0.1),
-                                        new NearZero(new Minus(this.y(), y), 0.1) ]
+        this.figure.tempConstraints = [ new NearZero(this.figure, new Minus(this.x(), x), 0.1),
+                                        new NearZero(this.figure, new Minus(this.y(), y), 0.1) ]
         this.figure.renderNeeded = true
         setTimeout(() => this.figure.renderIfDirty(), 0) // collapse multiple renders
     }
@@ -1863,10 +1926,10 @@ class AdvanceButton extends InteractiveObject {
         this.x = () => vx
         this.y = () => vy
         this.variables = () => [vx, vy]
-        figure.ensure(figure.geq(vx,0),
-                      figure.geq(vy,0),
-                      figure.leq(vx, figure.canvasSize().x1()),
-                      figure.leq(vy, figure.canvasSize().y1()))
+        figure.geq(vx,0)
+        figure.geq(vy,0)
+        figure.leq(vx, figure.canvasSize().x1())
+        figure.leq(vy, figure.canvasSize().y1())
 
         this.size = 30
         this.fillStyle = "#ccc"
