@@ -462,10 +462,23 @@ class Figure {
     // constraints to pin all the objects at the same location
     pin(...objects) {
         objects = objects.flat()
+        let w, h
+        if (objects[0].w !== undefined) {
+            w = objects[0].w()
+            h = objects[0].h()
+        }
         const r = []
         for (let i = 1; i < objects.length; i++) {
             r.push(this.equal(objects[0].x(), objects[i].x()))
             r.push(this.equal(objects[0].y(), objects[i].y()))
+            if (w === undefined && objects[i].w !== undefined) {
+                w = objects[i].w()
+                h = objects[i].h()
+            } else
+            if (w !== undefined && objects[i].w !== undefined) {
+                r.push(this.equal(w, objects[i].w()))
+                r.push(this.equal(h, objects[i].h()))
+            }
         }
         if (r.length == 1) return r[0]
         else return new ConstraintGroup(this, r)
@@ -577,6 +590,12 @@ class Figure {
     square(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint) {
         return new Square(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint)
     }
+    circle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint) {
+        return new Circle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
+    }
+    ellipse(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint) {
+        return new Ellipse(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
+    }
     line(strokeStyle, lineWidth, x0, y0, x1, y1) {
         return new Line(this, strokeStyle, lineWidth, x0, y0, x1, y1)
     }
@@ -592,8 +611,8 @@ class Figure {
     handle(style) {
         return new Handle(this, style)
     }
-    connector(objects) {
-        return new Connector(this, objects)
+    connector(...objects) {
+        return new Connector(this, ...objects)
     }
     DOMElement(id) {
         return new DOMElementBox(this, id)
@@ -844,7 +863,7 @@ class DividedBy extends BinaryExpression {
 }
 
 class NaryExpression extends Expression {
-    constructor(arglist) {
+    constructor(...arglist) {
         super()
         this.args = arglist
     }
@@ -861,17 +880,17 @@ class NaryExpression extends Expression {
 }
 
 class Min extends NaryExpression {
-    constructor() { super(arguments) }
+    constructor(...args) { super(...args) }
     operation(vals) {
         let best = vals[0], n = vals.length
-        for (i = 1; i < n; i++) {
+        for (let i = 1; i < n; i++) {
             best = Math.min(vals[i], best)
         }
         return best
     }
     gradop(vals) {
         let [best, db] = vals[0], n = vals.length
-        for (i = 1; i < n; i++) {
+        for (let i = 1; i < n; i++) {
             let [a, da] = vals[i]
             if (a < best) {
                 best = a
@@ -883,17 +902,17 @@ class Min extends NaryExpression {
 }
 
 class Max extends NaryExpression {
-    constructor() { super(arguments) }
+    constructor(...args) { super(...args) }
     operation(vals) {
         let best = vals[0], n = vals.length
-        for (i = 1; i < n; i++) {
+        for (let i = 1; i < n; i++) {
             best = Math.max(vals[i], best)
         }
         return best
     }
     gradop(vals) {
         let [best, db] = vals[0], n = vals.length
-        for (i = 1; i < n; i++) {
+        for (let i = 1; i < n; i++) {
             let [a, da] = vals[i]
             if (a > best) {
                 best = a
@@ -1077,6 +1096,10 @@ class Temporal {
 
     // Is this object visible in frame f?
     visible(f) { return true }
+
+    renderIfVisible() {
+        if (this.visible(this.figure.currentFrame)) this.render()
+    }
 }
 
 // A TemporalFilter contains a graphical object or a constraint.
@@ -1106,9 +1129,13 @@ class TemporalFilter extends Temporal {
     ur() { return this.obj.ur() }
     p1() { return this.obj.p1() }
     p2() { return this.obj.p2() }
+    lc() { return this.obj.lc() }
+    cr() { return this.obj.cr() }
+    uc() { return this.obj.uc() }
+    cl() { return this.obj.cl() }
+    center() { return this.obj.center() }
     render() {
-        if (this.visible(this.figure.currentFrame))
-            obj.render()
+        this.obj.renderIfVisible()
     }
     getCost(valuation, doGrad) {
         if (this.active(this.figure.currentFrame)) {
@@ -1136,7 +1163,7 @@ class After extends TemporalFilter {
         this.frame = frame
     }
     active() {
-        return this.frame.isAfter(this.figure.currentFrame)
+        return this.figure.currentFrame.isAfter(this.frame)
     }
 }
 
@@ -1146,7 +1173,7 @@ class DrawAfter extends TemporalFilter {
         this.frame = frame
     }
     visible() {
-        return this.frame.isAfter(this.figure.currentFrame)
+        return this.figure.currentFrame.isAfter(this.frame)
     }
 }
 
@@ -1156,7 +1183,7 @@ class Before extends TemporalFilter {
         this.frame = frame
     }
     active() {
-        return !this.frame.isAfter(this.figure.currentFrame)
+        return !this.figure.currentFrame.isAfter(this.frame)
     }
 }
 
@@ -1166,7 +1193,7 @@ class DrawBefore extends TemporalFilter {
         this.frame = frame
     }
     visible() {
-        return !this.frame.isAfter(this.figure.currentFrame)
+        return !this.figure.currentFrame.isAfter(this.frame)
     }
 }
 
@@ -1284,6 +1311,7 @@ class LayoutObject {
     cl() { return new Point(this.x0(), this.y()) }
     centerX() { return new Average(this.x0(), this.x1()) }
     centerY() { return new Average(this.y0(), this.y1()) }
+    center() { return new Point(this.x(), this.y()) }
     width() { return this.w() }
     height() { return this.h() }
     w() { return 0 }
@@ -1343,6 +1371,7 @@ class GraphicalObject extends LayoutObject {
     variables() {
         return [this.x(), this.y(), this.w(), this.h()]
     }
+// builder methods for setting rendering style
     setFillStyle(s) {
         this.fillStyle = s
         return this
@@ -1359,6 +1388,17 @@ class GraphicalObject extends LayoutObject {
         this.lineDash = d
         return this
     }
+// convenience methods for positioning (by adding constraints)
+    setX(w) { this.figure.equal(this.x(), x); return this }
+    setY(h) { this.figure.equal(this.y(), y); return this }
+    setXY(x, y) {
+        this.figure.equal(this.x(), x)
+        this.figure.equal(this.y(), y)
+        return this
+    }
+    setW(w) { this.figure.equal(this.w(), w); return this }
+    setH(h) { this.figure.equal(this.h(), h); return this }
+// rendering control
     active() { return true }
     visible() { return true }
     renderIfVisible() {
@@ -1561,6 +1601,9 @@ class Ellipse extends GraphicalObject {
             ctx.stroke()
         }
         ctx.restore()
+    }
+    connectionPts() {
+        return [this.cl(), this.cr(), this.uc(), this.lc()]
     }
 }
 

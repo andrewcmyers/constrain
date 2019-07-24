@@ -84,6 +84,7 @@
           <canvas id="fig2"></canvas>
           <script>
             const fig2 = new Figure("fig2")
+            let circ
             with (fig2) {
                 const [f0, f1, f1a, f2, f3, f4] = addFrame(null, "rectangles", "rect2", "lines", "circles", "connect")
                 const s1 = square().setFillStyle("#f88"), r1 = rectangle().setFillStyle("#8f8").setCornerRadius(8),
@@ -108,7 +109,7 @@
                 pin(r1.ll(), l2.p2())
                 let p1, p2
                 let c1 = drawAfter(f4,
-                    connector([s1, p1 = point(), p2 = point(), r1]).setEndArrow("arrow").setLineWidth(2))
+                    connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow").setLineWidth(2))
                 equal(p1.x(), s1.x())
                 equal(p2.x(), r1.x())
                 equal(p1.y(), new Average(s1.y(), canvasSize().y1()))
@@ -116,12 +117,13 @@
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
                 grd.addColorStop(1, "yellow")
-                let e1 = new Ellipse(fig2).setLineWidth(2).setFillStyle(grd), p3 = point(),
-                    c2 = drawAfter(f4, connector([e1, r1]).setLineDash([2,2])),
-                    t2 = label("green", 18, "sans-serif", "black")
+                let e1 = ellipse().setLineWidth(2).setFillStyle(grd), p3 = point(),
+                    c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2])),
+                    t2 = label("green", 18, "Courier, Courier New, sans-serif", "black")
+                circ = e1
                 drawAfter(f3, e1)
                 drawAfter(f1a, t2)
-                pin(t2, r1)
+                pin(t2.center(), r1.center())
                 align("distribute", "center", s1, r1, e1)
                 equal(e1.w(), e1.h())
                 equal(p3.x(), e1.x()), equal(e1.w(), s1.w())
@@ -162,7 +164,7 @@
                 }
                 render() {
                     const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation,
-                          [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation)
+                          [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation),
                           framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0 - 40
                     if (framepos < rise_time) {
                         Paths.ellipse(ctx, x, y1 - framepos*rise_height/rise_time, 3, 3)
@@ -187,17 +189,18 @@
                 }
               }
 
+              let fireworks, background
               {
                 let f1 = fig3.addFrame().setLength(2900),
                     bullets3 = fig3.DOMElement("bullets3")
                 with (fig3) {
-                   const r1 = rectangle().setFillStyle("black"),
-                         fireworks = drawAfter(f1, new Fireworks(fig3))
+                   background = rectangle().setFillStyle("black")
+                   fireworks = drawAfter(f1, new Fireworks(fig3))
                    align("center", "bottom", fireworks, canvasSize())
                    align("none", "abut", bullets3, fireworks)
-                   equal(fireworks.w(), new Min(300, canvasSize().w()/2))
-                   pin(r1.ul(), fireworks.ul())
-                   pin(r1.lr(), fireworks.lr())
+                   equal(fireworks.w(), new Min(300, new Times(0.5, canvasSize().w())))
+                   pin(background.ul(), fireworks.ul())
+                   pin(background.lr(), fireworks.lr())
                 }
               }
             </script>
@@ -221,9 +224,9 @@ with (fig) {
             </li>
             <li class=fragment>Variable values are determined by solving constraints:
             <pre>
-ensure(equal(s.w(), 150),    // w = 150
-       equal(s.x0(), s.w()), // x0 = w
-       equal(s.y0(), new Times(2, s.h()))) // y0 = 2*h</pre>
+equal(s.w(), 150)    // w = 150
+equal(s.x0(), s.w()) // x0 = w
+equal(s.y0(), new Times(2, s.h())) // y0 = 2*h</pre>
             </li>
 
             <canvas id="programming"></canvas>
@@ -233,14 +236,14 @@ ensure(equal(s.w(), 150),    // w = 150
                 let [f0, f1, f2, f3, _] = addFrame("start", "square", "yellow", "thick", null) 
                     f4 = addFrame("constraints").setLength(500)
 
-                let s1 = between(f1, f4, square().setFillStyle("white")),
-                    s2 = between(f2, f4, square().setFillStyle("yellow")),
+                let s1 = drawBetween(f1, f4, square().setFillStyle("white")),
+                    s2 = drawBetween(f2, f4, square().setFillStyle("yellow")),
                     s3 = drawAfter(f3, square().setFillStyle("yellow").setLineWidth(3))
                 let lh = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow"),
                     lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
                 drawAfter(f4, lh, lv)
 
-                equal(s3.w(), smooth(f4, 100, 150)) // w = 150
+                equal(s3.w(), smooth(f4, 100, new Min(150, new Times(canvasSize().w(), 0.3)))) // w = 150
                 pin(s1.ul(), s2.ul(), s3.ul())
                 equal(s1.w(), s2.w(), s3.w())
                 equal(s3.y0(), smooth(f4, 100, new Times(2, s3.h()))) // y0 = 2*h
