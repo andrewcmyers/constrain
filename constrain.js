@@ -553,6 +553,18 @@ class Figure {
         if (objs.length == 1) return new Before(this, frame2, new After(this, frame1, objs[0]))
         objs.flat().map(o => new Before(this, frame2, new After(this, frame1, o)))
     }
+    drawAfter(frame, ...objs) {
+        if (objs.length == 1) return new DrawAfter(this, frame, objs[0])
+        return objs.flat().map(o => new DrawAfter(this, frame, o))
+    }
+    drawBefore(frame, ...objs) {
+        if (objs.length == 1) return new DrawBefore(this, frame, objs[0])
+        objs.flat().map(o => new DrawBefore(this, frame, o))
+    }
+    drawBetween(frame1, frame2, ...objs) {
+        if (objs.length == 1) return new DrawBefore(this, frame2, new DrawAfter(this, frame1, objs[0]))
+        objs.flat().map(o => new DrawBefore(this, frame2, new DrawAfter(this, frame1, o)))
+    }
 
 // ---- Utility methods for creating figure objects ----
 
@@ -1128,6 +1140,16 @@ class After extends TemporalFilter {
     }
 }
 
+class DrawAfter extends TemporalFilter {
+    constructor(figure, frame, obj) {
+        super(figure, obj)
+        this.frame = frame
+    }
+    visible() {
+        return this.frame.isAfter(this.figure.currentFrame)
+    }
+}
+
 class Before extends TemporalFilter {
     constructor(figure, frame, obj) {
         super(figure, obj)
@@ -1137,6 +1159,17 @@ class Before extends TemporalFilter {
         return !this.frame.isAfter(this.figure.currentFrame)
     }
 }
+
+class DrawBefore extends TemporalFilter {
+    constructor(figure, frame, obj) {
+        super(figure, obj)
+        this.frame = frame
+    }
+    visible() {
+        return !this.frame.isAfter(this.figure.currentFrame)
+    }
+}
+
 
 // A Constraint has a cost that the system tries to minimize
 class Constraint extends Temporal {
@@ -2054,82 +2087,6 @@ class DOMElementBox extends LayoutObject {
            })
          }
 }
-
-// A ConditionallyDrawn is an object that is only sometimes
-// rendered. It wraps some other object and has the same
-// dimensions.
-class ConditionallyDrawn extends LayoutObject {
-    constructor(figure, obj) {
-        super()
-        this.obj = obj
-        obj.parent = this
-        figure.GraphicalObjects.push(this)
-    }
-    x() { return this.obj.x() }
-    y() { return this.obj.y() }
-    w() { return this.obj.w() }
-    h() { return this.obj.h() }
-    render() {
-        if (this.conditionHolds())
-            this.obj.render()
-    }
-    variables() {
-        return this.obj.variables()
-    }
-}
-ConditionallyDrawn.prototype.renderIfVisible = GraphicalObject.prototype.renderIfVisible
-ConditionallyDrawn.prototype.visible = GraphicalObject.prototype.visible
-
-// A DrawAfter is an object that is not rendered before the
-// specified frame.
-class DrawAfter extends ConditionallyDrawn {
-    constructor(figure, frame, obj) {
-        super(figure, obj)
-        this.figure = figure
-        this.frame = frame
-    }
-    conditionHolds() {
-        if (this.figure.currentFrame === undefined) {
-            console.error("Testing DrawAfter when there is no frame")
-        }
-        return this.figure.currentFrame.isAfter(this.frame)
-    }
-}
-
-// A DrawBefore is an object that is not rendered before the
-// specified frame.
-class DrawBefore extends ConditionallyDrawn {
-    constructor(figure, frame, obj) {
-        super(figure, obj)
-        this.figure = figure
-        this.frame = frame
-    }
-    conditionHolds() {
-        if (this.figure.currentFrame === undefined) {
-            console.error("Testing DrawBefore when there is no frame")
-        }
-        return !this.figure.currentFrame.isAfter(this.frame)
-    }
-}
-
-// A DrawBetween is an object that is only rendered over some range
-// of frames starting from frame1 and ending before frame2
-class DrawBetween extends ConditionallyDrawn {
-    constructor(figure, frame1, frame2, obj) {
-        super(figure, obj)
-        this.figure = figure
-        this.frame1 = frame1
-        this.frame2 = frame2
-    }
-    conditionHolds() {
-        if (this.figure.currentFrame === undefined) {
-            console.error("Testing DrawBefore when there is no frame")
-        }
-        return this.figure.currentFrame.isAfter(this.frame1) &&
-              !this.figure.currentFrame.isAfter(this.frame2)
-    }
-}
-
 
 function fullWindowCanvas(canvas) {
     const resizeCanvasToWindow = () => {

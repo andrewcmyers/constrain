@@ -39,17 +39,17 @@
             <li>Embeds figures into regular web pages</li>
             <li>Integrates into Reveal presentations with Constrain/Reveal</li>
             <li>Declarative constraint-based layout</li>
-            <li class="fragment">Figure can have multiple frames</li>
-            <li class="fragment">Graphical content can constrain against HTML content</li>
+            <li class=fragment>Figure can have multiple frames</li>
+            <li class=fragment>Graphical content can constrain against HTML content</li>
           </ul>
-          <canvas class="fragment" id="fig1" data-fragment-index=0 ></canvas>
+          <canvas class=fragment id="fig1" data-fragment-index=0 ></canvas>
           <script>
             const fig1 = new Figure("fig1")
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
                 setLineWidth(2)
                 f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500)
-                s1 = square("white"); s3 = square("#fdd"); after(f1, s3); s2 = square("#dfd")
+                s1 = square("white"); s3 = drawAfter(f1, square("#fdd")); s2 = square("#dfd")
                 t1 = DOMElement("title")
                 align("center", "none", s1, fig1.canvasSize())
                 align("center", "center", s1.lr(), s2)
@@ -59,7 +59,7 @@
                 equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
                 equal(s3.x0(), smooth(f1, s2.x0(), s1.x0()))
                 equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
-                after(f2,
+                drawAfter(f2,
                     l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30),
                     pin(l1.p1(), s3.ll()),
                     geq(l1.p2().x(), s3.x0()),
@@ -91,10 +91,10 @@
                     bullets = DOMElement("bullets"),
                     l1 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray"),
                     l2 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray")
-                after(f1, s1)
-                after(f1a, r1)
-                after(f2, l1)
-                after(f2, l2)
+                drawAfter(f1, s1)
+                drawAfter(f1a, r1)
+                drawAfter(f2, l1)
+                drawAfter(f2, l2)
                 equal(s1.x0(), bullets.x0())
                 equal(s1.y0(), bullets.y1())
                 equal(s1.w(), 100)
@@ -107,7 +107,7 @@
                 pin(s1.lr(), l2.p1())
                 pin(r1.ll(), l2.p2())
                 let p1, p2
-                let c1 = after(f4,
+                let c1 = drawAfter(f4,
                     connector([s1, p1 = point(), p2 = point(), r1]).setEndArrow("arrow").setLineWidth(2))
                 equal(p1.x(), s1.x())
                 equal(p2.x(), r1.x())
@@ -117,10 +117,10 @@
                 grd.addColorStop(0, "purple")
                 grd.addColorStop(1, "yellow")
                 let e1 = new Ellipse(fig2).setLineWidth(2).setFillStyle(grd), p3 = point(),
-                    c2 = after(f4, connector([e1, r1]).setLineDash([2,2])),
+                    c2 = drawAfter(f4, connector([e1, r1]).setLineDash([2,2])),
                     t2 = label("green", 18, "sans-serif", "black")
-                after(f3, e1)
-                after(f1a, t2)
+                drawAfter(f3, e1)
+                drawAfter(f1a, t2)
                 pin(t2, r1)
                 align("distribute", "center", s1, r1, e1)
                 equal(e1.w(), e1.h())
@@ -192,7 +192,7 @@
                     bullets3 = fig3.DOMElement("bullets3")
                 with (fig3) {
                    const r1 = rectangle().setFillStyle("black"),
-                         fireworks = after(f1, new Fireworks(fig3))
+                         fireworks = drawAfter(f1, new Fireworks(fig3))
                    align("center", "bottom", fireworks, canvasSize())
                    align("none", "abut", bullets3, fireworks)
                    equal(fireworks.w(), new Min(300, canvasSize().w()/2))
@@ -208,18 +208,18 @@
 <pre>&lt;canvas id=canv1&gt;&lt;/canvas&gt;
 fig = new Figure("canv1")</pre>
             </li>
-            <li class="fragment">Graphical objects created declaratively using builder pattern:<br>
+            <li class=fragment>Graphical objects created declaratively using builder pattern:<br>
             <pre>
 with (fig) {
   s = square()<span class=fragment>.setFillStyle("yellow")</span><span class=fragment>.setLineWidth(3)</span></pre>
-            <li class="fragment">Graphical objects introduce variables for their position:
+            <li class=fragment>Graphical objects introduce variables for their position:
             <ul>
                <li><kbd>.x()</kbd> : x position (min/max x position: <kbd>.x0(), .x1()</kbd></li>
                <li><kbd>.y()</kbd> : y position (min/max y position: <kbd>.y0(), .y1()</kbd></li>
                <li><kbd>.w()</kbd> : width, <kbd>.h()</kbd> : height</li>
             </ul>
             </li>
-            <li class="fragment">Variable values are determined by solving constraints:
+            <li class=fragment>Variable values are determined by solving constraints:
             <pre>
 ensure(equal(s.w(), 150),    // w = 150
        equal(s.x0(), s.w()), // x0 = w
@@ -235,10 +235,10 @@ ensure(equal(s.w(), 150),    // w = 150
 
                 let s1 = between(f1, f4, square().setFillStyle("white")),
                     s2 = between(f2, f4, square().setFillStyle("yellow")),
-                    s3 = after(f3, square().setFillStyle("yellow").setLineWidth(3))
+                    s3 = drawAfter(f3, square().setFillStyle("yellow").setLineWidth(3))
                 let lh = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow"),
                     lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
-                after(f4, lh, lv)
+                drawAfter(f4, lh, lv)
 
                 equal(s3.w(), smooth(f4, 100, 150)) // w = 150
                 pin(s1.ul(), s2.ul(), s3.ul())
