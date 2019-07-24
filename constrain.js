@@ -617,6 +617,9 @@ class Figure {
     DOMElement(id) {
         return new DOMElementBox(this, id)
     }
+    group(...objects) {
+        return new Group(this, ...objects)
+    }
     linear(frame, e1, e2) {
         return new Linear(this, frame, e1, e2)
     }
@@ -865,7 +868,7 @@ class DividedBy extends BinaryExpression {
 class NaryExpression extends Expression {
     constructor(...arglist) {
         super()
-        this.args = arglist
+        this.args = arglist.flat()
     }
     evaluate(valuation, doGrad) {
         const vals = this.args.map((e) => evaluate(e, valuation, doGrad))
@@ -1151,6 +1154,9 @@ class TemporalFilter extends Temporal {
     installHolder(figure, holder, child) {
         this.obj.installHolder(figure, holder, child)
     }
+    bestConnectionPt(px, py, valuation) {
+        return this.obj.bestConnectionPt(px, py, valuation)
+    }
 }
 
 function zeroCost(valuation, doGrad) {
@@ -1351,15 +1357,11 @@ class GraphicalObject extends LayoutObject {
         this.figure = figure
         figure.GraphicalObjects.push(this)
         const prefix = this.id ? this.id + "_" : ""
-        const x = new Variable(figure, prefix + "x", x_hint),
-              y = new Variable(figure, prefix + "y", y_hint),
-              w = new Variable(figure, prefix + "w", w_hint),
-              h = new Variable(figure, prefix + "h", h_hint)
+        this.x_= new Variable(figure, prefix + "x", x_hint)
+        this.y_ = new Variable(figure, prefix + "y", y_hint)
+        this.w_ = new Variable(figure, prefix + "w", w_hint)
+        this.h_ = new Variable(figure, prefix + "h", h_hint)
 
-        this.x = () => x
-        this.y = () => y
-        this.w = () => w
-        this.h = () => h
         if (fillStyle !== undefined) this.fillStyle = fillStyle
             else this.fillStyle = figure.fillStyle
         if (strokeStyle !== undefined) this.strokeStyle = strokeStyle
@@ -1368,6 +1370,10 @@ class GraphicalObject extends LayoutObject {
             else this.lineWidth = figure.lineWidth
         this.lineDash = undefined
     }
+    x() { return this.x_ }
+    y() { return this.y_ }
+    w() { return this.w_ }
+    h() { return this.h_ }
     variables() {
         return [this.x(), this.y(), this.w(), this.h()]
     }
@@ -1389,8 +1395,8 @@ class GraphicalObject extends LayoutObject {
         return this
     }
 // convenience methods for positioning (by adding constraints)
-    setX(w) { this.figure.equal(this.x(), x); return this }
-    setY(h) { this.figure.equal(this.y(), y); return this }
+    setX(x) { this.figure.equal(this.x(), x); return this }
+    setY(y) { this.figure.equal(this.y(), y); return this }
     setXY(x, y) {
         this.figure.equal(this.x(), x)
         this.figure.equal(this.y(), y)
@@ -1453,26 +1459,30 @@ class Point extends LayoutObject {
 }
 
 class Group extends GraphicalObject {
-    constructor(...objects) {
+    constructor(figure, ...objects) {
+        super(figure)
         this.objects = objects.flat()
-        this.objects.forEach(o => { o.parent = g })
+        this.objects.forEach(o => { o.parent = this })
     }
     variables() {
         const result = [], g = this
         this.objects.forEach(o => {
-            o.variables.forEach(v => {
+            o.variables().forEach(v => {
                 result.push(v)
             })
         })
+        return result
     }
-    x() { return centerX() }
-    y() { return centerY() }
-    x0() { return new Min(objects.map(o => o.x0())) }
-    x1() { return new Max(objects.map(o => o.x0())) }
-    y0() { return new Min(objects.map(o => o.y0())) }
-    y1() { return new Max(objects.map(o => o.y1())) }
+    x() { return this.centerX() }
+    y() { return this.centerY() }
+    x0() { return new Min(this.objects.map(o => o.x0())) }
+    x1() { return new Max(this.objects.map(o => o.x0())) }
+    y0() { return new Min(this.objects.map(o => o.y0())) }
+    y1() { return new Max(this.objects.map(o => o.y1())) }
+    w() { return new Minus(this.x1(), this.x0()) }
+    h() { return new Minus(this.y1(), this.y0()) }
     render() {
-        objects.forEach(o => o.render())
+        this.objects.forEach(o => o.renderIfVisible())
     }
 }
 

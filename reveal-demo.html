@@ -84,16 +84,15 @@
           <canvas id="fig2"></canvas>
           <script>
             const fig2 = new Figure("fig2")
-            let circ
+            var circ
             with (fig2) {
                 const [f0, f1, f1a, f2, f3, f4] = addFrame(null, "rectangles", "rect2", "lines", "circles", "connect")
-                const s1 = square().setFillStyle("#f88"), r1 = rectangle().setFillStyle("#8f8").setCornerRadius(8),
+                const s1 = drawAfter(f1, square().setFillStyle("#f88")),
+                      r1 = drawAfter(f1a, rectangle().setFillStyle("#8f8").setCornerRadius(8)),
                     rect_w = DOMElement("rect"),
                     bullets = DOMElement("bullets"),
                     l1 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray"),
                     l2 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray")
-                drawAfter(f1, s1)
-                drawAfter(f1a, r1)
                 drawAfter(f2, l1)
                 drawAfter(f2, l2)
                 equal(s1.x0(), bullets.x0())
@@ -117,12 +116,11 @@
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
                 grd.addColorStop(1, "yellow")
-                let e1 = ellipse().setLineWidth(2).setFillStyle(grd), p3 = point(),
-                    c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2])),
-                    t2 = label("green", 18, "Courier, Courier New, sans-serif", "black")
-                circ = e1
-                drawAfter(f3, e1)
-                drawAfter(f1a, t2)
+                let e1 = drawAfter(f3, ellipse().setLineWidth(2).setFillStyle(grd)),
+                    p3 = point(),
+                    c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2]))
+                group(r1, s1, e1).setX(canvasSize().x())
+                let t2 = drawAfter(f1a, label("green", 18, "Courier, Courier New, sans-serif", "black"))
                 pin(t2.center(), r1.center())
                 align("distribute", "center", s1, r1, e1)
                 equal(e1.w(), e1.h())
@@ -257,7 +255,12 @@ equal(s.y0(), new Times(2, s.h())) // y0 = 2*h</pre>
           </section>
           <section>
             <h2>Source code</h2>
+
+            <ul><li>
             <a href="https://github.com/andrewcmyers/constrain"><kbd>github.com/andrewcmyers/constrain</kbd></a>
+            </li>
+            <li>Feedback, contributions welcome</li>
+            </ul>
           </section>
         </div> <!-- end of slides -->
 
