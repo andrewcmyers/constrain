@@ -7,6 +7,8 @@
 // There is a set of Figure objects recorded in the array Figures. Each one
 // is attached to a separate canvas.
 
+var Constrain = function() {
+
 const Figures = []
 
 // There is a set of Variables that can be adjusted to minimize an objective
@@ -622,12 +624,31 @@ class Figure {
     }
     // Create a point with variables for its coordinates
     point() {
-        const x = new Variable(this, "px"), y = new Variable(this, "py")
-        return new Point(x, y)
+        if (arguments.length == 2) {
+            return new Point(arguments[0], arguments[1])
+        } else {
+            if (argument.length != 0) {
+                console.error("point(...) expects 0 or 2 arguments")
+            }
+            const x = new Variable(this, "px"), y = new Variable(this, "py")
+            return new Point(x, y)
+        }
     }
     advanceButton() {
         return new AdvanceButton(this)
     }
+// ---- Utility methods for creating expressions ----
+    plus(x, y) { return new Plus(x, y) }
+    minus(x, y) { return new Minus(x, y) }
+    times(x, y) { return new Times(x, y) }
+    divide(x, y) { return new Divide(x, y) }
+    max(x, y) { return new Max(x, y) }
+    min(x, y) { return new Min(x, y) }
+    average(x, y) { return new Average(x, y) }
+    distance(p1, p2) { return new Distance(p1, p2) }
+    nearZero(e, cost) { return new NearZero(this, e, cost) }
+    constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
+    group(...g) { return new Group(this, ...g) }
 }
 
 // A frame of the animation. Frames can auto-advance
@@ -851,7 +872,7 @@ class Times extends BinaryExpression {
         return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
 }
-class DividedBy extends BinaryExpression {
+class Divide extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a / b }
     gradop(a, b, da, db) {
@@ -2099,6 +2120,7 @@ class AdvanceButton extends InteractiveObject {
         }
     }
 }
+AdvanceButton.prototype.installHolder = GraphicalObject.prototype.installHolder
 
 // A global is an expression whose value may change but is not affected by 
 // the values of variables that are being solved for. Its value is provided
@@ -2217,7 +2239,7 @@ class Corners extends GraphicalObject {
     render() { drawCorners(this.figure) }
 }
 
-{
+function setupResize() {
     window.addEventListener('resize',
       () =>
         Figures.forEach(f => {
@@ -2226,3 +2248,34 @@ class Corners extends GraphicalObject {
         })
         )
 }
+
+  return {
+    Figure: Figure,
+    Figures: Figures,
+    Frame: Frame,
+    Variable: Variable,
+    GraphicalObject: GraphicalObject,
+    Point: Point,
+    Rectangle: Rectangle,
+    Square: Square,
+    Circle: Circle,
+    Ellipse: Ellipse,
+    FormattedText: FormattedText,
+    Group: Group,
+    ConstraintGroup: ConstraintGroup,
+    Corners: Corners,
+    Minus: Minus,
+    Plus: Plus,
+    Times: Times,
+    Distance: Distance,
+    Average: Average,
+    Min: Min,
+    Max: Max,
+    Paths: Paths,
+    setupResize: setupResize,
+    rgbStyle: rgbStyle,
+    Global: Global,
+    evaluate: evaluate,
+    fullWindowCanvas: fullWindowCanvas
+  }
+}()

@@ -8,7 +8,7 @@
 
 ## Demos
 
-[Reveal integration demo](https://andrewcmyers.github.io/constrain/reveal-demo.html)
+[Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/reveal-demo.html)
 
 [A pure Constrain presentation](https://andrewcmyers.github.io/constrain/constrain-demo.html)
 

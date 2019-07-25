@@ -1,8 +1,8 @@
 const canvas = document.getElementsByTagName("canvas")[0]
 
-fullWindowCanvas(canvas)
+Constrain.fullWindowCanvas(canvas)
 
-const figure = new Figure(canvas)
+const figure = new Constrain.Figure(canvas)
 
 with (figure) {
 var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
@@ -12,7 +12,7 @@ var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
     equal(border.y(), figure.canvasSize().y())
     align("left", "top", h, border)
 
-class SpiralPiece extends Square {
+class SpiralPiece extends Constrain.Square {
     constructor(figure, style, side) {
        super(figure, style, "white", 1, 300, 300, 300)
        this.side = side
@@ -36,7 +36,7 @@ class SpiralPiece extends Square {
 }
 var leftE = border.x0(), rightE = border.x1(), topE = border.y0(), bottomE = border.y1(), steps = 16
 for (let i = 0; i < steps; i++) {
-    let b2 = new SpiralPiece(figure, rgbStyle(Math.sqrt((i+1)/steps)*255,0,0), i%4)
+    let b2 = new SpiralPiece(figure, Constrain.rgbStyle(Math.sqrt((i+1)/steps)*255,0,0), i%4)
     let le = leftE, re = rightE, te = topE, be = bottomE
 
     if (i%4 == 0) le = b2.x1()
@@ -53,14 +53,15 @@ for (let i = 0; i < steps; i++) {
     bottomE = be
 }
 
-let c = new NearZero(figure, new Minus(border.w(), figure.canvasSize().x()))
+let c = nearZero(minus(border.w(), canvasSize().x()))
 figure.currentValuation = updateValuation()
 figure.removeConstraints(c)
 
-let phi = evaluate(new DividedBy(border.w(), border.h()), figure.currentValuation),
+let phi = Constrain.evaluate(divide(border.w(), border.h()), figure.currentValuation),
     t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow", undefined, 1, canvas.width/2, 100)
 align("center", "none", t, border)
 align("none", "top", t, figure.canvasSize())
 
 }
+Constrain.setupResize()
 figure.start()

@@ -12,7 +12,7 @@
     <!-- Theme used for syntax highlighting of code 
     <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css"> -->
     <style>
-        span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px }
+        span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px; z-index: 2 }
         em { color: #889ee5 }
         canvas { position: fixed; left: 0; top: 0;
                  width: 100%; height: 100%; z-index: -1 }
@@ -45,6 +45,7 @@
           </ul>
           <canvas class=fragment id="fig1" data-fragment-index=0 ></canvas>
           <script>
+            var Figure = Constrain.Figure
             const fig1 = new Figure("fig1")
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
@@ -55,8 +56,8 @@
                 align("center", "none", s1, fig1.canvasSize())
                 align("center", "center", s1.lr(), s2)
                 equal(s1.w(), s2.w())
-                equal(s1.y0(), new Minus(t1.y0(), 10))
-                equal(s1.w(), new Plus(t1.w(), 10))
+                equal(s1.y0(), minus(t1.y0(), 10))
+                equal(s1.w(), plus(t1.w(), 10))
                 equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
                 equal(s3.x0(), smooth(f1, s2.x0(), s1.x0()))
                 equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
@@ -67,7 +68,7 @@
                     equal(distance(l1.p1(), l1.p2()),
                           distance(s3.ll(), s3.ul())),
                     equal(distance(l1.p2(), s3.ul()),
-                        smooth(f2, 0, new Distance(s3.ul(), s3.lr())))
+                        smooth(f2, 0, new Constrain.Distance(s3.ul(), s3.lr())))
                )
             }
           </script>
@@ -100,9 +101,9 @@
                 equal(s1.y0(), bullets.y1())
                 equal(s1.w(), 100)
                 equal(r1.w(), s1.w())
-                equal(r1.x0(), new Plus(s1.x1(), 50))
+                equal(r1.x0(), plus(s1.x1(), 50))
                 equal(r1.y(), s1.y())
-                equal(r1.w(), new Times(1.618, r1.h()))
+                equal(r1.w(), times(1.618, r1.h()))
                 pin(s1.ur(), l1.p1())
                 pin(r1.ul(), l1.p2())
                 pin(s1.lr(), l2.p1())
@@ -112,7 +113,7 @@
                     connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow").setLineWidth(2))
                 equal(p1.x(), s1.x())
                 equal(p2.x(), r1.x())
-                equal(p1.y(), new Average(s1.y(), canvasSize().y1()))
+                equal(p1.y(), average(s1.y(), canvasSize().y1()))
                 equal(p1.y(), p2.y1())
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
@@ -126,7 +127,7 @@
                 align("distribute", "center", s1, r1, e1)
                 equal(e1.w(), e1.h())
                 equal(p3.x(), e1.x()), equal(e1.w(), s1.w())
-                equal(p3.y(), new Minus(e1.y(), 50))
+                equal(p3.y(), minus(e1.y(), 50))
             }
           </script>
         </section>
@@ -138,9 +139,10 @@
           </ul>
           <canvas id="fig3"></canvas>
           <script>
-              let fig3 = new Figure("fig3")
+              let fig3 = new Figure("fig3"),
+                  Paths = Constrain.Paths
 
-              class Fireworks extends GraphicalObject {
+              class Fireworks extends Constrain.GraphicalObject {
                 constructor(figure) {
                 /* set up fireworks explosion */
                     super(figure)
@@ -163,7 +165,7 @@
                 }
                 render() {
                     const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation,
-                          [x, y0, y1] = evaluate([this.x(), this.y0(), this.y1()], valuation),
+                          [x, y0, y1] = Constrain.evaluate([this.x(), this.y0(), this.y1()], valuation),
                           framepos = this.figure.animationTime, rise_time = 0.5, rise_height = y1 - y0 - 40
                     if (framepos < rise_time) {
                         Paths.ellipse(ctx, x, y1 - framepos*rise_height/rise_time, 3, 3)
@@ -197,7 +199,7 @@
                    fireworks = drawAfter(f1, new Fireworks(fig3))
                    align("center", "bottom", fireworks, canvasSize())
                    align("none", "abut", bullets3, fireworks)
-                   equal(fireworks.w(), new Min(300, new Times(0.5, canvasSize().w())))
+                   equal(fireworks.w(), min(300, times(0.5, canvasSize().w())))
                    pin(background.ul(), fireworks.ul())
                    pin(background.lr(), fireworks.lr())
                 }
@@ -225,7 +227,7 @@ with (fig) {
             <pre>
 equal(s.w(), 150)    // w = 150
 equal(s.x0(), s.w()) // x0 = w
-equal(s.y0(), new Times(2, s.h())) // y0 = 2*h</pre>
+equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
             </li>
 
             <canvas id="programming"></canvas>
@@ -242,15 +244,15 @@ equal(s.y0(), new Times(2, s.h())) // y0 = 2*h</pre>
                     lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
                 drawAfter(f4, lh, lv)
 
-                equal(s3.w(), smooth(f4, 100, new Min(150, new Times(canvasSize().w(), 0.3)))) // w = 150
+                equal(s3.w(), smooth(f4, 100, min(150, times(canvasSize().w(), 0.3)))) // w = 150
                 pin(s1.ul(), s2.ul(), s3.ul())
                 equal(s1.w(), s2.w(), s3.w())
-                equal(s3.y0(), smooth(f4, 100, new Times(2, s3.h()))) // y0 = 2*h
+                equal(s3.y0(), smooth(f4, 100, times(2, s3.h()))) // y0 = 2*h
                 equal(s3.x0(), smooth(f4, 100, s3.w())) // x0 = w
-                pin(lh.p1(), new Point(0, s3.y()))
-                pin(lh.p2(), new Point(s3.x0(), s3.y()))
-                pin(lv.p1(), new Point(s3.x(), 0))
-                pin(lv.p2(), new Point(s3.x(), s3.y0()))
+                pin(lh.p1(), point(0, s3.y()))
+                pin(lh.p2(), point(s3.x0(), s3.y()))
+                pin(lv.p1(), point(s3.x(), 0))
+                pin(lv.p2(), point(s3.x(), s3.y0()))
               }
             </script>
           </section>

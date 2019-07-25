@@ -11,6 +11,8 @@ var ConstrainReveal = function() {
 
     let currentFigure = null, slideFigures = []
 
+    const Figures = Constrain.Figures
+
     function newSlideHook(e) {
         console.log("new slide hook: " + e.type)
         currentFigure = null
@@ -157,6 +159,8 @@ var ConstrainReveal = function() {
             }
             Reveal.navigateRight = Reveal.navigateNext
             Reveal.navigateLeft = Reveal.navigatePrev
+
+            Constrain.setupResize()
         }
     }
 }()
