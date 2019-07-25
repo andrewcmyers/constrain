@@ -8,9 +8,8 @@ with (figure) {
 var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
     h = handle("yellow", 300, 300)
 
-// makeEq(border.h(), canvas.height/2, 0.01)
-    makeEq(border.x(), figure.canvasSize().x())
-    makeEq(border.y(), figure.canvasSize().y())
+    equal(border.x(), figure.canvasSize().x())
+    equal(border.y(), figure.canvasSize().y())
     align("left", "top", h, border)
 
 class SpiralPiece extends Square {
@@ -41,25 +40,25 @@ for (let i = 0; i < steps; i++) {
     let le = leftE, re = rightE, te = topE, be = bottomE
 
     if (i%4 == 0) le = b2.x1()
-      else makeEq(b2.x1(), rightE)
+      else equal(b2.x1(), rightE)
     if (i%4 == 1) be = b2.y0()
-      else makeEq(b2.y0(), topE)
+      else equal(b2.y0(), topE)
     if (i%4 == 2) re = b2.x0()
-      else makeEq(b2.x0(), leftE)
+      else equal(b2.x0(), leftE)
     if (i%4 == 3) te = b2.y1()
-      else makeEq(b2.y1(), bottomE)
+      else equal(b2.y1(), bottomE)
     leftE = le
     rightE = re
     topE = te
     bottomE = be
 }
 
-figure.tempConstraints.push(new Constraint(new Minus(border.w(), canvasSize().x())))
+let c = new NearZero(figure, new Minus(border.w(), figure.canvasSize().x()))
 figure.currentValuation = updateValuation()
-figure.tempConstraints = []
+figure.removeConstraints(c)
 
 let phi = evaluate(new DividedBy(border.w(), border.h()), figure.currentValuation),
-    t = text("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow", undefined, 1, canvas.width/2, 100)
+    t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow", undefined, 1, canvas.width/2, 100)
 align("center", "none", t, border)
 align("none", "top", t, figure.canvasSize())
 

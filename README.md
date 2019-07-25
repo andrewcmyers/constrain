@@ -11,3 +11,5 @@
 [Reveal integration demo](https://andrewcmyers.github.io/constrain/reveal-demo.html)
 
 [A pure Constrain presentation](https://andrewcmyers.github.io/constrain/constrain-demo.html)
+
+[Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/spiral.html)

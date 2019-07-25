@@ -111,7 +111,6 @@ class Figure {
     initGraphics() {
         this.GraphicalObjects = []
         this.Constraints = []
-        this.tempConstraints = []
         this.Variables = []
         this.numVariables = 0
         this.interactives = []
@@ -147,12 +146,12 @@ class Figure {
             i++
         }
         this.GraphicalObjects.forEach(g => {
-            if (g.active(frame)) {
+            if (g.active()) {
                 g.variables().forEach(activate)
             }
         })
         this.Constraints.forEach(c => {
-            if (c.active(frame))
+            if (c.active())
                 c.variables().forEach(activate)
         })
         this.activeVariables = a
@@ -167,7 +166,13 @@ class Figure {
     // A constraint should return a nonnegative cost
     // Normally, constraints call this method themselves
     addConstraints(...constraints) {
-        constraints.flat().forEach(c => this.Constraints.push(c))
+        constraints.flat().forEach(c => {
+            if (!this.Constraints.includes(c)) this.Constraints.push(c)
+        })
+    }
+    removeConstraints(...constraints) {
+        constraints = constraints.flat()
+        this.Constraints = this.Constraints.filter(c => !constraints.includes(c))
     }
 
     totalCost(valuation) {
@@ -180,8 +185,9 @@ class Figure {
 
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
-        this.Constraints.forEach(con => {
+        function handleConstraint(con) {
             if (con.parent !== undefined) return
+            if (!con.active()) return
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -193,19 +199,8 @@ class Figure {
                 c = result
             }
             cost += c
-        })
-        this.tempConstraints.forEach(con => {
-            if (con.parent !== undefined) return
-            let c, dc
-            const result = con.getCost(valuation, doGrad)
-            if (doGrad) {
-                [c, dc] = result
-                dcost = numeric.add(dcost, dc)
-            } else {
-                c = result
-            }
-            cost += c
-        })
+        }
+        this.Constraints.forEach(handleConstraint)
         if (!doGrad) {
             return cost
         } else {
@@ -245,7 +240,6 @@ class Figure {
         }
         if (this.renderNeeded) {
             this.render(this.animationTime)
-            this.tempConstraints = []
             this.renderNeeded = false
         }
     }
@@ -1095,10 +1089,10 @@ class Temporal {
     constructor(figure) {
         this.figure = figure
     }
-    active(f) { return true }
+    active() { return true }
 
     // Is this object visible in frame f?
-    visible(f) { return true }
+    visible() { return true }
 
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame)) this.render()
@@ -1993,14 +1987,26 @@ class Handle extends InteractiveObject {
         if (this.figure.focused == this) {
             // console.log("Handle lost focus")
             this.figure.focused = null;
+            if (this.xcon) {
+                console.log("length before remove: " + this.figure.Constraints.length)
+                this.figure.removeConstraints(this.xcon, this.ycon)
+                console.log("length after remove: " + this.figure.Constraints.length)
+            }
         }
     }
     mousemove(x, y, e) {
-        this.figure.tempConstraints = [ new NearZero(this.figure, new Minus(this.x(), x), 0.1),
-                                        new NearZero(this.figure, new Minus(this.y(), y), 0.1) ]
+            if (this.xcon) {
+                console.log("length before remove: " + this.figure.Constraints.length)
+                this.figure.removeConstraints(this.xcon, this.ycon)
+                console.log("length after remove: " + this.figure.Constraints.length)
+            }
+        this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 0.1)
+        this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 0.1)
         this.figure.renderNeeded = true
         setTimeout(() => this.figure.renderIfDirty(), 0) // collapse multiple renders
     }
+    active() { return true }
+    visible() { return true }
 }
 
 class AdvanceButton extends InteractiveObject {
@@ -2164,7 +2170,10 @@ class CanvasSize extends LayoutObject {
         this.figure = figure
     }
     x0() { return 0 }
-    x1() { return new Global(() => this.figure.width) }
+    x1() { return new Global(() => {
+        if (!this.figure.width) this.figure.setupCanvas()
+        return this.figure.width
+    })}
     y0() { return 0 }
     y1() { return new Global(() => this.figure.height) }
     w() { return new Global(() => this.figure.width) }
