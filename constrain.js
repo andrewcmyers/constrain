@@ -58,7 +58,7 @@ class Figure {
         }
         this.ctx = canvas.getContext("2d")
         this.setupListeners()
-        this.initGraphics()
+        this.initObjects()
         this.scale = window.devicePixelRatio ? window.devicePixelRatio : 1; // canvas units per HTML "pixel"
         this.time = 0
         this.currentFrame = undefined // current frame object
@@ -72,14 +72,15 @@ class Figure {
         this.setLineWidth(Figure_defaults.LINEWIDTH)
         this.setFontSize(Figure_defaults.FONT_SIZE)
         this.setFontName(Figure_defaults.FONT_NAME)
+        this.repeat = false
+        this.fadeColor = 'white'
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
             console.error("Canvas input will not work correctly with padding")
     }
     setupCanvas() {
-        const canvas = this.canvas
-        const _width = canvas.getBoundingClientRect().width,
-              _height = canvas.getBoundingClientRect().height
+        const canvas = this.canvas, br = canvas.getBoundingClientRect(),
+              _width = br.width, _height = br.height
         this.width = _width
         this.height = _height
 //       console.log("Width, height are " + _width + "," + _height)
@@ -92,17 +93,17 @@ class Figure {
         this.canvas.addEventListener('mousedown', (e) => {
             const x = e.offsetX, y = e.offsetY
             // alternatively: could use clientX/clientY with getBoundingClientRect
-            console.log(e)
-            console.log(canvas.getBoundingClientRect(canvas))
-            this.interactives.forEach(i =>
-                i.mousedown(x, y, e)
-            )
+            this.interactives.forEach(i => {
+                if (!i.mousedown(x, y, e)) return false
+            })
+            return true
         })
         this.canvas.addEventListener('mouseup', (e) => {
             const x = e.offsetX, y = e.offsetY
-            this.interactives.forEach(i =>
-                i.mouseup(x, y, e)
-            )
+            this.interactives.forEach(i => {
+                if (!i.mouseup(x, y, e)) return false
+            })
+            return true
         })
         this.canvas.addEventListener('mousemove', (e) => {
             if (!this.focused) return
@@ -110,7 +111,7 @@ class Figure {
             this.focused.mousemove(x, y, e)
         })
     }
-    initGraphics() {
+    initObjects() {
         this.GraphicalObjects = []
         this.Constraints = []
         this.Variables = []
@@ -277,10 +278,14 @@ class Figure {
         }
     }
 
+    getFrame(i) {
+        return this.Frames[i]
+    }
+
     // Start this figure. If no frames have been defined, create a
     // single non-animated frame.
     start() {
-        console.log("starting figure")
+        // console.log("starting figure")
         if (this.Frames.length == 0)
             this.Frames[0] = new Frame(this)
         this.currentFrame = this.Frames[0]
@@ -289,9 +294,9 @@ class Figure {
             console.log("document is ready, starting first frame")
             this.startCurrentFrame()
         } else {
-            console.log("document is not ready, starting listener")
+            // console.log("document is not ready, starting listener")
             window.addEventListener('load', () => {
-                console.log("Document loaded, starting frame")
+                // console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
             })
         }
@@ -331,6 +336,20 @@ class Figure {
         if (f) {
             this.currentFrame = f
             this.startCurrentFrame()
+        } else {
+            if (this.repeat) {
+                this.animate(2000, 10000/this.frameRate,
+                  () => {
+                    const col = this.fadeColor ? 'white' : this.fadeColor
+                    this.ctx.fillStyle = col
+                    this.ctx.globalAlpha = 0.05
+                    this.ctx.fillRect(0, 0, this.width, this.height)
+                  },
+                  () => {
+                    this.reset()
+                    this.render()
+                  })
+            }
         }
     }
 
@@ -342,6 +361,13 @@ class Figure {
         } else {
             console.log("At first frame already")
         }
+    }
+
+    setRepeat(f) {
+        this.repeat = f
+    }
+    setFadeColor(c) {
+        this.fadeColor = c
     }
 
     // Whether this figure is at the end of the last frame
@@ -359,6 +385,24 @@ class Figure {
         this.endCurrentFrame()
     }
 
+    animate(frameLength, frameInterval, action, completedAction) {
+        const t0 = new Date().getTime()
+        this.interval = setInterval(() => {
+            const t = new Date().getTime() - t0,
+                  frac = t/this.currentFrame.length
+            this.animationTime = frac
+            if (frac >= 1) {
+                this.animationTime = 1
+                this.stopTimer()
+                completedAction()
+            } else {
+                this.animationTime = frac
+                action()
+            }
+        })
+        console.log("Started interval timer " + this.interval)
+    }
+
     // Start rendering (and animating, if necessary) the current frame
     startCurrentFrame() {
         this.animationTime = 0
@@ -368,20 +412,10 @@ class Figure {
         }
         if (this.currentFrame.length > 0) {
             console.log("starting animated frame " + this.name + " in " + this.figure.name)
-            const t0 = new Date().getTime()
-            this.interval = setInterval(() => {
-                const t = new Date().getTime() - t0,
-                        frac = t/this.currentFrame.length
-                if (frac >= 1) {
-                    this.animationTime = 1
-                    this.endCurrentFrame()
-                } else {
-                    this.animationTime = frac
-                    this.render()
-                }
-              },
-              1000/this.frameRate)
-            console.log("started interval timer " + this.interval)
+            this.animate(this.currentFrame.length, 1000/this.frameRate,
+                () => this.render(),
+                () => this.endCurrentFrame()
+            )
         } else {
             console.log("starting static frame " + this.currentFrame.name + " in " + this.figure.name)
             delete this.interval
@@ -428,11 +462,13 @@ class Figure {
     // Set default font size
     setFontSize(s) {
         this.fontSize = s
+        return this
     }
 
     // Set default font name
     setFontName(f) {
         this.fontName = f
+        return this
     }
 
 // ---- utility functions for creating constraints ----
@@ -601,6 +637,8 @@ class Figure {
     vertLine(strokeStyle, lineWidth, x, y0, y1) {
         return new VertLine(this, strokeStyle, lineWidth, x, y0, y1)
     }
+    hspace() { return new HSpace(this) }
+    vspace() { return new VSpace(this) }
     label(string, fontSize, fontName, fillStyle, x, y) {
         return new Label(this, string, fontSize, fontName, fillStyle, x, y)
     }
@@ -627,7 +665,7 @@ class Figure {
         if (arguments.length == 2) {
             return new Point(arguments[0], arguments[1])
         } else {
-            if (argument.length != 0) {
+            if (arguments.length != 0) {
                 console.error("point(...) expects 0 or 2 arguments")
             }
             const x = new Variable(this, "px"), y = new Variable(this, "py")
@@ -651,6 +689,80 @@ class Figure {
     group(...g) { return new Group(this, ...g) }
 }
 
+function isFigure(figure) {
+    return (figure.connector !== undefined)
+}
+
+// From numeric-1.2.6.js. Modified to allow f to supply the gradient directly.
+// Minimizes a function f(x) whose gradient is g(x)
+// fg(x) or fg(x, false) must return just f(x)
+// fg(x, true) must return [ f(x), (grad f)(x)] or [f(x0), undefined]. In the former case,
+//   (grad f) must return an array whose length is the same as x. In the latter
+//   case, a numeric gradient is computed using f, more expensively.
+function uncmin(fg,x0,tol,maxit,callback,options) {
+    var grad = numeric.gradient;
+    if(typeof options === "undefined") { options = {}; }
+    if(typeof tol === "undefined") { tol = 1e-8; }
+    function gradient(x) { return grad(fg, x); };
+    if(typeof maxit === "undefined") maxit = 1000;
+    x0 = numeric.clone(x0);
+    var n = x0.length;
+    var [f0, g0] = fg(x0, true);
+    var f1,g1,df0;
+    if (isNaN(f0))
+        throw new Error('uncmin: f(x0) is a NaN!');
+    if (g0 === undefined) g0 = gradient(x0);
+    // let g0_ = gradient(x0);
+    var max = Math.max, norm2 = numeric.norm2;
+    tol = max(tol,numeric.epsilon);
+    var step,H1 = options.Hinv || numeric.identity(n);
+    var dot = numeric.dot, inv = numeric.inv, sub = numeric.sub, add = numeric.add, ten = numeric.tensor, div = numeric.div, mul = numeric.mul;
+    var all = numeric.all, isfinite = numeric.isFinite, neg = numeric.neg;
+    var it=0,i,s,x1,y,Hy,Hs,ys,i0,t,nstep,t1,t2;
+    var msg = "";
+    while(it<maxit) {
+        if(typeof callback === "function") { if(callback(it,x0,f0,g0,H1)) { msg = "Callback returned true"; break; } }
+        if(!all(isfinite(g0))) { msg = "Gradient has Infinity or NaN"; break; }
+        step = neg(dot(H1,g0));
+        if(!all(isfinite(step))) { msg = "Search direction has Infinity or NaN"; break; }
+        nstep = norm2(step);
+        if(nstep < tol) { msg="Newton step smaller than tol"; break; }
+        t = 1;
+        df0 = dot(g0,step);
+        // line search
+        x1 = x0;
+        while(it < maxit) {
+            if(t*nstep < tol) { break; }
+            s = mul(step,t);
+            x1 = add(x0,s);
+            f1 = fg(x1);
+            if(f1-f0 >= 0.1*t*df0 || isNaN(f1)) {
+                t *= 0.5;
+                ++it;
+                continue;
+            }
+            break;
+        }
+        if(t*nstep < tol) { msg = "Line search step size smaller than tol"; break; }
+        if(it === maxit) { msg = "maxit reached during line search"; break; }
+        [f1, g1] = fg(x1, true);
+        if (g1 === undefined) g1 = gradient(x1);
+        y = sub(g1,g0);
+        ys = dot(y,s);
+        Hy = dot(H1,y);
+        H1 = sub(add(H1,
+                mul(
+                        (ys+dot(y,Hy))/(ys*ys),
+                        ten(s,s)    )),
+                div(add(ten(Hy,s),ten(s,Hy)),ys));
+        x0 = x1;
+        f0 = f1;
+        g0 = g1;
+        ++it;
+    }
+    return {solution: x0, f: f0, gradient: g0, invHessian: H1, iterations:it, message: msg};
+}
+
 // A frame of the animation. Frames can auto-advance
 // to the next frame or require manual advancing.
 // frame.index gives the index of the frame in the
@@ -658,7 +770,7 @@ class Figure {
 class Frame {
     constructor(figure, name) {
         if (name === undefined) name = figure.Frames.length
-        if (figure.constructor != Figure) {
+        if (!isFigure(figure)) {
             console.error("First argument to new Frame() must be a figure")
         }
         this.index = figure.Frames.length
@@ -1127,7 +1239,7 @@ class TemporalFilter extends Temporal {
         if (obj.constructor == Array) {
             console.error("Sorry, a Temporal can only hold one graphical object or one constraint. Use a Group or ConstraintGroup instead.")
         }
-        if (figure.constructor !== Figure) {
+        if (!isFigure(figure)) {
             console.error("A Temporal must be constructed with a Figure")
         }
         this.obj = obj
@@ -1223,7 +1335,7 @@ class DrawBefore extends TemporalFilter {
 class Constraint extends Temporal {
     constructor(figure) {
         super(figure)
-        if (figure.constructor != Figure) {
+        if (!isFigure(figure)) {
             console.error("Constraints require an associated Figure")
             throw "no"
         }
@@ -1338,21 +1450,29 @@ class LayoutObject {
     w() { return 0 }
     h() { return 0 }
     variables() { return [] }
-    connectionPts() { return [new Point(this.x(), this.y())] }
+    connectionPts() {
+        return [
+                new Point(this.x(), this.y()),
+                new Point(this.x1(), this.y()),
+                new Point(this.x0(), this.y()),
+                new Point(this.x(), this.y0()),
+                new Point(this.x(), this.y1())
+               ]
+    }
     bestConnectionPt(px, py, valuation) {
         let [x,y] = evaluate([this.x(), this.y()], valuation)
         const scs = evaluate(this.connectionPts(), valuation),
               scdirs = scs.map(p => {
                                   const [sx,sy] = p,
                                         nm = norm2d(sx - x, sy - y)
-                                  return [(sx - x)/nm, (sy - y)/nm]
+                                  return nm == 0 ? [0,0] : [(sx - x)/nm, (sy - y)/nm]
                                 })
         let pn = norm2d(px - x, py - y),
             pxn = (px-x)/pn, pyn = (py-y)/pn
-        let best = scs[0], bd = sqdist(scdirs[0][0] - pxn, scdirs[0][1] - pyn)
+        let best = scs[0], bd = scdirs[0][0] * pxn + scdirs[0][1] * pyn // cos of angle
         for (let i = 1; i < scs.length; i++) {
-           const d = sqdist(scdirs[i][0] - pxn, scdirs[i][1] - pyn)
-           if (d < bd) { bd = d; best = scs[i] }
+           const d = scdirs[i][0] * pxn + scdirs[i][1] * pyn
+           if (d > bd) { bd = d; best = scs[i] }
         }
         return best
     }
@@ -1453,9 +1573,11 @@ class Point extends LayoutObject {
         super()
         if (vx === undefined)
             console.log("undefined x")
-        this.x = () => vx
-        this.y = () => vy
+        this.x_ = vx
+        this.y_ = vy
     }
+    x() { return this.x_ }
+    y() { return this.y_ }
     evaluate(valuation, doGrad) {
       if (!doGrad) {
         const x = evaluate(this.x(), valuation),
@@ -1755,6 +1877,14 @@ class Line extends GraphicalObject {
     p2() {
         return new Point(this.x1(), this.y1())
     }
+    setStart(p) {
+        this.figure.pin(new Point(this.x0(), this.y0()), p)
+        return this
+    }
+    setEnd(p) {
+        this.figure.pin(new Point(this.x1(), this.y1()), p)
+        return this
+    }
 }
 
 class HorzLine extends Line {
@@ -1809,6 +1939,8 @@ class Connector extends GraphicalObject {
         [ pts[0].x, pts[0].y ] = objs[0].bestConnectionPt(pts[1].x, pts[1].y, valuation);
         [ pts[m].x, pts[m].y ] = objs[m].bestConnectionPt(pts[m-1].x, pts[m-1].y, valuation);
         ctx.strokeStyle = this.strokeStyle
+        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.setLineDash(this.lineDash ? this.lineDash : [])
         if (this.fillStyle) ctx.fillStyle = this.fillStyle
         if (this.startArrowStyle) {
             [pts[0].x, pts[0].y] = 
@@ -1835,8 +1967,6 @@ class Connector extends GraphicalObject {
             }
         }
         ctx.strokeStyle = this.strokeStyle
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
-        ctx.setLineDash(this.lineDash ? this.lineDash : [])
         ctx.stroke()
     }
     setStartArrow(style) {
@@ -1859,9 +1989,29 @@ class Connector extends GraphicalObject {
     }
 }
 
+class HSpace extends GraphicalObject {
+    constructor(figure) {
+        super(figure)
+        equal(this.h(), 0)
+    }
+    render() {}
+    renderIfVisible() {}
+}
+
+class VSpace extends GraphicalObject {
+    constructor(figure) {
+        super(figure)
+        equal(this.w(), 0)
+    }
+    render() {}
+    renderIfVisible() {}
+}
+
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
+        if (fillStyle != undefined) this.fillStyle = fillStyle
+            else this.fillStyle = figure.strokeStyle
         if (fontSize != undefined) this.fontSize = fontSize
           else this.fontSize = figure.fontSize
         if (fontName !== undefined) this.fontName = fontName
@@ -1901,6 +2051,19 @@ class Label extends GraphicalObject {
         this.installFont()
         this.width = ctx.measureText(this.text).width
     }
+
+    // Set font size
+    setFontSize(s) {
+        this.fontSize = s
+        return this
+    }
+
+    // Set font name
+    setFontName(f) {
+        this.fontName = f
+        return this
+    }
+
 }
 
 // XXX add a special constraint for formatting cost
@@ -2000,7 +2163,7 @@ class Handle extends InteractiveObject {
         const hx = evaluate(this.x(), this.figure.currentValuation),
               hy = evaluate(this.y(), this.figure.currentValuation)
         if (Math.abs(x - hx) + Math.abs(y - hy) <= this.size) {
-            console.log("Handle got focus")
+            // console.log("Handle got focus")
             this.figure.focused = this
         }
     }
@@ -2009,17 +2172,13 @@ class Handle extends InteractiveObject {
             // console.log("Handle lost focus")
             this.figure.focused = null;
             if (this.xcon) {
-                console.log("length before remove: " + this.figure.Constraints.length)
                 this.figure.removeConstraints(this.xcon, this.ycon)
-                console.log("length after remove: " + this.figure.Constraints.length)
             }
         }
     }
     mousemove(x, y, e) {
             if (this.xcon) {
-                console.log("length before remove: " + this.figure.Constraints.length)
                 this.figure.removeConstraints(this.xcon, this.ycon)
-                console.log("length after remove: " + this.figure.Constraints.length)
             }
         this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 0.1)
         this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 0.1)
@@ -2036,8 +2195,8 @@ class AdvanceButton extends InteractiveObject {
 
         const vx = new Variable(figure, "x"),
               vy = new Variable(figure, "y")
-        this.x = () => vx
-        this.y = () => vy
+        this.x_ = vx
+        this.y_ = vy
         this.variables = () => [vx, vy]
         figure.geq(vx,0)
         figure.geq(vy,0)
@@ -2049,6 +2208,10 @@ class AdvanceButton extends InteractiveObject {
         this.strokeStyle = "#444"
         this.pressed = false
     }
+    x() { return this.x_ }
+    y() { return this.y_ }
+    w() { return this.size * 1.1}
+    h() { return this.size * 0.7 }
 
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -2090,23 +2253,25 @@ class AdvanceButton extends InteractiveObject {
         const valuation = this.figure.currentValuation,
               x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation)
-        if (!this.inbounds(mx, my, x, y)) return
+        if (!this.inbounds(mx, my, x, y)) return true
         this.pressed = true
         this.figure.focused = this
         this.render(this.figure)
+        return false
     }
     mouseup(mx, my, e) {
         if (this.figure.currentValuation === undefined)
-            { console.error("No current valuation"); return }
+            { console.error("No current valuation"); return true }
         const valuation = this.figure.currentValuation,
               x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation)
-        if (!this.inbounds(mx, my, x, y)) return
-        if (!this.pressed) return
+        if (!this.inbounds(mx, my, x, y)) return true
+        if (!this.pressed) return true
         this.pressed = false
         this.figure.focused = null
         this.render(this.figure)
-        figure.advance()
+        this.figure.advance()
+        return false
     }
     mousemove(mx, my, e) {
         const valuation = this.figure.currentValuation,
@@ -2119,6 +2284,7 @@ class AdvanceButton extends InteractiveObject {
             this.render(this.figure)
         }
     }
+    active() { return true }
 }
 AdvanceButton.prototype.installHolder = GraphicalObject.prototype.installHolder
 
@@ -2143,7 +2309,7 @@ class DOMElementBox extends LayoutObject {
             this.obj = document.getElementById(id)
         else
             this.obj = id
-        if (figure.constructor !== Figure) {
+        if (!isFigure(figure)) {
             console.error("DOMElementBox requires a figure to compute coordinates relative to")
         }
         this.figure = figure
@@ -2179,7 +2345,6 @@ function fullWindowCanvas(canvas) {
     }
     addEventListener('resize', 
         () => {
-            console.log("Saw window resize")
             resizeCanvasToWindow(canvas)
         }
     )
@@ -2249,8 +2414,7 @@ function setupResize() {
         )
 }
 
-  return {
-    Figure: Figure,
+  return ({ Figure: Figure,
     Figures: Figures,
     Frame: Frame,
     Variable: Variable,
@@ -2276,6 +2440,7 @@ function setupResize() {
     rgbStyle: rgbStyle,
     Global: Global,
     evaluate: evaluate,
-    fullWindowCanvas: fullWindowCanvas
-  }
+    fullWindowCanvas: fullWindowCanvas,
+    isFigure: isFigure
+  })
 }()
