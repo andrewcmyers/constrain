@@ -2109,6 +2109,28 @@ class FormattedText extends GraphicalObject {
     }
 }
 
+// A GraphicalObject intended to be overridden by users with arbitrary
+// rendering code.  It draws itself by calling a method draw(context, frame,
+// time, x0, y0, x1, y1), simplifying the coding.
+class UserDefined extends GraphicalObject {
+    constructor(figure) {
+        super(figure)
+    }
+    render() {
+        const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(), this.x1(), this.y1()], this.figure.currentValuation),
+              fig = this.figure
+        this.draw(fig.ctx, fig.currentFrame.index, fig.animationTime, x0, x1, y0, y1)
+    }
+    // Override this to change the appearance of this object
+    //   context: the 2D rendering context
+    //   frame: the index of the current animation frame
+    //   time: the fraction of the current frame that is completed (0-1)
+    draw(context, frame, time, x0, x1, y0, y1) {
+        context.fillStyle = 'gray'
+        context.fillRect(x0, y0, x1-x0, y1-y0)
+    }
+}
+
 class InteractiveObject extends LayoutObject {
     constructor(figure) {
         super()
@@ -2439,6 +2461,7 @@ function setupResize() {
     setupResize: setupResize,
     rgbStyle: rgbStyle,
     Global: Global,
+    UserDefined: UserDefined,
     evaluate: evaluate,
     fullWindowCanvas: fullWindowCanvas,
     isFigure: isFigure
