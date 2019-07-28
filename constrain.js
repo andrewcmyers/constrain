@@ -338,14 +338,15 @@ class Figure {
             this.startCurrentFrame()
         } else {
             if (this.repeat) {
-                this.animate(2000, 10000/this.frameRate,
+                this.animate(2000, 80,
                   () => {
-                    const col = this.fadeColor ? 'white' : this.fadeColor
+                    const col = this.fadeColor ? this.fadeColor : 'white'
                     this.ctx.fillStyle = col
-                    this.ctx.globalAlpha = 0.05
+                    this.ctx.globalAlpha = 0.3
                     this.ctx.fillRect(0, 0, this.width, this.height)
                   },
                   () => {
+                    this.ctx.globalAlpha = 1
                     this.reset()
                     this.render()
                   })
@@ -399,7 +400,7 @@ class Figure {
                 this.animationTime = frac
                 action()
             }
-        })
+        }, frameInterval)
         console.log("Started interval timer " + this.interval)
     }
 
@@ -481,14 +482,14 @@ class Figure {
         }
         return new ConstraintGroup(this, a)
     }
-    geq(e1, e2) {
-        return new NearZero(this, new Relu(new Minus(e2, e1)))
+    geq(e1, e2, c) {
+        return new NearZero(this, new Relu(new Minus(e2, e1)), c)
     }
-    positive(e) {
-        return this.geq(e, 0)
+    positive(e, c) {
+        return this.geq(e, 0, c)
     }
-    leq(e1, e2) {
-        return new NearZero(this, new Relu(new Minus(e1, e2)))
+    leq(e1, e2, c) {
+        return new NearZero(this, new Relu(new Minus(e1, e2)), c)
     }
 
     // constraints to pin all the objects at the same location
@@ -639,6 +640,7 @@ class Figure {
     }
     hspace() { return new HSpace(this) }
     vspace() { return new VSpace(this) }
+    formattedText(t) { return new FormattedText(this, t) }
     label(string, fontSize, fontName, fillStyle, x, y) {
         return new Label(this, string, fontSize, fontName, fillStyle, x, y)
     }
@@ -1372,17 +1374,15 @@ class NearZero extends Constraint {
     constructor(figure, expr, cost) {
         super(figure)
         this.expr = expr
-        this.cost = cost
+        this.cost = cost ? cost : 1
     }
     getCost(valuation, doGrad) {
       if (!doGrad) {
         const v = evaluate(this.expr, valuation)
-        if (this.cost != null) return v*v*this.cost
-        else return v*v
+        return v*v*this.cost
       } else {
         const [v, dv] = evaluate(this.expr, valuation, true)
-        if (this.cost != null) return [ v*v*this.cost, numeric.mul(v, dv, this.cost, 2) ]
-        else return [ v*v, numeric.mul(2*v, dv) ]
+        return [ v*v*this.cost, numeric.mul(2*v*this.cost, dv) ]
       }
     }
     variables() {
@@ -1613,7 +1613,7 @@ class Group extends GraphicalObject {
     x() { return this.centerX() }
     y() { return this.centerY() }
     x0() { return new Min(this.objects.map(o => o.x0())) }
-    x1() { return new Max(this.objects.map(o => o.x0())) }
+    x1() { return new Max(this.objects.map(o => o.x1())) }
     y0() { return new Min(this.objects.map(o => o.y0())) }
     y1() { return new Max(this.objects.map(o => o.y1())) }
     w() { return new Minus(this.x1(), this.x0()) }
@@ -1992,7 +1992,7 @@ class Connector extends GraphicalObject {
 class HSpace extends GraphicalObject {
     constructor(figure) {
         super(figure)
-        equal(this.h(), 0)
+        figure.equal(this.h(), 0)
     }
     render() {}
     renderIfVisible() {}
@@ -2107,6 +2107,18 @@ class FormattedText extends GraphicalObject {
             x += space
         }
     }
+    // Set font size
+    setFontSize(s) {
+        this.fontSize = s
+        return this
+    }
+
+    // Set font name
+    setFontName(f) {
+        this.fontName = f
+        return this
+    }
+
 }
 
 // A GraphicalObject intended to be overridden by users with arbitrary
