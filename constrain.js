@@ -1243,6 +1243,8 @@ class Linear extends Expression {
         }
         console.error("Don't know how to interpolate between " + v1 + " and " + v2)
     }
+    x() { return new Projection(this, 0) }
+    y() { return new Projection(this, 1) }
 }
 
 class Smooth extends Linear {
@@ -1254,6 +1256,29 @@ class Smooth extends Linear {
 
 function cubicInterpWeight(t) {
     return t*t*(3 - 2*t);
+}
+
+// A Projection can be used on an expression that returns an array. It
+// picks out the value of the appropriate component of the array.
+class Projection extends Expression {
+    constructor(expr, index) {
+        super()
+        this.expr = expr
+        this.index = index
+    }
+    evaluate(valuation, doGrad) {
+        const v = evaluate(this.expr, valuation, doGrad), i = this.index
+        if (doGrad) {
+            const [x, dx] = v
+            return [x[i], dx[i]]
+        } else {
+            if (v.constructor != Array)
+                console.error("Projection expects its expression to have an array value: " + this.expr)
+            if (i >= v.length)
+                console.error("Attempt to project out a nonexistent element")
+            return v[i]
+        }
+    }
 }
 
 // A Temporal is an object that only exists in some frames. It can be
@@ -1522,6 +1547,19 @@ class LayoutObject {
     variables() {
         return []
     }
+    // Any LayoutObject can be used as an expression, in which case it represents
+    // its (x,y) position.
+    evaluate(valuation, doGrad) {
+      if (!doGrad) {
+        const x = evaluate(this.x(), valuation),
+              y = evaluate(this.y(), valuation)
+        return [x, y]
+      } else {
+        const [x, dx] = evaluate(this.x(), valuation, true),
+              [y, dy] = evaluate(this.y(), valuation, true)
+        return [[x, y], [dx, dy]]
+      }
+    }
 }
 
 // A GraphicalObject is centered at (x,y) and has a width w and height h.
@@ -1570,14 +1608,36 @@ class GraphicalObject extends LayoutObject {
         return this
     }
 // convenience methods for positioning (by adding constraints)
+
+    // Builder to constrain the x coordinate of the object.
     setX(x) { this.figure.equal(this.x(), x); return this }
+    // Builder to constrain the y coordinate of the object.
     setY(y) { this.figure.equal(this.y(), y); return this }
-    setXY(x, y) {
-        this.figure.equal(this.x(), x)
-        this.figure.equal(this.y(), y)
+
+    // Builder to constrain both the x and y coordinates of a graphical object.
+    // Arguments can be:
+    //   x, y: the coordinates
+    //   [x, y]: the coordinates
+    //   a LayoutObject: coordinates are its x() and y()
+    setXY() {
+        if (arguments.length == 2) {
+            this.figure.equal(this.x(), arguments[0])
+            this.figure.equal(this.y(), arguments[1])
+        } else if (arguments.length == 1) {
+            const p = arguments[0]
+            if (p.constructor == Array) {
+                this.figure.equal(this.x(), p[0])
+                this.figure.equal(this.y(), p[1])
+            } else {
+                this.figure.equal(this.x(), p.x())
+                this.figure.equal(this.y(), p.y())
+            }
+        }
         return this
     }
+    // Builder to constrain the width of this object.
     setW(w) { this.figure.equal(this.w(), w); return this }
+    // Builder to constrain the height of this object.
     setH(h) { this.figure.equal(this.h(), h); return this }
 // rendering control
     active() { return true }
@@ -1618,18 +1678,6 @@ class Point extends LayoutObject {
     }
     x() { return this.x_ }
     y() { return this.y_ }
-    evaluate(valuation, doGrad) {
-      if (!doGrad) {
-        const x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
-        return [x, y]
-      } else {
-        const [x, dx] = evaluate(this.x(), valuation, true),
-              [y, dy] = evaluate(this.y(), valuation, true)
-        return [[x, y], [dx, dy]]
-
-      }
-    }
     variables() {
         return exprVariables(this.x()).concat(exprVariables(this.y()))
     }
