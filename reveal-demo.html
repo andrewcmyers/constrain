@@ -69,6 +69,7 @@
                     equal(distance(l1.p2(), s3.ul()),
                         smooth(f2, 0, new Constrain.Distance(s3.ul(), s3.lr())))
                )
+               ready()
             }
           </script>
         </section>
@@ -127,6 +128,7 @@
                 equal(e1.w(), e1.h())
                 equal(p3.x(), e1.x()), equal(e1.w(), s1.w())
                 equal(p3.y(), minus(e1.y(), 50))
+                ready()
             }
           </script>
         </section>
@@ -199,6 +201,7 @@
                    equal(fireworks.w(), min(300, times(0.5, canvasSize().w())))
                    pin(background.ul(), fireworks.ul())
                    pin(background.lr(), fireworks.lr())
+                   ready()
                 }
               }
             </script>
@@ -250,6 +253,7 @@ equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
                 pin(lh.p2(), point(s3.x0(), s3.y()))
                 pin(lv.p1(), point(s3.x(), 0))
                 pin(lv.p2(), point(s3.x(), s3.y0()))
+                ready()
               }
             </script>
           </section>
@@ -259,7 +263,7 @@ equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
             <ul><li>
             <a href="https://github.com/andrewcmyers/constrain"><kbd>github.com/andrewcmyers/constrain</kbd></a>
             </li>
-            <li>Feedback, contributions welcome</li>
+            <li>Feedback, suggestions, contributions welcome</li>
             </ul>
           </section>
         </div> <!-- end of slides -->

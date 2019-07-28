@@ -51,12 +51,14 @@ class Figure {
             this.canvas = canvas
         } else if (typeof canvas == "string") {
             this.canvas = canvas = document.getElementById(canvas)
-            this.name = canvas
+            this.name = canvas.id
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
             return
         }
         this.ctx = canvas.getContext("2d")
+        this.is_ready = false   // whether figure content is marked as ready for rendering
+        this.is_started = false // whether a request for rendering has occurred
         this.setupListeners()
         this.initObjects()
         this.scale = window.devicePixelRatio ? window.devicePixelRatio : 1; // canvas units per HTML "pixel"
@@ -106,9 +108,18 @@ class Figure {
             return true
         })
         this.canvas.addEventListener('mousemove', (e) => {
-            if (!this.focused) return
+            if (!this.focused) return false
             const x = e.offsetX, y = e.offsetY
-            this.focused.mousemove(x, y, e)
+            return this.focused.mousemove(x, y, e)
+        })
+        this.canvas.addEventListener('dblclick', (e) => {
+            console.log("Saw double-click, trying to stop it")
+            e.stopPropagation()// XXX why doesn't this work?
+            return false
+        })
+        this.canvas.addEventListener('click', (e) => {
+            e.stopPropagation() 
+            return false
         })
     }
     initObjects() {
@@ -282,21 +293,34 @@ class Figure {
         return this.Frames[i]
     }
 
-    // Start this figure. If no frames have been defined, create a
-    // single non-animated frame.
-    start() {
-        // console.log("starting figure")
+    // Mark this figure as being ready for rendering.
+    // Create an initial frame if no frames have been created yet.
+    ready() {
         if (this.Frames.length == 0)
-            this.Frames[0] = new Frame(this)
+            this.Frames[0] = new Frame(this, "default")
+        this.is_ready = true
+        if (this.is_started) this.start()
+    }
+
+    // Request that this figure start rendering. If the figure
+    // is not ready to render, it will just set the is_started
+    // flag.
+    start() {
+        console.log("starting figure")
+        this.is_started = true
+        if (!this.is_ready) {
+            console.log("figure is not ready to render yet.")
+            return
+        }
         this.currentFrame = this.Frames[0]
         if (!this.currentFrame) { console.error("No current frame!?") }
         if (document.readyState == "complete") {
             console.log("document is ready, starting first frame")
             this.startCurrentFrame()
         } else {
-            // console.log("document is not ready, starting listener")
+            console.log("document is not ready, starting listener")
             window.addEventListener('load', () => {
-                // console.log("Document loaded, starting frame")
+                console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
             })
         }
@@ -334,6 +358,10 @@ class Figure {
     // Advance to the next frame, if any.
     // Return true if there is a next frame to go to.
     advance() {
+        if (!this.is_ready) {
+            console.log("Cannot advance unready figure")
+            return
+        }
         const f = this.nextFrame()
         if (f) {
             this.currentFrame = f
@@ -362,6 +390,9 @@ class Figure {
     // Rewind to the previous frame, if any.
     // Return true if there is a previous frame to go to.
     rewind() {
+        if (!this.is_ready) {
+            console.log("Cannot rewind unready figure")
+        }
         const f = this.prevFrame()
         if (f) {
             this.currentFrame = f
@@ -421,13 +452,13 @@ class Figure {
             console.error("no current frame")
         }
         if (this.currentFrame.length > 0) {
-            console.log("starting animated frame " + this.name + " in " + this.figure.name)
+            console.log("starting animated frame " + this.currentFrame.name + " in " + this.name)
             this.animate(this.currentFrame.length, 1000/this.frameRate,
                 () => this.render(),
                 () => this.endCurrentFrame()
             )
         } else {
-            console.log("starting static frame " + this.currentFrame.name + " in " + this.figure.name)
+            console.log("starting static frame " + this.currentFrame.name + " in " + this.name)
             delete this.interval
             this.render()
         }
@@ -435,7 +466,7 @@ class Figure {
 
     endCurrentFrame() {
         if (this.currentFrame === undefined) return
-        console.log("Ending frame " + this.name)
+        console.log("Ending frame " + this.currentFrame.name)
         this.animationTime = 1
         this.stopTimer()
         this.render()
