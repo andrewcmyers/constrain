@@ -331,12 +331,16 @@ class Figure {
         return null
     }
 
+    // Advance to the next frame, if any.
+    // Return true if there is a next frame to go to.
     advance() {
         const f = this.nextFrame()
         if (f) {
             this.currentFrame = f
             this.startCurrentFrame()
+            return true
         } else {
+            this.complete()
             if (this.repeat) {
                 this.animate(2000, 80,
                   () => {
@@ -351,15 +355,20 @@ class Figure {
                     this.render()
                   })
             }
+            return false
         }
     }
 
+    // Rewind to the previous frame, if any.
+    // Return true if there is a previous frame to go to.
     rewind() {
         const f = this.prevFrame()
         if (f) {
             this.currentFrame = f
             this.startCurrentFrame()
+            return true
         } else {
+            return false
             console.log("At first frame already")
         }
     }

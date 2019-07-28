@@ -67,15 +67,18 @@ var ConstrainReveal = function() {
         return r
     }
 
+    // Advance all figures in active fragments.
+    // Return true if any figure advanced.
     function advanceActiveFragments() {
         // console.log("advancing active fragments")
-        let sawFragment = false
+        let sawFragment = false, advanced = false
         slideFigures.forEach(f => {
             if (fragmentFigure(f) && activeFigure(f)) {
-                f.advance()
+                if (f.advance()) advanced = true
                 console.log("advanced to frame " + f.currentFrame.index)
             }
         })
+        return advanced
     }
 
     function advanceNonFragments() {
@@ -113,13 +116,17 @@ var ConstrainReveal = function() {
         return r
     }
 
+    // Rewind all figures in active fragments.
+    // Return true if any figure rewound.
     function rewindActiveFragments() {
+        let rewound = false
         slideFigures.forEach(f =>  {
             if (fragmentFigure(f) && rewindableFigure(f)) {
-                f.rewind()
+                if (f.rewind()) rewound = true
                 console.log("rewound to frame " + f.currentFrame.index)
             }
         })
+        return rewound
     }
 
     function completeActiveFragments() {
@@ -147,14 +154,14 @@ var ConstrainReveal = function() {
                     advanceNonFragments()
                     reveal_next.call(this)
                 } else {
-                    advanceActiveFragments()
+                    if (!advanceActiveFragments()) reveal_next.call(this)
                 }
             }
             Reveal.navigatePrev = function() {
                 if (!rewindableFragment()) {
                     reveal_prev.call(this)
                 } else {
-                    rewindActiveFragments()
+                    if (!rewindActiveFragments()) reveal_prev.call(this)
                 }
             }
             Reveal.navigateRight = Reveal.navigateNext
