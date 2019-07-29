@@ -3,8 +3,9 @@
 - Supports including responsive animated figures in web pages
 - Integrates with Reveal presentations
 - Requires numeric.js version 1.2.6
+- [GitHub repository](https://github.com/andrewcmyers/constrain)
 
-## Warning: API is still in flux
+### Warning: API is still in flux
 
 ## Demos
 
