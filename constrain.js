@@ -370,7 +370,7 @@ class Figure {
         } else {
             this.complete()
             if (this.repeat) {
-                this.animate(2000, 80,
+                this.animate(1000, 80,
                   () => {
                     const col = this.fadeColor ? this.fadeColor : 'white'
                     this.ctx.fillStyle = col
@@ -430,7 +430,7 @@ class Figure {
         const t0 = new Date().getTime()
         this.interval = setInterval(() => {
             const t = new Date().getTime() - t0,
-                  frac = t/this.currentFrame.length
+                  frac = t/frameLength
             this.animationTime = frac
             if (frac >= 1) {
                 this.animationTime = 1
@@ -1560,6 +1560,18 @@ class LayoutObject {
         return [[x, y], [dx, dy]]
       }
     }
+    toTop(v) {
+        return new Point(this.x(), new Minus(this.y0(), v))
+    }
+    toBottom(v) {
+        return new Point(this.x(), new Plus(this.y1(), v))
+    }
+    toLeft(v) {
+        return new Point(new Minus(this.x0(), v), this.y())
+    }
+    toRight(v) {
+        return new Point(new Plus(this.x1(), v), this.y())
+    }
 }
 
 // A GraphicalObject is centered at (x,y) and has a width w and height h.
@@ -1619,7 +1631,7 @@ class GraphicalObject extends LayoutObject {
     //   x, y: the coordinates
     //   [x, y]: the coordinates
     //   a LayoutObject: coordinates are its x() and y()
-    setXY() {
+    at() {
         if (arguments.length == 2) {
             this.figure.equal(this.x(), arguments[0])
             this.figure.equal(this.y(), arguments[1])
@@ -2089,7 +2101,7 @@ class HSpace extends GraphicalObject {
 class VSpace extends GraphicalObject {
     constructor(figure) {
         super(figure)
-        equal(this.w(), 0)
+        figure.equal(this.w(), 0)
     }
     render() {}
     renderIfVisible() {}
