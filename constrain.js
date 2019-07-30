@@ -428,13 +428,17 @@ class Figure {
 
     animate(frameLength, frameInterval, action, completedAction) {
         const t0 = new Date().getTime()
+        let steps_rendered = 0
         this.interval = setInterval(() => {
             const t = new Date().getTime() - t0,
                   frac = t/frameLength
             this.animationTime = frac
+            steps_rendered++
             if (frac >= 1) {
                 this.animationTime = 1
                 this.stopTimer()
+                console.log("rendered " + steps_rendered + " steps in time " + t +
+                            " (" + Math.round(1000*steps_rendered/t) + "/sec)")
                 completedAction()
             } else {
                 this.animationTime = frac
@@ -858,6 +862,25 @@ class Expression {
         console.log("Don't know how to evaluate this expression")
         return 0
     }
+    // support for caching evaluations. Mostly not worthwhile but can pay off for
+    // reused expressions.
+    checkCache(valuation, doGrad) {
+        doGrad = doGrad ? true : false
+        if (this.cachedValuation !== valuation || doGrad > this.cachedDoGrad) {
+            cacheMisses++
+            return undefined
+        }
+        cacheHits++
+        if (doGrad == this.cachedDoGrad) return this.cachedResult
+        return this.cachedResult[0]
+    }
+    recordCache(valuation, doGrad, result) {
+        doGrad = doGrad ? true : false
+        this.cachedValuation = valuation
+        this.cachedDoGrad = doGrad
+        this.cachedResult = result
+        return result
+    }
     variables() { return [] }
 }
 
@@ -918,7 +941,14 @@ function getZeros(n) {
     return zeros
 }
 
-// var cacheHits = 0, cacheMisses = 0, variableCacheHits = 0, falseCacheHits = 0
+var cacheHits = 0, cacheMisses = 0, variableCacheHits = 0, falseCacheHits = 0
+
+function statistics() {
+    return { cacheHits: cacheHits,
+             cacheMisses: cacheMisses,
+             variableCacheHits: variableCacheHits,
+             falseCacheHits: falseCacheHits }
+}
 
 // The variables used by expression e.
 function exprVariables(e) {
@@ -948,21 +978,8 @@ function evaluate(expr, valuation, doGrad) {
             console.error("Tried to evaluate a function ${expr}. Did you forget to invoke a property using ()?")
             return 0;
         default:
-        /*
-            if (expr.cachedValuation === valuation && expr.cachedDoGrad != doGrad)
-                falseCacheHits++
-            if (expr.cachedValuation === valuation &&
-                expr.cachedDoGrad === doGrad) {
-                cacheHits++
-                if (expr.constructor === Variable) variableCacheHits++
-            } else
-                cacheMisses++
-        */
-
             if (expr.evaluate) {
                 const r = expr.evaluate(valuation, doGrad)
-                // expr.cachedValuation = valuation
-                // expr.cachedDoGrad = doGrad
                 return r
             } else {
                 if (expr.constructor == Array) {
@@ -1493,8 +1510,8 @@ class ConstraintGroup extends Constraint {
 
 // A LayoutObject does not support rendering and does not necessarily
 // know what figure it is part of. Its size is 0 by default.
-class LayoutObject {
-    constructor() { }
+class LayoutObject extends Expression {
+    constructor() { super() }
     x0() { return new Minus(this.x(), new Times(this.w(), 0.5)) }
     x1() { return new Plus(this.x(), new Times(this.w(), 0.5)) }
     y0() { return new Minus(this.y(), new Times(this.h(), 0.5)) }
@@ -1550,14 +1567,16 @@ class LayoutObject {
     // Any LayoutObject can be used as an expression, in which case it represents
     // its (x,y) position.
     evaluate(valuation, doGrad) {
+      const v = this.checkCache(valuation, doGrad)
+      if (v) return v
       if (!doGrad) {
-        const x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
-        return [x, y]
+            const x = evaluate(this.x(), valuation),
+                  y = evaluate(this.y(), valuation)
+            return this.recordCache(valuation, doGrad, [x, y])
       } else {
         const [x, dx] = evaluate(this.x(), valuation, true),
               [y, dy] = evaluate(this.y(), valuation, true)
-        return [[x, y], [dx, dy]]
+        return this.recordCache(valuation, doGrad, [[x, y], [dx, dy]])
       }
     }
     toTop(v) {
@@ -2576,6 +2595,7 @@ function setupResize() {
     UserDefined: UserDefined,
     evaluate: evaluate,
     fullWindowCanvas: fullWindowCanvas,
-    isFigure: isFigure
+    isFigure: isFigure,
+    statistics: statistics
   })
 }()
