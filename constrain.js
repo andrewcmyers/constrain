@@ -1120,10 +1120,10 @@ class Distance {
             dxd = numeric.sub(dx2, dx1),
             dyd = numeric.sub(dy2, dy1),
             rad = sqdist(xd, yd),
-            v = Math.sqrt(rad),
-            drad = numeric.add(numeric.mul(2, xd, dxd), numeric.mul(2, yd, dyd))
+            v = Math.sqrt(rad)
       if (v == 0) return [0, getZeros(dx1.length)]
-      return [v, numeric.mul(0.5/v, drad)]
+      const drad = numeric.add(numeric.mul(xd, dxd), numeric.mul(yd, dyd))
+      return [v, numeric.mul(1.0/v, drad)]
     }
     variables() {
         return exprVariables(this.p1).concat(exprVariables(this.p2))
