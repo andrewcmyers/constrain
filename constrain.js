@@ -668,7 +668,7 @@ class Figure {
         return new Square(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint)
     }
     circle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint) {
-        return new Circle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
+        return new Circle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint)
     }
     ellipse(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint) {
         return new Ellipse(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
@@ -1137,10 +1137,10 @@ class Distance {
             dxd = numeric.sub(dx2, dx1),
             dyd = numeric.sub(dy2, dy1),
             rad = sqdist(xd, yd),
-            v = Math.sqrt(rad),
-            drad = numeric.add(numeric.mul(2, xd, dxd), numeric.mul(2, yd, dyd))
+            v = Math.sqrt(rad)
       if (v == 0) return [0, getZeros(dx1.length)]
-      return [v, numeric.mul(0.5/v, drad)]
+      const drad = numeric.add(numeric.mul(xd, dxd), numeric.mul(yd, dyd))
+      return [v, numeric.mul(1.0/v, drad)]
     }
     variables() {
         return exprVariables(this.p1).concat(exprVariables(this.p2))
@@ -1876,7 +1876,7 @@ class Ellipse extends GraphicalObject {
 class Circle extends Ellipse {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
-        figure.ensure(figure.equal(this.h(), this.w()))
+        figure.equal(this.h(), this.w())
     }
 }
 
