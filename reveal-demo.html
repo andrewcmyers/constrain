@@ -40,16 +40,17 @@
             <li>Integrates into Reveal presentations with Constrain/Reveal</li>
             <li>Declarative constraint-based layout</li>
             <li class=fragment>Figure can have multiple frames</li>
-            <li class=fragment>Graphical content can constrain against HTML content</li>
+            <li class=fragment>Graphical content can constrain against <span id="html">HTML content</span></li>
           </ul>
-          <canvas class=fragment id="fig1" data-fragment-index=0 ></canvas>
+          <canvas id="fig1"></canvas>
           <script>
             var Figure = Constrain.Figure
             const fig1 = new Figure("fig1")
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
                 setLineWidth(2)
-                f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500)
+                setStrokeStyle('gray')
+                f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500).setAutoAdvance(true)
                 s1 = square("white"); s3 = drawAfter(f1, square("#fdd")); s2 = square("#dfd")
                 t1 = DOMElement("title")
                 align("center", "none", s1, fig1.canvasSize())
@@ -57,8 +58,8 @@
                 equal(s1.w(), s2.w())
                 equal(s1.y0(), minus(t1.y0(), 10))
                 equal(s1.w(), plus(t1.w(), 10))
-                equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
                 equal(s3.x0(), smooth(f1, s2.x0(), s1.x0()))
+                equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
                 equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
                 drawAfter(f2,
                     l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30),
@@ -68,7 +69,12 @@
                           distance(s3.ll(), s3.ul())),
                     equal(distance(l1.p2(), s3.ul()),
                         smooth(f2, 0, new Constrain.Distance(s3.ul(), s3.lr())))
-               )
+                )
+                f3 = addFrame().setLength(500)
+                let t2 = DOMElement("html"),
+                    s4 = drawAfter(f3, circle().setFillStyle('#ddf').setW(
+                      smooth(f3, 0, plus(4, t2.w()))))
+                align("center", "center", t2, s4)
                ready()
             }
           </script>
@@ -85,7 +91,7 @@
           </ul>
           <canvas id="fig2"></canvas>
           <script>
-            const fig2 = new Figure("fig2")
+            const fig2 = new Constrain.Figure("fig2")
             var circ
             with (fig2) {
                 const [f0, f1, f1a, f2, f3, f4] = addFrame(null, "rectangles", "rect2", "lines", "circles", "connect")
@@ -140,7 +146,7 @@
           </ul>
           <canvas id="fig3"></canvas>
           <script>
-              let fig3 = new Figure("fig3"),
+              let fig3 = new Constrain.Figure("fig3"),
                   Paths = Constrain.Paths
 
               class Fireworks extends Constrain.UserDefined {
@@ -232,7 +238,7 @@ equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
 
             <canvas id="programming"></canvas>
             <script>
-              let fig4 = new Figure("programming")
+              let fig4 = new Constrain.Figure("programming")
               with (fig4) {
                 let [f0, f1, f2, f3, _] = addFrame("start", "square", "yellow", "thick", null) 
                     f4 = addFrame("constraints").setLength(500)

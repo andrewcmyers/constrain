@@ -664,7 +664,7 @@ class Figure {
         return new Square(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint)
     }
     circle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint) {
-        return new Circle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
+        return new Circle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint)
     }
     ellipse(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint) {
         return new Ellipse(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
@@ -1857,7 +1857,7 @@ class Ellipse extends GraphicalObject {
 class Circle extends Ellipse {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
-        figure.ensure(figure.equal(this.h(), this.w()))
+        figure.equal(this.h(), this.w())
     }
 }
 
