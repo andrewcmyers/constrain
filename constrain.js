@@ -197,6 +197,35 @@ class Figure {
         return cost
     }
 
+    // compute the gradient of the output cost at value 'valuation' with
+    // respect to all active expressions, including variables, using
+    // backpropagation. Two different bpGrad evaluations cannot happen
+    // at the same time, because partial results are stored in the expression
+    // objects themselves, in their bpGrad field. The bpValuation field is
+    // used to ensure that old bpGrad results are cleared out.
+    //
+    // Requires that all variables have been numbered appropriately
+    // and that the 
+    bpGrad(valuation) {
+        const n = valuation.length
+        function handleConstraint(con) {
+            if (con.parent !== undefined || !con.active()) return
+        }
+        this.Constraints.forEach(handleConstraint)
+        const result = new Array(n)
+        for (let i = 0; i < n; i++) {
+            const v = activeVariables[i]
+            if (v.bpValuation !== valuation) {
+                console.error("Variable did not have its gradient computed " + v)
+            }
+            result[i] = v.bpGrad
+        }
+        return result
+    }
+
+    // Compute the total cost of the constraints, and the gradient of
+    // the cost wrt the currently active variables. This is done by
+    // symbolic differentiation.
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
         function handleConstraint(con) {
@@ -929,6 +958,9 @@ class Variable extends Expression {
     removeIndex() {
         delete this.index
     }
+    toString() {
+        return "Variable " + this.basename + "(#" + this.index + ")"
+    }
     variables() { return [this] }
 }
 
@@ -971,6 +1003,10 @@ function evaluate(expr, valuation, doGrad) {
     if (valuation === undefined) {
         console.error("undefined valuation")
     }
+    if (expr.checkCache) {
+        const v = expr.checkCache(valuation, doGrad)
+        if (v) return v
+    }
     let n = valuation.length
     switch (typeof expr) {
         case "number": return !doGrad ? expr : [ expr, getZeros(n) ]
@@ -979,8 +1015,7 @@ function evaluate(expr, valuation, doGrad) {
             return 0;
         default:
             if (expr.evaluate) {
-                const r = expr.evaluate(valuation, doGrad)
-                return r
+                return expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
             } else {
                 if (expr.constructor == Array) {
                     return expr.map(e => evaluate(e, valuation, doGrad))
@@ -1112,8 +1147,9 @@ class Max extends NaryExpression {
     }
 }
 
-class Distance {
+class Distance extends Expression {
     constructor(p1, p2) {
+        super()
         this.p1 = p1
         this.p2 = p2
     }
