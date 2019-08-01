@@ -688,7 +688,7 @@ class Figure {
 // ---- Utility methods for creating figure objects ----
 
     canvasRect() {
-        return new CanvasSize(this.figure)
+        return new CanvasRect(this.figure)
     }
     rectangle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
         return new Rectangle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint)
@@ -2544,7 +2544,7 @@ function fullWindowCanvas(canvas) {
     resizeCanvasToWindow(canvas)
 }
 
-class CanvasSize extends LayoutObject {
+class CanvasRect extends LayoutObject {
     constructor(figure) {
         super()
         this.figure = figure
