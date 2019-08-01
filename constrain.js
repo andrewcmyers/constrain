@@ -557,12 +557,12 @@ class Figure {
         return new Distance(p1, p2)
     }
 
-    // Return a list of contraints that align a variable number of objects both
+    // Return a list of constraints that align a variable number of objects both
     // horizontal and vertically.
-    // Allowed options for horizontal are:
+    // Allowed options for horizontal alignment:
     //    "none" : no alignment
     //    "left/right/center" : align left edges/center/right edges
-    //    "abut" : make objects abut each other directly
+    //    "abut" : make objects abut each other directly (see hspace() and vspace() for adding space)
     //    "distribute": objects have equal space separating them
     // Allowed options for vertical are the same except "top" and "bottom"
     //    replace "left" and "right".
@@ -2553,7 +2553,7 @@ class Corners extends GraphicalObject {
     render() { drawCorners(this.figure) }
 }
 
-function setupResize() {
+function autoResize() {
     window.addEventListener('resize',
       () =>
         Figures.forEach(f => {
@@ -2585,7 +2585,7 @@ function setupResize() {
     Min: Min,
     Max: Max,
     Paths: Paths,
-    setupResize: setupResize,
+    autoResize: autoResize,
     rgbStyle: rgbStyle,
     Global: Global,
     UserDefined: UserDefined,
