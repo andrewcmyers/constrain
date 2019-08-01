@@ -201,8 +201,8 @@ class Figure {
     // respect to all active expressions, including variables, using
     // backpropagation. Two different bpGrad evaluations cannot happen
     // at the same time, because partial results are stored in the expression
-    // objects themselves, in their bpGrad field. The bpValuation field is
-    // used to ensure that old bpGrad results are cleared out.
+    // objects themselves, in their bpDiff field. The bpValuation field is
+    // used to ensure that old bpDiff results are cleared out.
     //
     // Requires that all variables have been numbered appropriately
     // and that the 
@@ -210,6 +210,7 @@ class Figure {
         const n = valuation.length
         function handleConstraint(con) {
             if (con.parent !== undefined || !con.active()) return
+            con.bpGrad(valuation)
         }
         this.Constraints.forEach(handleConstraint)
         const result = new Array(n)
@@ -218,7 +219,7 @@ class Figure {
             if (v.bpValuation !== valuation) {
                 console.error("Variable did not have its gradient computed " + v)
             }
-            result[i] = v.bpGrad
+            result[i] = v.bpDiff
         }
         return result
     }
@@ -735,6 +736,10 @@ class Figure {
     smooth(frame, e1, e2) {
         return new Smooth(this, frame, e1, e2)
     }
+    variable(name, hint) {
+        return new Variable(this, name, hint)
+    }
+
     // Create a point with variables for its coordinates
     point() {
         if (arguments.length == 2) {
@@ -1027,6 +1032,27 @@ function evaluate(expr, valuation, doGrad) {
     }
 }
 
+// backpropagate the differential of a function wrt expr at the given
+// valuation to its dependencies. d is the computed differential.
+function backprop(expr, valuation, d) {
+    switch (typeof expr) {
+        case "number": return // nothing to do
+        case "function": console.error("something is broken")
+        default:
+            if (expr.bpValuation !== valuation) {
+                expr.bpValuation = valuation
+                expr.bpDiff = d
+            } else {
+                expr.bpDiff += d
+            }
+            if (!expr.backprop) {
+                console.error("Don't know how to backpropagate " + expr)
+                return
+            }
+            expr.backprop(valuation, d)
+    }
+}
+
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
         super()
@@ -1045,6 +1071,7 @@ class BinaryExpression extends Expression {
         const [b, db] = evaluate(this.e2, valuation, true)
         return this.gradop(a, b, da, db)
     }
+    backpro
     variables() {
         return exprVariables(this.e1).concat(exprVariables(this.e2))
     }
@@ -1056,12 +1083,20 @@ class Minus extends BinaryExpression {
     gradop(a, b, da, db) {
         return [a - b, numeric.sub(da, db)]
     }
+    backprop(valuation, d) {
+        backprop(this.e1, valuation, d)
+        backprop(this.e2, valuation, -d)
+    }
 }
 
 class Plus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a + b }
     gradop(a, b, da, db) { return [a + b, numeric.add(da, db)] }
+    backprop(valuation, d) {
+        backprop(this.e1, valuation, d)
+        backprop(this.e2, valuation, d)
+    }
 }
 
 class Average extends BinaryExpression {
@@ -1069,6 +1104,10 @@ class Average extends BinaryExpression {
     operation(a, b) { return (a + b)/2 }
     gradop(a, b, da, db) {
         return [ (a + b)/2, numeric.mul(numeric.add(da, db), 0.5) ]
+    }
+    backprop(valuation, d) {
+        backprop(this.e1, valuation, 0.5*d)
+        backprop(this.e2, valuation, 0.5*d)
     }
 }
 
@@ -1078,12 +1117,25 @@ class Times extends BinaryExpression {
     gradop(a, b, da, db) {
         return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
+    backprop(valuation, d) {
+        const a = evaluate(this.e1, valuation),
+              b = evaluate(this.e2, valuation)
+        backprop(this.e1, valuation, d*b)
+        backprop(this.e2, valuation, d*a)
+    }
 }
 class Divide extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a / b }
     gradop(a, b, da, db) {
         return [a / b, numeric.add(numeric.mul(-a/(b*b), db),  numeric.mul(da, 1/b))]
+    }
+    backprop(valuation, d) {
+        const a = evaluate(this.e1, valuation),
+              b = evaluate(this.e2, valuation),
+              ib = 1/b
+        backprop(this.e1, ib)
+        backprop(this.e2, -a*ib*ib)
     }
 }
 
@@ -1107,46 +1159,69 @@ class NaryExpression extends Expression {
 class Min extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
-        let best = vals[0], n = vals.length
+        let best = vals[0], n = vals.length, besti = 0
         for (let i = 1; i < n; i++) {
-            best = Math.min(vals[i], best)
+            if (best > vals[i]) {
+                best = vals[i]
+                besti = i
+            }
         }
+        this.which = besti
         return best
     }
     gradop(vals) {
-        let [best, db] = vals[0], n = vals.length
+        let [best, db] = vals[0], n = vals.length, besti = 0
         for (let i = 1; i < n; i++) {
             let [a, da] = vals[i]
             if (a < best) {
                 best = a
                 db = da
+                besti = i
             }
         }
+        this.which = besti
         return [best, db]
+    }
+    backprop(valuation, d) {
+        const n = vals.length
+        for (let i = 1; i < n; i++) {
+            if (i == this.which) {
+                backprop(vals[i], valuation, d)
+            } else {
+                backprop(vals[i], valuation, 0)
+            }
+        }
     }
 }
 
 class Max extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
-        let best = vals[0], n = vals.length
+        let best = vals[0], n = vals.length, besti = 0
         for (let i = 1; i < n; i++) {
-            best = Math.max(vals[i], best)
+            if (best < vals[i]) {
+                best = vals[i]
+                besti = i
+            }
         }
+        this.which = besti
         return best
     }
     gradop(vals) {
-        let [best, db] = vals[0], n = vals.length
+        let [best, db] = vals[0], n = vals.length, besti = 0
         for (let i = 1; i < n; i++) {
             let [a, da] = vals[i]
             if (a > best) {
                 best = a
                 db = da
+                besti = i
             }
         }
+        this.which = besti
         return [best, db]
     }
 }
+Max.prototype.backprop = Min.prototype.backprop
 
 class Distance extends Expression {
     constructor(p1, p2) {
@@ -1467,6 +1542,10 @@ class Constraint extends Temporal {
         console.error("No cost function defined for this constraint " + this.constructor)
         return zeroCost(valuation, doGrad)
     }
+    bpGrad(valuation) {
+        console.error("No bpGrad function defined for this constraint " + this.constructor)
+        return
+    }
     variables() { return [] }
     installHolder(figure, holder, child) {
         if (child.parent !== undefined) {
@@ -1494,6 +1573,10 @@ class NearZero extends Constraint {
         super(figure)
         this.expr = expr
         this.cost = cost ? cost : 1
+    }
+    bpGrad(valuation) {
+        const v = evaluate(valuation, this.expr)
+        backprop(this.expr, 2*v)
     }
     getCost(valuation, doGrad) {
       if (!doGrad) {
