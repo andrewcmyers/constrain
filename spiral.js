@@ -8,8 +8,8 @@ with (figure) {
 var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
     h = handle("yellow", 300, 300)
 
-    equal(border.x(), figure.canvasSize().x())
-    equal(border.y(), figure.canvasSize().y())
+    equal(border.x(), figure.canvasRect().x())
+    equal(border.y(), figure.canvasRect().y())
     align("left", "top", h, border)
 
 class SpiralPiece extends Constrain.Square {
@@ -53,14 +53,14 @@ for (let i = 0; i < steps; i++) {
     bottomE = be
 }
 
-let c = nearZero(minus(border.w(), canvasSize().x()))
+let c = nearZero(minus(border.w(), canvasRect().x()))
 figure.currentValuation = updateValuation()
 figure.removeConstraints(c)
 
 let phi = Constrain.evaluate(divide(border.w(), border.h()), figure.currentValuation),
     t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow", undefined, 1, canvas.width/2, 100)
 align("center", "none", t, border)
-align("none", "top", t, figure.canvasSize())
+align("none", "top", t, figure.canvasRect())
 
 }
 Constrain.setupResize()

@@ -40,7 +40,7 @@ with (figure) {
         t2b = label("strain", 48, "Optima-Bold")
 
     equal(t1.y0(), 20),
-    equal(t1.x(), canvasSize().x())
+    equal(t1.x(), canvasRect().x())
     equal(s1.y0(), minus(t1.y0(), 10))
     equal(s1.x0(), t1.x0())
     equal(s1.w(), t2.w())
@@ -58,9 +58,9 @@ with (figure) {
         (bullet1 = label("Allows web pages to include 2D animated, interactive figures")),
         label("• Reveal.js presentations can contain Constrain animations"),
         bullet3 = label("• Good for diagrams in course notes and other online documents"))
-    equal(bullet1.x0(), plus(canvasSize().x0(), 100))
+    equal(bullet1.x0(), plus(canvasRect().x0(), 100))
     equal(bullet1.y0(), plus(t1.y1(), 40))
-    equal(bullet3.y1(), minus(canvasSize().y1(), 40))
+    equal(bullet3.y1(), minus(canvasRect().y1(), 40))
     ready()
     start()
 }

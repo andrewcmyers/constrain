@@ -687,7 +687,7 @@ class Figure {
 
 // ---- Utility methods for creating figure objects ----
 
-    canvasSize() {
+    canvasRect() {
         return new CanvasSize(this.figure)
     }
     rectangle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
@@ -2329,8 +2329,8 @@ class Handle extends InteractiveObject {
         this.isActive = true
         this.isVisible = true
         figure.positive(vx, 0)
-        figure.leq(vx, figure.canvasSize().x1())
-        figure.leq(vy, figure.canvasSize().y1())
+        figure.leq(vx, figure.canvasRect().x1())
+        figure.leq(vy, figure.canvasRect().y1())
     }
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame)) this.render()
@@ -2393,8 +2393,8 @@ class AdvanceButton extends InteractiveObject {
         this.variables = () => [vx, vy]
         figure.geq(vx,0)
         figure.geq(vy,0)
-        figure.leq(vx, figure.canvasSize().x1())
-        figure.leq(vy, figure.canvasSize().y1())
+        figure.leq(vx, figure.canvasRect().x1())
+        figure.leq(vy, figure.canvasRect().y1())
 
         this.size = 30
         this.fillStyle = "#ccc"

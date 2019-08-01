@@ -53,7 +53,7 @@
                 f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500).setAutoAdvance(true)
                 s1 = square("white"); s3 = drawAfter(f1, square("#fdd")); s2 = square("#dfd")
                 t1 = DOMElement("title")
-                align("center", "none", s1, fig1.canvasSize())
+                align("center", "none", s1, fig1.canvasRect())
                 align("center", "center", s1.lr(), s2)
                 equal(s1.w(), s2.w())
                 equal(s1.y0(), minus(t1.y0(), 10))
@@ -119,7 +119,7 @@
                     connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow").setLineWidth(2))
                 equal(p1.x(), s1.x())
                 equal(p2.x(), r1.x())
-                equal(p1.y(), average(s1.y(), canvasSize().y1()))
+                equal(p1.y(), average(s1.y(), canvasRect().y1()))
                 equal(p1.y(), p2.y1())
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
@@ -127,7 +127,7 @@
                 let e1 = drawAfter(f3, ellipse().setLineWidth(2).setFillStyle(grd)),
                     p3 = point(),
                     c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2]))
-                group(r1, s1, e1).setX(canvasSize().x())
+                group(r1, s1, e1).setX(canvasRect().x())
                 let t2 = drawAfter(f1a, label("green", 18, "Courier, Courier New, sans-serif", "black"))
                 pin(t2.center(), r1.center())
                 align("distribute", "center", s1, r1, e1)
@@ -202,9 +202,9 @@
                 with (fig3) {
                    background = rectangle().setFillStyle("black")
                    fireworks = drawAfter(f1, new Fireworks(fig3))
-                   align("center", "bottom", fireworks, canvasSize())
+                   align("center", "bottom", fireworks, canvasRect())
                    align("none", "abut", bullets3, fireworks)
-                   equal(fireworks.w(), min(300, times(0.5, canvasSize().w())))
+                   equal(fireworks.w(), min(300, times(0.5, canvasRect().w())))
                    pin(background.ul(), fireworks.ul())
                    pin(background.lr(), fireworks.lr())
                    ready()
@@ -250,7 +250,7 @@ equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
                     lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
                 drawAfter(f4, lh, lv)
 
-                equal(s3.w(), smooth(f4, 100, min(150, times(canvasSize().w(), 0.3)))) // w = 150
+                equal(s3.w(), smooth(f4, 100, min(150, times(canvasRect().w(), 0.3)))) // w = 150
                 pin(s1.ul(), s2.ul(), s3.ul())
                 equal(s1.w(), s2.w(), s3.w())
                 equal(s3.y0(), smooth(f4, 100, times(2, s3.h()))) // y0 = 2*h
