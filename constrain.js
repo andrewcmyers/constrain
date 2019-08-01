@@ -936,10 +936,11 @@ function getZeros(n) {
 var cacheHits = 0, cacheMisses = 0, variableCacheHits = 0, falseCacheHits = 0
 
 function statistics() {
-    return { cacheHits: cacheHits,
-             cacheMisses: cacheMisses,
-             variableCacheHits: variableCacheHits,
-             falseCacheHits: falseCacheHits }
+    return {
+        cacheHits: cacheHits,
+        cacheMisses: cacheMisses,
+        variableCacheHits: variableCacheHits
+    }
 }
 
 // The variables used by expression e.
@@ -1557,7 +1558,7 @@ class LayoutObject extends Expression {
         return []
     }
     // Any LayoutObject can be used as an expression, in which case it represents
-    // its (x,y) position.
+    // its (x,y) position. By default, LayoutObjects cache their results.
     evaluate(valuation, doGrad) {
       const v = this.checkCache(valuation, doGrad)
       if (v) return v
@@ -1731,6 +1732,9 @@ class Group extends GraphicalObject {
     h() { return new Minus(this.y1(), this.y0()) }
     render() {
         this.objects.forEach(o => o.renderIfVisible())
+    }
+    children() {
+        return this.objects
     }
 }
 
