@@ -548,14 +548,6 @@ class Figure {
         for (let i = 1; i < objects.length; i++) {
             r.push(this.equal(objects[0].x(), objects[i].x()))
             r.push(this.equal(objects[0].y(), objects[i].y()))
-            if (w === undefined && objects[i].w !== undefined) {
-                w = objects[i].w()
-                h = objects[i].h()
-            } else
-            if (w !== undefined && objects[i].w !== undefined) {
-                r.push(this.equal(w, objects[i].w()))
-                r.push(this.equal(h, objects[i].h()))
-            }
         }
         if (r.length == 1) return r[0]
         else return new ConstraintGroup(this, r)
