@@ -222,7 +222,7 @@ class Figure {
                 grad[i] = v.bpDiff
             }
         }
-        console.log(grad)
+        // console.log(grad)
         return [val, grad]
     }
 
@@ -1071,13 +1071,23 @@ class BackPropagation {
     // back-propagate the differential value d to expr
     propagate(expr, d) {
         // console.log("propagate: " + expr + " <- " + d)
+        /*
+        if (typeof d == "number" && isNaN(d) ||
+            typeof d == "object" && (isNaN(d[0]) || isNaN(d[1])))
+        {
+            console.error("Asked to propagate NaN")
+            return
+        }
+        */
         switch (typeof expr) {
             case "number": return // nothing to do
             case "function": console.error("something is broken")
             default:
                 if (expr.bpTask !== this)
                     console.error("expr does not belong to correct backprop")
-                expr.bpDiff = numeric.add(expr.bpDiff, d)
+
+                if (typeof d == "number") expr.bpDiff += d
+                else expr.bpDiff = numeric.add(expr.bpDiff, d)
         }
     }
     // Add this expression as something to minimize
@@ -1178,6 +1188,7 @@ class Times extends BinaryExpression {
     }
     opName() { return " * " }
 }
+
 class Divide extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a / b }
@@ -1321,8 +1332,9 @@ class Distance extends Expression {
               [x2, y2] = this.p2.evaluate(task.valuation),
               xd = x2 - x1,
               yd = y2 - y1,
-              sd = sqdist(xd, yd),
-              irad = 1/Math.sqrt(sd)
+              sd = sqdist(xd, yd)
+        if (sd <= 0) return
+        const irad = 1/Math.sqrt(sd)
         const d = this.bpDiff
         task.propagate(this.p1, [(x1 - x2) * irad * d, (y1-y2)*irad*d])
         task.propagate(this.p2, [(x2 - x1) * irad * d, (y2-y1)*irad*d])
@@ -1482,8 +1494,8 @@ class Linear extends Expression {
         }
         console.error("Don't know how to interpolate between " + v1 + " and " + v2)
     }
-    x() { return new Projection(this, 0) }
-    y() { return new Projection(this, 1) }
+    x() { return new Projection(this, 0, 2) }
+    y() { return new Projection(this, 1, 2) }
 
     backprop(task) {
       const b = this.interp(this.figure.animationTime), a = 1-b
@@ -1537,6 +1549,10 @@ class Projection extends Expression {
         const r = getZeros(this.num)
         r[this.index] = this.bpDiff
         task.propagate(this.expr, r)
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.expr)
+        task.exprs.unshift(this)
     }
 }
 
@@ -1838,12 +1854,18 @@ class LayoutObject extends Expression {
     }
     backprop(task) {
         const d = this.bpDiff
+        if (d == 0) return
         if (d.length != 2) {
             console.error("must backpropagate an (x,y) pair through a graphical object")
             return
         }
         task.propagate(this.x(), d[0])
         task.propagate(this.y(), d[1])
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.x_)
+        task.prepareBackProp(this.y_)
+        task.exprs.unshift(this)
     }
 
     toTop(v) {
@@ -1982,11 +2004,6 @@ class Point extends LayoutObject {
     }
     toString() {
         return "Point(" + this.x_ + "," + this.y_ + ")"
-    }
-    addDependencies(task) {
-        task.prepareBackProp(this.x_)
-        task.prepareBackProp(this.y_)
-        task.exprs.unshift(this)
     }
 }
 
@@ -2241,6 +2258,7 @@ class Line extends GraphicalObject {
         this.endArrowStyle = undefined
         this.arrowSize = Figure_defaults.ARROW_SIZE
     }
+    id() { return "line" }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.beginPath()
@@ -2294,6 +2312,7 @@ class HorzLine extends Line {
         super(figure, strokeStyle, lineWidth, x0, y, x1, y)
         figure.equal(this.h(), 0)
     }
+    id() { return "horzline" }
 }
 
 class VertLine extends Line {
@@ -2301,6 +2320,7 @@ class VertLine extends Line {
         super(figure, strokeStyle, lineWidth, x, y0, x, y1)
         figure.equal(this.w(), 0)
     }
+    id() { return "vertline" }
 }
 
 function sqdist(xd, yd) { return xd*xd + yd*yd }
@@ -2756,6 +2776,7 @@ class DOMElementBox extends LayoutObject {
         }
         this.figure = figure
     }
+    id() { return "DOMElement" }
     boundingRect() {
         return this.obj.getBoundingClientRect()
     }
@@ -2781,7 +2802,7 @@ function fullWindowCanvas(canvas) {
     const resizeCanvasToWindow = () => {
         const _width = window.outerWidth,
               _height = window.outerHeight
-        console.log("Resizing to " + _width + " " + _height)
+        // console.log("Resizing to " + _width + " " + _height)
         canvas.style.width = _width + "px"
         canvas.style.height = _height + "px"
     }
@@ -2798,6 +2819,7 @@ class CanvasRect extends LayoutObject {
         super()
         this.figure = figure
     }
+    id() { return "canvasRect" }
     x0() { return 0 }
     x1() { return new Global(() => {
         if (!this.figure.width) this.figure.setupCanvas()
