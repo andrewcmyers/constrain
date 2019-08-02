@@ -271,7 +271,7 @@ class Figure {
         return result.solution
     }
     solveConstraints(valuation) {
-        let tol = 0.001, doGrad = true, fig = this
+        let tol = 0.1, doGrad = true, fig = this
         if (valuation === undefined) {
             console.error("Need initial valuation")
             return
