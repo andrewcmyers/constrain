@@ -446,7 +446,6 @@ class Figure {
             return true
         } else {
             return false
-            console.log("At first frame already")
         }
     }
 
