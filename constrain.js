@@ -258,20 +258,20 @@ class Figure {
             return [cost, dcost]
         }
     }
-    updateValuation() {
+    updateValuation(tol) {
         this.numberVariables()
         if (this.currentValuation === undefined || this.currentValuation.length < this.activeVariables.length)
             this.resetValuation()
         if (this.currentValuation.length > this.activeVariables.length)
             this.currentValuation = this.currentValuation.slice(0, this.activeVariables.length)
-        const result = this.solveConstraints(this.currentValuation)
+        const result = this.solveConstraints(this.currentValuation, tol)
         // console.log("Solved for " + this.currentValuation.length + " variables with " +
         //  + this.Constraints.length + " constraints in " + result.iterations + " iterations:")
         // console.log(result)
         return result.solution
     }
-    solveConstraints(valuation) {
-        let tol = 0.1, doGrad = true, fig = this
+    solveConstraints(valuation, tol) {
+        let doGrad = true, fig = this
         if (valuation === undefined) {
             console.error("Need initial valuation")
             return
@@ -298,12 +298,13 @@ class Figure {
             return
         }
         if (this.renderNeeded) {
-            this.render(this.animationTime)
+            this.render(false)
             this.renderNeeded = false
         }
     }
     // Render this figure for current time t in [0,1] (fraction of completion of current frame)
-    render() {
+    // Parameter animating is whether this is just an intermediate animation frame
+    render(animating) {
         if (undefined === this.animationTime) {
             console.log("Animation time not set")
             this.animationTime = 0
@@ -312,7 +313,7 @@ class Figure {
         // console.log("Rendering figure at time " + t)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
-        this.currentValuation = this.updateValuation()
+        this.currentValuation = this.updateValuation(animating ? 0.1 : 0.001)
         this.renderFromValuation()
     }
     renderFromValuation() {
@@ -374,7 +375,7 @@ class Figure {
     // Reset this figure back to the first frame
     reset() {
         this.currentFrame = this.Frames[0]
-        this.render()
+        this.render(false)
     }
 
 // return the next frame or null if we are at the end already
@@ -425,7 +426,7 @@ class Figure {
                   () => {
                     this.ctx.globalAlpha = 1
                     this.reset()
-                    this.render()
+                    this.render(false)
                   })
             }
             return false
@@ -503,13 +504,13 @@ class Figure {
         if (this.currentFrame.length > 0) {
             // console.log("starting animated frame " + this.currentFrame.name + " in " + this.name)
             this.animate(this.currentFrame.length, 1000/this.frameRate,
-                () => this.render(),
+                () => this.render(true),
                 () => this.endCurrentFrame()
             )
         } else {
             // console.log("starting static frame " + this.currentFrame.name + " in " + this.name)
             delete this.interval
-            this.render()
+            this.render(false)
         }
     }
 
@@ -518,7 +519,7 @@ class Figure {
         // console.log("Ending frame " + this.currentFrame.name)
         this.animationTime = 1
         this.stopTimer()
-        this.render()
+        this.render(false)
         if (this.nextFrame() && this.nextFrame().autoAdvance) {
             this.advance()
         }
