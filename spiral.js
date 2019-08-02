@@ -63,6 +63,6 @@ align("center", "none", t, border)
 align("none", "top", t, figure.canvasRect())
 
 }
-Constrain.setupResize()
+Constrain.autoResize()
 figure.ready()
 figure.start()

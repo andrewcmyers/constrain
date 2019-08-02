@@ -292,13 +292,13 @@ class Figure {
     }
 
 // Rendering
-    renderIfDirty() {
+    renderIfDirty(animating) {
         if (this.currentFrame === undefined) {
             console.log("current frame not defined yet, skipping render")
             return
         }
         if (this.renderNeeded) {
-            this.render(false)
+            this.render(animating)
             this.renderNeeded = false
         }
     }
@@ -2687,7 +2687,7 @@ class Handle extends InteractiveObject {
         this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 0.1)
         this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 0.1)
         this.figure.renderNeeded = true
-        setTimeout(() => this.figure.renderIfDirty(), 0) // collapse multiple renders
+        setTimeout(() => this.figure.renderIfDirty(true), 0) // collapse multiple renders
     }
     active() { return true }
     visible() { return true }
@@ -2924,7 +2924,7 @@ function autoResize() {
       () =>
         Figures.forEach(f => {
             f.renderNeeded = true
-            setTimeout(() => f.renderIfDirty(), 1000/Figure_defaults.FRAMERATE) // collapse multiple renders
+            setTimeout(() => f.renderIfDirty(false), 1000/Figure_defaults.FRAMERATE) // collapse multiple renders
         })
         )
 }
