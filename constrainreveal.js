@@ -167,7 +167,7 @@ var ConstrainReveal = function() {
             Reveal.navigateRight = Reveal.navigateNext
             Reveal.navigateLeft = Reveal.navigatePrev
 
-            Constrain.setupResize()
+            Constrain.autoResize()
         }
     }
 }()
