@@ -75,7 +75,6 @@
                     s4 = drawAfter(f3, circle().setFillStyle('#ddf').setW(
                       smooth(f3, 0, plus(4, t2.w()))))
                 align("center", "center", t2, s4)
-               ready()
             }
           </script>
         </section>
@@ -104,7 +103,7 @@
                 drawAfter(f2, l1)
                 drawAfter(f2, l2)
                 equal(s1.x0(), bullets.x0())
-                equal(s1.y0(), bullets.y1())
+                equal(s1.y0(), plus(12, bullets.y1()))
                 equal(s1.w(), 100)
                 equal(r1.w(), s1.w())
                 equal(r1.x0(), plus(s1.x1(), 50))
@@ -134,7 +133,6 @@
                 equal(e1.w(), e1.h())
                 equal(p3.x(), e1.x()), equal(e1.w(), s1.w())
                 equal(p3.y(), minus(e1.y(), 50))
-                ready()
             }
           </script>
         </section>
@@ -207,7 +205,6 @@
                    equal(fireworks.w(), min(300, times(0.5, canvasRect().w())))
                    pin(background.ul(), fireworks.ul())
                    pin(background.lr(), fireworks.lr())
-                   ready()
                 }
               }
             </script>
@@ -259,7 +256,6 @@ equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
                 pin(lh.p2(), point(s3.x0(), s3.y()))
                 pin(lv.p1(), point(s3.x(), 0))
                 pin(lv.p2(), point(s3.x(), s3.y0()))
-                ready()
               }
             </script>
           </section>
