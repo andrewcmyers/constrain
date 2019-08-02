@@ -351,7 +351,7 @@ class Figure {
     // is not ready to render, it will just set the is_started
     // flag.
     start() {
-        console.log("starting figure")
+        // console.log("starting figure")
         this.is_started = true
         if (!this.is_ready) {
             console.log("figure is not ready to render yet.")
@@ -515,7 +515,7 @@ class Figure {
 
     endCurrentFrame() {
         if (this.currentFrame === undefined) return
-        console.log("Ending frame " + this.currentFrame.name)
+        // console.log("Ending frame " + this.currentFrame.name)
         this.animationTime = 1
         this.stopTimer()
         this.render()
@@ -623,7 +623,7 @@ class Figure {
     // starting from the third argument.
     align(horizontal, vertical, objlist) {
         const result = []
-        if (objlist.constructor != Array) 
+        if (!Array.isArray(objlist))
             objlist = argsToArray(arguments, 2)
         switch (horizontal) {
             case "none": break
@@ -1016,7 +1016,7 @@ function statistics() {
 
 // The variables used by expression e.
 function exprVariables(e) {
-    if (typeof e == NUMBER) return []
+    if (typeof e === NUMBER) return []
     if (e === undefined)
         console.error("undefined expr")
     if (!e.variables)
@@ -1029,6 +1029,7 @@ function exprVariables(e) {
 // g is its gradient with respect to all the variables.
 function evaluate(expr, valuation, doGrad) {
     // alert("evaluating " + expr)
+    /*
     if (expr === undefined) {
         console.error("undefined expr")
     }
@@ -1039,18 +1040,18 @@ function evaluate(expr, valuation, doGrad) {
         const v = expr.checkCache(valuation, doGrad)
         if (v) return v
     }
-    let n = valuation.length
+    */
     switch (typeof expr) {
-        case NUMBER: return !doGrad ? expr : [ expr, getZeros(n) ]
+        case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
             console.error("Tried to evaluate a function ${expr}. Did you forget to invoke a property using ()?")
             return 0;
         default:
-            if (expr.constructor === Array) {
+            if (Array.isArray(expr)) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
             } else {
                 if (CACHE_ALL_EVALUATIONS) {
-                    return expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
+                    return expr.currentValue = expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
                 } else {
                     const r = expr.evaluate(valuation, doGrad)
                     expr.currentValue = r
@@ -1101,8 +1102,8 @@ class BackPropagation {
             if (typeof d !== NUMBER && expr.bpDiff === undefined) {
                 console.error("bpDiff not defined")
             }
-            if (typeof d == NUMBER && isNaN(d) ||
-                typeof d == OBJECT_STR && (isNaN(d[0]) || isNaN(d[1])))
+            if (typeof d === NUMBER && isNaN(d) ||
+                typeof d === OBJECT_STR && (isNaN(d[0]) || isNaN(d[1])))
             {
                 console.error("Asked to propagate NaN")
                 return
@@ -1115,7 +1116,7 @@ class BackPropagation {
                 if (expr.bpTask !== this)
                     console.error("expr does not belong to correct backprop")
 
-                if (typeof d == NUMBER) expr.bpDiff += d
+                if (typeof d === NUMBER) expr.bpDiff += d
                 else expr.bpDiff = numeric.add(expr.bpDiff, d)
                 if (CHECK_NAN && isNaN(expr.bpDiff) && isNaN(expr.bpDiff[0])) {
                     console.error("oops")
@@ -1133,7 +1134,7 @@ class BackPropagation {
         expr.bpRoot = true
     }
     prepareBackProp(expr) {
-        if (typeof expr == NUMBER) return
+        if (typeof expr === NUMBER) return
         if (expr.bpTask === this) return // already visited
         expr.bpTask = this
         expr.addDependencies(this)
@@ -2807,8 +2808,10 @@ class Global extends Expression {
         this.fun = fun
     }
     evaluate(valuation, doGrad) {
+        const v0 = this.checkCache(valuation, doGrad)
+        if (v0) return v0
         const v = (this.fun)()
-        return doGrad ? [v, getZeros(valuation.length)] : v
+        return this.recordCache(valuation, doGrad, doGrad ? [v, getZeros(valuation.length)] : v)
     }
     backprop(task) {}
     addDependencies(task) {
