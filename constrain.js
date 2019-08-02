@@ -11,7 +11,8 @@ var Constrain = function() {
 
 const Figures = []
 const USE_BACKPROPAGATION = true,
-      CACHE_ALL_EVALUATIONS = false
+      CACHE_ALL_EVALUATIONS = false,
+      CHECK_NAN = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
 
@@ -201,20 +202,13 @@ class Figure {
     // respect to all active expressions, including variables, using
     // backpropagation. Two different backprop evaluations cannot happen
     // at the same time, because partial results are stored in the expression
-    // objects themselves, in their bpDiff field. The bpValuation field is
-    // used to ensure that old bpDiff results are cleared out.
+    // objects themselves, in their bpDiff field.
     //
     // Requires that all variables have been numbered appropriately.
-    bpGrad(valuation) {
-        const task = new BackPropagation(valuation)
+    bpGrad(valuation, task) {
         const n = valuation.length,
-              val = this.totalCost(valuation)
-        function handleConstraint(con) {
-            if (con.parent !== undefined || !con.active()) return
-            con.addToTask(task)
-        }
-        this.Constraints.forEach(handleConstraint)
-        task.run()
+              val = this.totalCost(valuation) // initalize node values
+        task.run(valuation)
         const grad = new Array(n)
         for (let i = 0; i < n; i++) {
             const v = this.activeVariables[i]
@@ -227,6 +221,14 @@ class Figure {
         }
         // console.log(grad)
         return [val, grad]
+    }
+
+    setupBackPropagation(task) {
+        function handleConstraint(con) {
+            if (con.parent !== undefined || !con.active()) return
+            con.addToTask(task)
+        }
+        this.Constraints.forEach(handleConstraint)
     }
 
     // Compute the total cost of the constraints, and the gradient of
@@ -274,9 +276,13 @@ class Figure {
             console.error("Need initial valuation")
             return
         }
+        const task = USE_BACKPROPAGATION ? new BackPropagation(this.activeVariables) : undefined
+        if (USE_BACKPROPAGATION) {
+            this.setupBackPropagation(task)
+        }
         if (doGrad) {
             if (USE_BACKPROPAGATION)
-                return uncmin((v,d) => { return d ? fig.bpGrad(v) : fig.totalCost(v) },
+                return uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
                             valuation, tol, 1000)
             else
                 return uncmin((v,d) => fig.costGrad(v,d), valuation, tol, 1000)
@@ -900,8 +906,7 @@ function eventInElement(event, element) {
 // An Expression is used to build constraints or and to express useful
 // quantities in terms of the solved-for values of variables.
 class Expression {
-    constructor() {
-    }
+    constructor() {}
     evaluate(valuation) {
         console.log("Don't know how to evaluate this expression")
         return 0
@@ -927,6 +932,14 @@ class Expression {
     }
     variables() { return [] }
     initDiff() { this.bpDiff = 0 }
+}
+
+function currentValue(e) {
+    if (typeof e === NUMBER) {
+        return e
+    } else {
+        return e.currentValue
+    }
 }
 
 // A Variable is solved for by the constraint solver. It does not
@@ -1039,7 +1052,9 @@ function evaluate(expr, valuation, doGrad) {
                 if (CACHE_ALL_EVALUATIONS) {
                     return expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
                 } else {
-                    return expr.evaluate(valuation, doGrad)
+                    const r = expr.evaluate(valuation, doGrad)
+                    expr.currentValue = r
+                    return r
                 }
             }
     }
@@ -1052,40 +1067,47 @@ function evaluate(expr, valuation, doGrad) {
 class BackPropagation {
     // create a task for computing differentials at the
     // specified valuation
-    constructor(valuation) {
-        this.valuation = valuation
+    constructor(variables) {
         // this.exprs contains all the expressions that are in the expression
         // AST/DAG, in reverse postorder so that they can be propagated in a single
         // left-to-right pass
         this.exprs = []
+        this.variables = variables
     }
 
-    run() {
-        const e = this.exprs;
-        for (let i = e.length - 1; i >= 0; i--) {
-            e[i].backprop(this)
+    run(valuation) {
+        this.valuation = valuation
+        const es = this.exprs, n = valuation.length, vs = this.variables
+        for (let i = 0; i < es.length; i++) {
+            const e = es[i]
+            if (!e.bpRoot) e.initDiff()
         }
-    }
-    queueLength() {
-        let c = 0, e = this.unpropagated
-        while (e) {
-            c++
-            e = e.next
+        for (let i = 0; i < n; i++) {
+            vs[i].initDiff()
         }
-        return c
+        for (let i = es.length - 1; i >= 0; i--) {
+            const e = es[i]
+            if (e.currentValue === undefined) {
+                console.log("Does not have a value: " + e)
+            }
+            e.backprop(this)
+        }
     }
 
     // back-propagate the differential value d to expr
     propagate(expr, d) {
         // console.log("propagate: " + expr + " <- " + d)
-        /*
-        if (typeof d == NUMBER && isNaN(d) ||
-            typeof d == OBJECT_STR && (isNaN(d[0]) || isNaN(d[1])))
-        {
-            console.error("Asked to propagate NaN")
-            return
+        if (CHECK_NAN) {
+            if (typeof d !== NUMBER && expr.bpDiff === undefined) {
+                console.error("bpDiff not defined")
+            }
+            if (typeof d == NUMBER && isNaN(d) ||
+                typeof d == OBJECT_STR && (isNaN(d[0]) || isNaN(d[1])))
+            {
+                console.error("Asked to propagate NaN")
+                return
+            }
         }
-        */
         switch (typeof expr) {
             case NUMBER: return // nothing to do
             case FUNCTION: console.error("something is broken")
@@ -1095,17 +1117,24 @@ class BackPropagation {
 
                 if (typeof d == NUMBER) expr.bpDiff += d
                 else expr.bpDiff = numeric.add(expr.bpDiff, d)
+                if (CHECK_NAN && isNaN(expr.bpDiff) && isNaN(expr.bpDiff[0])) {
+                    console.error("oops")
+                }
         }
     }
     // Add this expression as something to minimize
     addTask(expr, cost) {
         this.prepareBackProp(expr)
+        this.addExpr(expr)
+        if (isNaN(cost)) {
+            console.error("cost is not a number!?")
+        }
         expr.bpDiff = cost
+        expr.bpRoot = true
     }
     prepareBackProp(expr) {
         if (typeof expr == NUMBER) return
         if (expr.bpTask === this) return // already visited
-        expr.initDiff()
         expr.bpTask = this
         expr.addDependencies(this)
     }
@@ -1190,8 +1219,8 @@ class Times extends BinaryExpression {
         return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
     backprop(task) {
-        const a = evaluate(this.e1, task.valuation),
-              b = evaluate(this.e2, task.valuation),
+        const a = currentValue(this.e1),
+              b = currentValue(this.e2),
               d = this.bpDiff
         task.propagate(this.e1, d*b)
         task.propagate(this.e2, d*a)
@@ -1206,8 +1235,8 @@ class Divide extends BinaryExpression {
         return [a / b, numeric.add(numeric.mul(-a/(b*b), db),  numeric.mul(da, 1/b))]
     }
     backprop(task) {
-        const a = evaluate(this.e1, valuation),
-              b = evaluate(this.e2, valuation),
+        const a = currentValue(this.e1),
+              b = currentValue(this.e2),
               ib = 1/b,
               d = this.bpDiff
         task.propagate(this.e1, ib*d)
@@ -1216,10 +1245,12 @@ class Divide extends BinaryExpression {
     opName() { return "/" }
 }
 
+// A min or max
 class NaryExpression extends Expression {
     constructor(...arglist) {
         super()
         this.args = arglist.flat()
+        this.which = -1 // which subexpression was used?
     }
     evaluate(valuation, doGrad) {
         const vals = this.args.map(e => evaluate(e, valuation, doGrad))
@@ -1232,7 +1263,7 @@ class NaryExpression extends Expression {
         return result
     }
     backprop(task) {
-        const n = this.args.length, d = this.bpDiff, _ = evaluate(this, task.valuation)
+        const n = this.args.length, d = this.bpDiff
         task.propagate(this.args[this.which], d)
     }
     addDependencies(task) {
@@ -1267,7 +1298,7 @@ class Min extends NaryExpression {
         this.which = besti
         return [best, db]
     }
-    toString() { return "min(...)" }
+    toString() { return "min(" + this.args + ")" }
 }
 
 class Max extends NaryExpression {
@@ -1296,7 +1327,7 @@ class Max extends NaryExpression {
         this.which = besti
         return [best, db]
     }
-    toString() { return "max(...)" }
+    toString() { return "max(" + this.args + ")" }
 }
 
 class Distance extends Expression {
@@ -1307,15 +1338,15 @@ class Distance extends Expression {
     }
     evaluate(valuation, doGrad) {
       if (!doGrad) {
-        const [x1, y1] = this.p1.evaluate(valuation),
-              [x2, y2] = this.p2.evaluate(valuation),
+        const [x1, y1] = evaluate(this.p1, valuation),
+              [x2, y2] = evaluate(this.p2, valuation),
               xd = x2 - x1,
               yd = y2 - y1,
               rad = sqdist(xd, yd)
         return Math.sqrt(rad)
       }
-      const [p1, dp1] = this.p1.evaluate(valuation, true),
-            [p2, dp2] = this.p2.evaluate(valuation, true),
+      const [p1, dp1] = evaluate(this.p1, valuation, true),
+            [p2, dp2] = evaluate(this.p2, valuation, true),
             [x1, y1] = p1,
             [x2, y2] = p2,
             xd = x2 - x1,
@@ -1428,7 +1459,7 @@ class Sqr extends UnaryExpression {
         return [a*a, numeric.mul(2*a, da)]
     }
     backprop(task) {
-        const a = evaluate(this.expr, task.valuation),
+        const a = currentValue(this.expr),
               d = this.bpDiff
         task.propagate(this.expr, d*2*a)
     }
@@ -1511,13 +1542,19 @@ class Linear extends Expression {
     y() { return new Projection(this, 1, 2) }
 
     backprop(task) {
-      const b = this.interp(this.figure.animationTime), a = 1-b
-      task.propagate(this.e1, numeric.mul(a, this.bpDiff))
-      task.propagate(this.e2, numeric.mul(b, this.bpDiff))
+      const b = this.interp(this.figure.animationTime), a = 1-b,
+            figure = this.figure
+      if (figure.currentFrame.isBefore(this.frame))
+        task.propagate(this.e1, numeric.mul(a, this.bpDiff))
+      if (figure.currentFrame.isAfter(this.frame))
+        task.propagate(this.e2, numeric.mul(b, this.bpDiff))
     }
     addDependencies(task) {
-        task.prepareBackProp(this.e1)
-        task.prepareBackProp(this.e2)
+        const figure = this.figure
+        if (figure.currentFrame.isBefore(this.frame))
+            task.prepareBackProp(this.e1)
+        if (figure.currentFrame.isAfter(this.frame)) 
+            task.prepareBackProp(this.e2)
         task.addExpr(this)
     }
 }
@@ -1734,20 +1771,18 @@ class Constraint extends Temporal {
 class NearZero extends Constraint {
     constructor(figure, expr, cost) {
         super(figure)
-        this.expr = expr
+        this.expr = new Sqr(expr)
         this.cost = cost ? cost : 1
     }
     addToTask(task) {
-        let output = new Sqr(this.expr)
-        task.addTask(output, this.cost)
+        task.addTask(this.expr, this.cost)
     }
     getCost(valuation, doGrad) {
       if (!doGrad) {
         const v = evaluate(this.expr, valuation)
-        return v*v*this.cost
+        return v * this.cost
       } else {
-        const [v, dv] = evaluate(this.expr, valuation, true)
-        return [ v*v*this.cost, numeric.mul(2*v*this.cost, dv) ]
+        return evaluate(this.expr, valuation, true) * this.cost
       }
     }
     variables() {
@@ -2776,7 +2811,10 @@ class Global extends Expression {
         return doGrad ? [v, getZeros(valuation.length)] : v
     }
     backprop(task) {}
-    addDependencies(task) {}
+    addDependencies(task) {
+        // despite lack of backpropagation, this is needed to force initialization
+        task.addExpr(this)
+    }
 }
 
 class DOMElementBox extends LayoutObject {
