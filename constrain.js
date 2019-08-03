@@ -2241,7 +2241,12 @@ function drawArrowhead(ctx, x0, y0, x1, y1, s) {
     ctx.restore()
 }
 
-const bezier_k = 0.552; // Bezier constant for circles
+// Bezier constant for a circular arc: (4/3) tan(theta/4)
+function circularArcConstant(degrees) {
+    return (4/3) * Math.tan(degrees * Math.PI / 180 / 4)
+}
+
+const bezier_k = circularArcConstant(90)
 
 // Draw a circular "bullet" head of size s in the current style,
 // based at x0,y0 and heading toward x1, y1
