@@ -2079,6 +2079,10 @@ class Group extends GraphicalObject {
     children() {
         return this.objects
     }
+    align(horz, vert) {
+        this.figure.align(horz, vert, ...this.objects)
+        return this
+    }
 }
 
 class Rectangle extends GraphicalObject {
