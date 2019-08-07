@@ -313,7 +313,7 @@ class Figure {
         // console.log("Rendering figure at time " + t)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
-        this.currentValuation = this.updateValuation(animating ? 0.1 : 0.001)
+        this.currentValuation = this.updateValuation(animating ? 0.05 : 0.001)
         this.renderFromValuation()
     }
     renderFromValuation() {
@@ -358,8 +358,9 @@ class Figure {
             console.log("figure is not ready to render yet.")
             return
         }
+        if (this.Frames.length == 0)
+            this.Frames[0] = new Frame(this, "default")
         this.currentFrame = this.Frames[0]
-        if (!this.currentFrame) { console.error("No current frame!?") }
         if (document.readyState == "complete") {
             console.log("document is ready, starting first frame")
             this.startCurrentFrame()
@@ -563,6 +564,14 @@ class Figure {
 
 // ---- utility functions for creating constraints ----
 
+    costEqual(cost, ...e) {
+        if (e.length == 2) return new NearZero(this, new Minus(e[0], e[1]), cost)
+        const a = []
+        for (let i = 1; i < e.length; i++) {
+            a.push(new NearZero(this, new Minus(e[0], e[i])), cost)
+        }
+        return new ConstraintGroup(this, a)
+    }
     equal(...e) {
         if (e.length == 2) return new NearZero(this, new Minus(e[0], e[1]))
         const a = []
@@ -763,9 +772,23 @@ class Figure {
         return new AdvanceButton(this)
     }
 // ---- Utility methods for creating expressions ----
-    plus(x, y) { return new Plus(x, y) }
+    plus(...args) {
+        switch (args.length) {
+            case 0: return 0
+            case 1: return args[0]
+            case 2: return new Plus(...args)
+            default: return new Plus(args[0], ...args.slice(1))
+        }
+    }
     minus(x, y) { return new Minus(x, y) }
-    times(x, y) { return new Times(x, y) }
+    times(...args) {
+        switch (args.length) {
+            case 0: return 1
+            case 1: return args[0]
+            case 2: return new Times(...args)
+            default: return new Times(args[0], ...args.slice(1))
+        }
+    }
     divide(x, y) { return new Divide(x, y) }
     max(x, y) { return new Max(x, y) }
     min(x, y) { return new Min(x, y) }
@@ -1238,12 +1261,10 @@ class Divide extends BinaryExpression {
     opName() { return "/" }
 }
 
-// A min or max
 class NaryExpression extends Expression {
     constructor(...arglist) {
         super()
         this.args = arglist.flat()
-        this.which = -1 // which subexpression was used?
     }
     evaluate(valuation, doGrad) {
         const vals = this.args.map(e => evaluate(e, valuation, doGrad))
@@ -1255,7 +1276,7 @@ class NaryExpression extends Expression {
         this.args.forEach(e => { result = result.concat(exprVariables(e)) })
         return result
     }
-    backprop(task) {
+    backprop(task) { // for ops like min and max that depend on only on argument this.which
         const n = this.args.length, d = this.bpDiff
         task.propagate(this.args[this.which], d)
     }
@@ -1922,6 +1943,14 @@ class LayoutObject extends Expression {
     }
     toRight(v) {
         return new Point(new Plus(this.x1(), v), this.y())
+    }
+    inset(v) {
+        const r = new LayoutObject()
+        r.x = () => this.x()
+        r.y = () => this.y()
+        r.w = () => new Minus(this.w(), new Times(2, v))
+        r.h = () => new Minus(this.h(), new Times(2, v))
+        return r
     }
 }
 
