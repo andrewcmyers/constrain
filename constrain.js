@@ -773,6 +773,7 @@ class Figure {
     }
 // ---- Utility methods for creating expressions ----
     plus(...args) {
+        args = args.flat()
         switch (args.length) {
             case 0: return 0
             case 1: return args[0]
@@ -782,6 +783,7 @@ class Figure {
     }
     minus(x, y) { return new Minus(x, y) }
     times(...args) {
+        args = args.flat()
         switch (args.length) {
             case 0: return 1
             case 1: return args[0]
