@@ -633,12 +633,23 @@ class Figure {
                     result.push(this.equal(objlist[i].x(), objlist[0].x()))
                 break
             case "left":
+            case "L":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].x0(), objlist[0].x0()))
                 break
             case "right":
+            case "R":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].x1(), objlist[0].x1()))
+                break
+            case "left right":
+            case "right left":
+            case "LR":
+            case "RL":
+                for (let i = 1; i < objlist.length; i++) {
+                    result.push(this.equal(objlist[i].x0(), objlist[0].x0()))
+                    result.push(this.equal(objlist[i].x1(), objlist[0].x1()))
+                }
                 break
             case "abut":
                 for (let i = 1; i < objlist.length; i++)
@@ -657,12 +668,23 @@ class Figure {
                     result.push(this.equal(objlist[i].y(), objlist[0].y()))
                 break
             case "top":
+            case "T":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].y0(), objlist[0].y0()))
                 break
             case "bottom":
+            case "B":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].y1(), objlist[0].y1()))
+                break
+            case "top bottom":
+            case "bottom top":
+            case "TB":
+            case "BT":
+                for (let i = 1; i < objlist.length; i++) {
+                    result.push(this.equal(objlist[i].y0(), objlist[0].y0()))
+                    result.push(this.equal(objlist[i].y1(), objlist[0].y1()))
+                }
                 break
             case "abut":
                 for (let i = 1; i < objlist.length; i++)
