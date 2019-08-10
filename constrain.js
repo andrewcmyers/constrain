@@ -3024,6 +3024,64 @@ class Corners extends GraphicalObject {
     render() { drawCorners(this.figure) }
 }
 
+const GRAPH_COST = 0.001
+
+// How densely laid out nodes in a graph are, relative to their size, by default.
+const GRAPH_SPARSITY = 1
+
+class Graph {
+    constructor(figure) {
+        this.figure = figure
+        this.graphSparsity = GRAPH_SPARSITY
+        this.graphCost = GRAPH_COST
+        this.graphRepulsion = GRAPH_COST
+        this.horizontalLayout = false
+        this.nodes = []
+    }
+    addNode(g) {
+        const fig = this.figure
+        for (let i = 0; i < this.nodes.length; i++) {
+            if (g === this.nodes[i]) return false
+        }
+        this.nodes.push(g)
+        // nodes want to be far apart
+        for (let i = 0; i < this.nodes.length - 1; i++) {
+            const g2 = this.nodes[i];
+            fig.geq(fig.distance(g2, g), fig.min(fig.canvasRect().w(), fig.canvasRect().h()), fig.graphRepulsion)
+        }
+        // but keep the node inside the figure
+        fig.geq(g.x0(), 2)
+        fig.leq(g.x1(), fig.minus(fig.canvasRect().x1(), 2))
+        fig.geq(g.y0(), 2)
+        fig.leq(g.y1(), fig.minus(fig.canvasRect().y1(), 2))
+        return true
+    }
+    // Add an undirected edge between objects g1 and g2, adding the objects as nodes if necessary.
+    // Return the (straight) connector between them.
+    edge(g1, g2) {
+        const fig = this.figure
+        fig.addNode(g1)
+        fig.addNode(g2)
+        fig.costEqual(fig.graphCost, fig.distance(g1, g2),
+                                   fig.times(fig.plus(g1.w(), g1.h(), g2.w(), g2.h()),
+                                    fig.times(this.graphSparsity, 0.7)))
+        return fig.connector(g1, g2)
+    }
+    // Add an undirected edge between objects g1 and g2, adding the objects as nodes if necessary.
+    // Constraints are added to order them top-to-bottom or left-to-right, depending on the the figure's
+    // horizontalLayout property.
+    // Return the (straight) connector between the objects.
+    dedge(g1, g2) {
+        const fig = this.figure
+        if (this.horizontalLayout) {
+            fig.geq(fig.minus(g2.x0(), g1.x1()), fig.times(0.25, fig.plus(g1.w(), g2.w())), this.graphCost)
+        } else {
+            fig.geq(fig.minus(g2.y0(), g1.y1()), fig.times(0.25, fig.plus(g1.h(), g2.h())), this.graphCost)
+        }
+        return this.edge(g1, g2)
+    }
+}
+
 function autoResize() {
     window.addEventListener('resize',
       () =>
@@ -3048,6 +3106,7 @@ function autoResize() {
     Group: Group,
     ConstraintGroup: ConstraintGroup,
     Corners: Corners,
+    Graph: Graph,
     Minus: Minus,
     Plus: Plus,
     Times: Times,
