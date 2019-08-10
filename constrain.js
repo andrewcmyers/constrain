@@ -313,7 +313,7 @@ class Figure {
         // console.log("Rendering figure at time " + t)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
-        this.currentValuation = this.updateValuation(animating ? 0.1 : 0.001)
+        this.currentValuation = this.updateValuation(animating ? 0.05 : 0.001)
         this.renderFromValuation()
     }
     renderFromValuation() {
@@ -358,8 +358,9 @@ class Figure {
             console.log("figure is not ready to render yet.")
             return
         }
+        if (this.Frames.length == 0)
+            this.Frames[0] = new Frame(this, "default")
         this.currentFrame = this.Frames[0]
-        if (!this.currentFrame) { console.error("No current frame!?") }
         if (document.readyState == "complete") {
             console.log("document is ready, starting first frame")
             this.startCurrentFrame()
@@ -563,6 +564,14 @@ class Figure {
 
 // ---- utility functions for creating constraints ----
 
+    costEqual(cost, ...e) {
+        if (e.length == 2) return new NearZero(this, new Minus(e[0], e[1]), cost)
+        const a = []
+        for (let i = 1; i < e.length; i++) {
+            a.push(new NearZero(this, new Minus(e[0], e[i])), cost)
+        }
+        return new ConstraintGroup(this, a)
+    }
     equal(...e) {
         if (e.length == 2) return new NearZero(this, new Minus(e[0], e[1]))
         const a = []
@@ -624,12 +633,23 @@ class Figure {
                     result.push(this.equal(objlist[i].x(), objlist[0].x()))
                 break
             case "left":
+            case "L":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].x0(), objlist[0].x0()))
                 break
             case "right":
+            case "R":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].x1(), objlist[0].x1()))
+                break
+            case "left right":
+            case "right left":
+            case "LR":
+            case "RL":
+                for (let i = 1; i < objlist.length; i++) {
+                    result.push(this.equal(objlist[i].x0(), objlist[0].x0()))
+                    result.push(this.equal(objlist[i].x1(), objlist[0].x1()))
+                }
                 break
             case "abut":
                 for (let i = 1; i < objlist.length; i++)
@@ -648,12 +668,23 @@ class Figure {
                     result.push(this.equal(objlist[i].y(), objlist[0].y()))
                 break
             case "top":
+            case "T":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].y0(), objlist[0].y0()))
                 break
             case "bottom":
+            case "B":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].y1(), objlist[0].y1()))
+                break
+            case "top bottom":
+            case "bottom top":
+            case "TB":
+            case "BT":
+                for (let i = 1; i < objlist.length; i++) {
+                    result.push(this.equal(objlist[i].y0(), objlist[0].y0()))
+                    result.push(this.equal(objlist[i].y1(), objlist[0].y1()))
+                }
                 break
             case "abut":
                 for (let i = 1; i < objlist.length; i++)
@@ -763,9 +794,25 @@ class Figure {
         return new AdvanceButton(this)
     }
 // ---- Utility methods for creating expressions ----
-    plus(x, y) { return new Plus(x, y) }
+    plus(...args) {
+        args = args.flat()
+        switch (args.length) {
+            case 0: return 0
+            case 1: return args[0]
+            case 2: return new Plus(...args)
+            default: return new Plus(args[0], ...args.slice(1))
+        }
+    }
     minus(x, y) { return new Minus(x, y) }
-    times(x, y) { return new Times(x, y) }
+    times(...args) {
+        args = args.flat()
+        switch (args.length) {
+            case 0: return 1
+            case 1: return args[0]
+            case 2: return new Times(...args)
+            default: return new Times(args[0], ...args.slice(1))
+        }
+    }
     divide(x, y) { return new Divide(x, y) }
     max(x, y) { return new Max(x, y) }
     min(x, y) { return new Min(x, y) }
@@ -780,74 +827,118 @@ function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-// From numeric-1.2.6.js. Modified to allow f to supply the gradient directly.
-// Minimizes a function f(x) whose gradient is g(x)
-// fg(x) or fg(x, false) must return just f(x)
-// fg(x, true) must return [ f(x), (grad f)(x)] or [f(x0), undefined]. In the former case,
+// Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
+// various functions from that package.
+//
+// Returns: a local minimum of a function f(x) whose gradient is g(x), using
+//   a gradient descent search.
+// Requires: fg(x) or fg(x, false) must return just f(x),
+//   fg(x, true) must return [ f(x), (grad f)(x)] or [f(x0), undefined]. In the former case,
 //   (grad f) must return an array whose length is the same as x. In the latter
-//   case, a numeric gradient is computed using f, more expensively.
-function uncmin(fg,x0,tol,maxit,callback,options) {
-    var grad = numeric.gradient;
-    if(typeof options === "undefined") { options = {}; }
-    if(typeof tol === "undefined") { tol = 1e-8; }
-    function gradient(x) { return grad(fg, x); };
-    if(typeof maxit === "undefined") maxit = 1000;
-    x0 = numeric.clone(x0);
-    var n = x0.length;
-    var [f0, g0] = fg(x0, true);
-    var f1,g1,df0;
+//   case, a numeric gradient is computed using f, probably more expensively.
+//   If the computed gradient is infinite or contains NaN, the search terminates.
+// Effects: if callback is a function, it is invoked on each iteration of the algorithm.
+//    If it returns true, the search for the local minimum halts.
+function uncmin(fg, x0, tol, maxit, callback, options) {
+    const grad = numeric.gradient
+    if (options === undefined) options = {}
+    if (tol === undefined) tol = 1e-8
+    if (maxit === undefined) maxit = 1000
+
+    const gradient = x => grad(fg, x)
+    x0 = numeric.clone(x0)
+    const n = x0.length
+    let [f0, g0] = fg(x0, true)
+    let f1, g1, df0
     if (isNaN(f0))
-        throw new Error('uncmin: f(x0) is a NaN!');
-    if (g0 === undefined) g0 = gradient(x0);
-    // let g0_ = gradient(x0);
-    var max = Math.max, norm2 = numeric.norm2;
-    tol = max(tol,numeric.epsilon);
-    var step,H1 = options.Hinv || numeric.identity(n);
-    var dot = numeric.dot, inv = numeric.inv, sub = numeric.sub, add = numeric.add, ten = numeric.tensor, div = numeric.div, mul = numeric.mul;
-    var all = numeric.all, isfinite = numeric.isFinite, neg = numeric.neg;
-    var it=0,i,s,x1,y,Hy,Hs,ys,i0,t,nstep,t1,t2;
-    var msg = "";
-    while(it<maxit) {
-        if(typeof callback === FUNCTION) { if(callback(it,x0,f0,g0,H1)) { msg = "Callback returned true"; break; } }
-        if(!all(isfinite(g0))) { msg = "Gradient has Infinity or NaN"; break; }
-        step = neg(dot(H1,g0));
-        if(!all(isfinite(step))) { msg = "Search direction has Infinity or NaN"; break; }
-        nstep = norm2(step);
-        if(nstep < tol) { msg="Newton step smaller than tol"; break; }
-        t = 1;
-        df0 = dot(g0,step);
-        // line search
-        x1 = x0;
-        while(it < maxit) {
-            if(t*nstep < tol) { break; }
-            s = mul(step,t);
-            x1 = add(x0,s);
-            f1 = fg(x1);
-            if(f1-f0 >= 0.1*t*df0 || isNaN(f1)) {
-                t *= 0.5;
-                ++it;
-                continue;
+        throw new Error('uncmin: f(x0) is a NaN!')
+    if (g0 === undefined) g0 = gradient(x0)
+    const max = Math.max,
+        norm2 = numeric.norm2
+    tol = max(tol, numeric.epsilon)
+    let step, H1 = options.Hinv || numeric.identity(n)
+    const dot = numeric.dot,
+        inv = numeric.inv,
+        sub = numeric.sub,
+        add = numeric.add,
+        ten = numeric.tensor,
+        div = numeric.div,
+        mul = numeric.mul
+    const all = numeric.all,
+        isfinite = numeric.isFinite,
+        neg = numeric.neg
+    let it = 0,
+        i, s, x1, y, Hy, Hs, ys, i0, t, nstep, t1, t2
+    let msg = ""
+    while (it < maxit) {
+        if (typeof callback === FUNCTION) {
+            if (callback(it, x0, f0, g0, H1)) {
+                msg = "Callback returned true"
+                break
             }
-            break;
         }
-        if(t*nstep < tol) { msg = "Line search step size smaller than tol"; break; }
-        if(it === maxit) { msg = "maxit reached during line search"; break; }
-        [f1, g1] = fg(x1, true);
-        if (g1 === undefined) g1 = gradient(x1);
-        y = sub(g1,g0);
-        ys = dot(y,s);
-        Hy = dot(H1,y);
+        if (!all(isfinite(g0))) {
+            msg = "Gradient has Infinity or NaN"
+            break
+        }
+        step = neg(dot(H1, g0))
+        if (!all(isfinite(step))) {
+            msg = "Search direction has Infinity or NaN"
+            break
+        }
+        nstep = norm2(step)
+        if (nstep < tol) {
+            msg = "Newton step smaller than tol"
+            break
+        }
+        t = 1
+        df0 = dot(g0, step)
+        // line search
+        x1 = x0
+        while (it < maxit) {
+            if (t * nstep < tol) {
+                break
+            }
+            s = mul(step, t)
+            x1 = add(x0, s)
+            f1 = fg(x1)
+            if (f1 - f0 >= 0.1 * t * df0 || isNaN(f1)) {
+                t *= 0.5
+                it++
+                continue
+            }
+            break
+        }
+        if (t * nstep < tol) {
+            msg = "Line search step size smaller than tol"
+            break
+        }
+        if (it === maxit) {
+            msg = "maxit reached during line search"
+            break
+        }
+        [f1, g1] = fg(x1, true)
+        if (g1 === undefined) g1 = gradient(x1)
+        y = sub(g1, g0)
+        ys = dot(y, s)
+        Hy = dot(H1, y)
         H1 = sub(add(H1,
-                mul(
-                        (ys+dot(y,Hy))/(ys*ys),
-                        ten(s,s)    )),
-                div(add(ten(Hy,s),ten(s,Hy)),ys));
-        x0 = x1;
-        f0 = f1;
-        g0 = g1;
-        ++it;
+                     mul((ys + dot(y, Hy)) / (ys * ys),
+                         ten(s, s))),
+                 div(add(ten(Hy, s), ten(s, Hy)), ys))
+        x0 = x1
+        f0 = f1
+        g0 = g1
+        it++
     }
-    return {solution: x0, f: f0, gradient: g0, invHessian: H1, iterations:it, message: msg};
+    return {
+        solution: x0,
+        f: f0,
+        gradient: g0,
+        invHessian: H1,
+        iterations: it,
+        message: msg
+    }
 }
 
 // A frame of the animation. Frames can auto-advance
@@ -887,10 +978,10 @@ class Frame {
 }
 
 function eventInElement(event, element) {
-    var rect = element.getBoundingClientRect();
-    var x = event.clientX;
+    const rect = element.getBoundingClientRect();
+    const x = event.clientX;
     if (x < rect.left || x >= rect.right) return false;
-    var y = event.clientY;
+    const y = event.clientY;
     if (y < rect.top || y >= rect.bottom) return false;
     return true;
 }
@@ -1238,12 +1329,10 @@ class Divide extends BinaryExpression {
     opName() { return "/" }
 }
 
-// A min or max
 class NaryExpression extends Expression {
     constructor(...arglist) {
         super()
         this.args = arglist.flat()
-        this.which = -1 // which subexpression was used?
     }
     evaluate(valuation, doGrad) {
         const vals = this.args.map(e => evaluate(e, valuation, doGrad))
@@ -1255,7 +1344,7 @@ class NaryExpression extends Expression {
         this.args.forEach(e => { result = result.concat(exprVariables(e)) })
         return result
     }
-    backprop(task) {
+    backprop(task) { // for ops like min and max that depend on only on argument this.which
         const n = this.args.length, d = this.bpDiff
         task.propagate(this.args[this.which], d)
     }
@@ -1923,6 +2012,14 @@ class LayoutObject extends Expression {
     toRight(v) {
         return new Point(new Plus(this.x1(), v), this.y())
     }
+    inset(v) {
+        const r = new LayoutObject()
+        r.x = () => this.x()
+        r.y = () => this.y()
+        r.w = () => new Minus(this.w(), new Times(2, v))
+        r.h = () => new Minus(this.h(), new Times(2, v))
+        return r
+    }
 }
 
 // A GraphicalObject is centered at (x,y) and has a width w and height h.
@@ -2078,6 +2175,10 @@ class Group extends GraphicalObject {
     }
     children() {
         return this.objects
+    }
+    align(horz, vert) {
+        this.figure.align(horz, vert, ...this.objects)
+        return this
     }
 }
 
