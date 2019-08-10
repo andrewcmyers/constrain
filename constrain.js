@@ -97,7 +97,7 @@ class Figure {
     }
     setupListeners() {
         const canvas = this.canvas
-        this.canvas.addEventListener('mousedown', (e) => {
+        this.canvas.addEventListener('mousedown', e => {
             const x = e.offsetX, y = e.offsetY
             // alternatively: could use clientX/clientY with getBoundingClientRect
             this.interactives.forEach(i => {
@@ -105,24 +105,24 @@ class Figure {
             })
             return true
         })
-        this.canvas.addEventListener('mouseup', (e) => {
+        this.canvas.addEventListener('mouseup', e => {
             const x = e.offsetX, y = e.offsetY
             this.interactives.forEach(i => {
                 if (!i.mouseup(x, y, e)) return false
             })
             return true
         })
-        this.canvas.addEventListener('mousemove', (e) => {
+        this.canvas.addEventListener('mousemove', e => {
             if (!this.focused) return false
             const x = e.offsetX, y = e.offsetY
             return this.focused.mousemove(x, y, e)
         })
-        this.canvas.addEventListener('dblclick', (e) => {
+        this.canvas.addEventListener('dblclick', e => {
             console.log("Saw double-click, trying to stop it")
             e.stopPropagation()// XXX why doesn't this work?
             return false
         })
-        this.canvas.addEventListener('click', (e) => {
+        this.canvas.addEventListener('click', e => {
             e.stopPropagation() 
             return false
         })
