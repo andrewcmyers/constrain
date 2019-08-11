@@ -209,6 +209,32 @@
               }
             </script>
           </section>
+          <section><h2>Automatic Graph Layout</h2>
+          <canvas id="graphs"></canvas>
+          <script>
+            with (new Constrain.Figure("graphs")) {
+                with (g = makeGraph()) {
+                    const a = []
+                    g.sparsity = 2
+                    const n = 7
+                    for (let i = 1; i <= n; i++) {
+                        let row = 0, column = 0, j = i
+                        while (j <= n) { row++; j *=2 }
+                        column = i % j
+                        a[i] = circle().setW(30).setFillStyle("red")
+                        label(i.toString()).at(a[i])
+                        a[i].x().setHint(column)
+                        a[i].y().setHint(row)
+                        if (i > 1) {
+                            dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
+                        }
+                    }
+                    align("center", "none", a[1], canvasRect())
+                    equal(a[1].y(), times(canvasRect().h(), 0.3))
+                }
+            }
+            </script>
+          </section>
           <section><h2>Programming with Constrain</h2>
           <ul>
             <li>Web page can contain multiple Figures, each tied to a canvas.<br>

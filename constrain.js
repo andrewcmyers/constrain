@@ -146,7 +146,7 @@ class Figure {
         for (let i = 0; i < this.activeVariables.length; i++) {
             const v = this.activeVariables[i]
             if (v.hint != null) result[i] = v.hint
-            else result[i] = 100 // why not?
+            else result[i] = 100 + Math.random()// why not?
         }
         return result
     }
@@ -698,6 +698,14 @@ class Figure {
         }
         return result
     }
+    // keep g1 inside the bounds of g2
+    keepInside(g1, g2) {
+        return new ConstraintGroup(this,
+            this.leq(g1.x1(), g2.x1()),
+            this.leq(g1.y1(), g2.y1()),
+            this.geq(g1.x0(), g2.x0()),
+            this.geq(g1.y0(), g2.y0()))
+    }
 
     after(frame, ...objs) {
         if (objs.length == 1) return new After(this, frame, objs[0])
@@ -793,6 +801,9 @@ class Figure {
     advanceButton() {
         return new AdvanceButton(this)
     }
+    makeGraph() {
+        return new Graph(this)
+    }
 // ---- Utility methods for creating expressions ----
     plus(...args) {
         args = args.flat()
@@ -816,6 +827,8 @@ class Figure {
     divide(x, y) { return new Divide(x, y) }
     max(x, y) { return new Max(x, y) }
     min(x, y) { return new Min(x, y) }
+    sqrt(x) { return new Sqrt(x) }
+    sqr(x) { return new Sqr(x) }
     average(x, y) { return new Average(x, y) }
     distance(p1, p2) { return new Distance(p1, p2) }
     nearZero(e, cost) { return new NearZero(this, e, cost) }
@@ -1164,7 +1177,8 @@ class BackPropagation {
         const es = this.exprs, n = valuation.length, vs = this.variables
         for (let i = 0; i < es.length; i++) {
             const e = es[i]
-            if (!e.bpRoot) e.initDiff()
+            if (!e.bpRoot)
+                e.initDiff()
         }
         for (let i = 0; i < n; i++) {
             vs[i].initDiff()
@@ -1174,6 +1188,7 @@ class BackPropagation {
             if (e.currentValue === undefined) {
                 console.log("Does not have a value: " + e)
             }
+            if (e.bpDiff == 0) continue;
             e.backprop(this)
         }
     }
@@ -1864,7 +1879,8 @@ class NearZero extends Constraint {
         const v = evaluate(this.expr, valuation)
         return v * this.cost
       } else {
-        return evaluate(this.expr, valuation, true) * this.cost
+        const [x, dx] = evaluate(this.expr, valuation, true)
+        return [x*this.cost, dx*this.cost]
       }
     }
     variables() {
@@ -2918,6 +2934,27 @@ class Global extends Expression {
     }
 }
 
+class DebugExpr extends Expression {
+    constructor(name, expr) {
+        super()
+        this.expr = expr
+        this.name = name
+    }
+    evaluate(valuation, doGrad) {
+        const r = this.expr.evaluate(valuation, doGrad)
+        console.log("debug expr " + this.name + " evaluated to ", r)
+        return r
+    }
+    backprop(task) {
+        console.log("backpropagating " + this.bpDiff)
+        this.expr.backprop(task)
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.expr)
+        task.addExpr(this)
+    }
+}
+
 class DOMElementBox extends LayoutObject {
     constructor(figure, id) {
         super()
@@ -3024,19 +3061,28 @@ class Corners extends GraphicalObject {
     render() { drawCorners(this.figure) }
 }
 
+// How strongly graph constraints are enforced, by default. << 1 because these are supposed to
+// be soft constraints, i.e., regular constraints will "give" very little to accommodate them
 const GRAPH_COST = 0.001
 
 // How densely laid out nodes in a graph are, relative to their size, by default.
 const GRAPH_SPARSITY = 1
 
+const GRAPH_GRAVITY = 1
+const GRAPH_REPULSION = 1000
+const GRAPH_BRANCH_SPREAD = 1
+
 class Graph {
     constructor(figure) {
         this.figure = figure
-        this.graphSparsity = GRAPH_SPARSITY
-        this.graphCost = GRAPH_COST
-        this.graphRepulsion = GRAPH_COST
+        this.sparsity = GRAPH_SPARSITY
+        this.cost = GRAPH_COST
+        this.gravity = GRAPH_GRAVITY
+        this.repulsion = GRAPH_REPULSION
+        this.branchSpread = GRAPH_BRANCH_SPREAD
         this.horizontalLayout = false
         this.nodes = []
+        this.edges = []
     }
     addNode(g) {
         const fig = this.figure
@@ -3044,27 +3090,56 @@ class Graph {
             if (g === this.nodes[i]) return false
         }
         this.nodes.push(g)
-        // nodes want to be far apart
+        // nodes would like to be far apart
+        const cr = fig.canvasRect().inset(2),
+              sz = fig.min(cr.w(), cr.h())
         for (let i = 0; i < this.nodes.length - 1; i++) {
             const g2 = this.nodes[i];
-            fig.geq(fig.distance(g2, g), fig.min(fig.canvasRect().w(), fig.canvasRect().h()), fig.graphRepulsion)
+            fig.costEqual(this.cost, fig.divide(this.repulsion * this.sparsity, fig.max(fig.distance(g2, g), 0.1)), 0)
         }
         // but keep the node inside the figure
-        fig.geq(g.x0(), 2)
-        fig.leq(g.x1(), fig.minus(fig.canvasRect().x1(), 2))
-        fig.geq(g.y0(), 2)
-        fig.leq(g.y1(), fig.minus(fig.canvasRect().y1(), 2))
+        fig.keepInside(g, cr)
         return true
     }
     // Add an undirected edge between objects g1 and g2, adding the objects as nodes if necessary.
     // Return the (straight) connector between them.
     edge(g1, g2) {
         const fig = this.figure
-        fig.addNode(g1)
-        fig.addNode(g2)
-        fig.costEqual(fig.graphCost, fig.distance(g1, g2),
-                                   fig.times(fig.plus(g1.w(), g1.h(), g2.w(), g2.h()),
-                                    fig.times(this.graphSparsity, 0.7)))
+        this.addNode(g1)
+        this.addNode(g2)
+        fig.costEqual(this.cost,
+                        fig.distance(g1, g2),
+                        fig.times(fig.plus(g1.w(), g1.h(), g2.w(), g2.h()),
+                                    this.sparsity))
+        // add same-direction penalty
+        // console.log("cmparing aginst " + this.edges.length)
+        for (let i = 0; i < this.edges.length; i++) {
+            let [a, b] = this.edges[i]
+            let c = g1, d = g2
+            if (b === c) {
+                const t = b; b = a; a = t
+            } else if (b === d) {
+                const t = b; b = a; a = t
+                d = c
+            } else if (a === d) {
+                d = c
+            } else if (a !== c) {
+                continue
+            }
+            console.log("adding a branch constraint")
+// now a == c, have edges a -> b and a -> d
+// dot product = (b - a) * (d - a) = norm(b-a)*norm(d-a)*cos(theta)
+            let dot = fig.plus(fig.times(fig.minus(b.x(), a.x()), fig.minus(b.y(), a.y())),
+                               fig.times(fig.minus(d.x(), a.x()), fig.minus(d.y(), a.y())))
+            // dot = new DebugExpr("dot", dot)
+            let d1 = fig.distance(a, b), d2 = fig.distance(a, d),
+                normalization = fig.times(fig.max(d1, 0.001), fig.max(d2, 0.001)),
+            // normalization = new DebugExpr("normalization", normalization)
+                cos = fig.divide(dot, normalization)
+            // cos = new DebugExpr("cosine", cos)
+            fig.costEqual(this.cost * this.branchSpread, cos, -1)
+        }
+        this.edges.push([g1, g2])
         return fig.connector(g1, g2)
     }
     // Add an undirected edge between objects g1 and g2, adding the objects as nodes if necessary.
@@ -3074,9 +3149,9 @@ class Graph {
     dedge(g1, g2) {
         const fig = this.figure
         if (this.horizontalLayout) {
-            fig.geq(fig.minus(g2.x0(), g1.x1()), fig.times(0.25, fig.plus(g1.w(), g2.w())), this.graphCost)
+            fig.geq(fig.minus(g2.x0(), g1.x1()), fig.times(0.25, fig.plus(g1.w(), g2.w())), this.cost * this.gravity)
         } else {
-            fig.geq(fig.minus(g2.y0(), g1.y1()), fig.times(0.25, fig.plus(g1.h(), g2.h())), this.graphCost)
+            fig.geq(fig.minus(g2.y0(), g1.y1()), fig.times(0.25, fig.plus(g1.h(), g2.h())), this.cost * this.gravity)
         }
         return this.edge(g1, g2)
     }
