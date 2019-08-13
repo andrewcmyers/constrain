@@ -3024,6 +3024,7 @@ class Corners extends GraphicalObject {
     render() { drawCorners(this.figure) }
 }
 
+// How strongly graphs try to achieve their objectives, by default.
 const GRAPH_COST = 0.001
 
 // How densely laid out nodes in a graph are, relative to their size, by default.
