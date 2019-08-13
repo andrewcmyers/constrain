@@ -877,7 +877,7 @@ function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_BFGS2 = 2
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1
 const algorithm = UNCMIN_BFGS
 
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
@@ -970,12 +970,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         ys = dot(y, s)
         if (ys == 0) console.error("y.s == zero")
         switch (algorithm) {
-            case UNCMIN_BFGS2: // should be equal to BFGS
-                const sdsy = mul(s, 1/ys),
-                      yst = sub(idn, ten(y, sdsy)),
-                      syt = sub(idn, ten(sdsy, y))
-                H1 = add(mul(syt, mul(H1, yst)), ten(s,sdsy))
-                break
             case UNCMIN_BFGS:
                 Hy = dot(H1, y)
                 H1 = sub(add(H1,
