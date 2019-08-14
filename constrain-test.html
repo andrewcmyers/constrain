@@ -1,7 +1,6 @@
 <html>
 <head>
   <script src="numeric-1.2.6.js"></script>
-  <script src="uncmin.js"></script>
   <script src="constrain.js"></script>
   <style>
     canvas {
@@ -35,7 +34,7 @@ let s3 = square (grd, "black", 3),
     s2 = square ("yellow", "black", 3).setCornerRadius(10),
     s4 = square ("green", "black", 3).setLineDash([6,3]),
     h = handle(),
-    canvSize = canvasSize()
+    canvSize = canvasRect()
 
     align("abut", "top", s1, s2),
     align("none", "bottom", s1, s2)
@@ -86,12 +85,13 @@ let s3 = square (grd, "black", 3),
     const l2 = vertLine()
     align("right", "none", l2, txt)
     equal(l2.y0(), h.y0())
+    ready()
 }
 
 </script>
 </body>
 <script>
-    Constrain.setupResize()
+    Constrain.autoResize()
     figure.start()
 </script>
 </html>

@@ -40,25 +40,26 @@
             <li>Integrates into Reveal presentations with Constrain/Reveal</li>
             <li>Declarative constraint-based layout</li>
             <li class=fragment>Figure can have multiple frames</li>
-            <li class=fragment>Graphical content can constrain against HTML content</li>
+            <li class=fragment>Graphical content can constrain against <span id="html">HTML content</span></li>
           </ul>
-          <canvas class=fragment id="fig1" data-fragment-index=0 ></canvas>
+          <canvas id="fig1"></canvas>
           <script>
             var Figure = Constrain.Figure
             const fig1 = new Figure("fig1")
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
                 setLineWidth(2)
-                f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500)
+                setStrokeStyle('gray')
+                f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500).setAutoAdvance(true)
                 s1 = square("white"); s3 = drawAfter(f1, square("#fdd")); s2 = square("#dfd")
                 t1 = DOMElement("title")
-                align("center", "none", s1, fig1.canvasSize())
+                align("center", "none", s1, fig1.canvasRect())
                 align("center", "center", s1.lr(), s2)
                 equal(s1.w(), s2.w())
                 equal(s1.y0(), minus(t1.y0(), 10))
                 equal(s1.w(), plus(t1.w(), 10))
-                equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
                 equal(s3.x0(), smooth(f1, s2.x0(), s1.x0()))
+                equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
                 equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
                 drawAfter(f2,
                     l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30),
@@ -68,7 +69,12 @@
                           distance(s3.ll(), s3.ul())),
                     equal(distance(l1.p2(), s3.ul()),
                         smooth(f2, 0, new Constrain.Distance(s3.ul(), s3.lr())))
-               )
+                )
+                f3 = addFrame().setLength(500)
+                let t2 = DOMElement("html"),
+                    s4 = drawAfter(f3, circle().setFillStyle('#ddf').setW(
+                      smooth(f3, 0, plus(4, t2.w()))))
+                align("center", "center", t2, s4)
             }
           </script>
         </section>
@@ -84,9 +90,10 @@
           </ul>
           <canvas id="fig2"></canvas>
           <script>
-            const fig2 = new Figure("fig2")
+            const fig2 = new Constrain.Figure("fig2")
             var circ
             with (fig2) {
+                fig2.animateSolving = true
                 const [f0, f1, f1a, f2, f3, f4] = addFrame(null, "rectangles", "rect2", "lines", "circles", "connect")
                 const s1 = drawAfter(f1, square().setFillStyle("#f88")),
                       r1 = drawAfter(f1a, rectangle().setFillStyle("#8f8").setCornerRadius(8)),
@@ -97,7 +104,7 @@
                 drawAfter(f2, l1)
                 drawAfter(f2, l2)
                 equal(s1.x0(), bullets.x0())
-                equal(s1.y0(), bullets.y1())
+                equal(s1.y0(), plus(12, bullets.y1()))
                 equal(s1.w(), 100)
                 equal(r1.w(), s1.w())
                 equal(r1.x0(), plus(s1.x1(), 50))
@@ -112,7 +119,7 @@
                     connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow").setLineWidth(2))
                 equal(p1.x(), s1.x())
                 equal(p2.x(), r1.x())
-                equal(p1.y(), average(s1.y(), canvasSize().y1()))
+                equal(p1.y(), average(s1.y(), canvasRect().y1()))
                 equal(p1.y(), p2.y1())
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
@@ -120,7 +127,7 @@
                 let e1 = drawAfter(f3, ellipse().setLineWidth(2).setFillStyle(grd)),
                     p3 = point(),
                     c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2]))
-                group(r1, s1, e1).setX(canvasSize().x())
+                group(r1, s1, e1).setX(canvasRect().x())
                 let t2 = drawAfter(f1a, label("green", 18, "Courier, Courier New, sans-serif", "black"))
                 pin(t2.center(), r1.center())
                 align("distribute", "center", s1, r1, e1)
@@ -138,7 +145,7 @@
           </ul>
           <canvas id="fig3"></canvas>
           <script>
-              let fig3 = new Figure("fig3"),
+              let fig3 = new Constrain.Figure("fig3"),
                   Paths = Constrain.Paths
 
               class Fireworks extends Constrain.UserDefined {
@@ -194,13 +201,37 @@
                 with (fig3) {
                    background = rectangle().setFillStyle("black")
                    fireworks = drawAfter(f1, new Fireworks(fig3))
-                   align("center", "bottom", fireworks, canvasSize())
+                   align("center", "bottom", fireworks, canvasRect())
                    align("none", "abut", bullets3, fireworks)
-                   equal(fireworks.w(), min(300, times(0.5, canvasSize().w())))
+                   equal(fireworks.w(), min(300, times(0.5, canvasRect().w())))
                    pin(background.ul(), fireworks.ul())
                    pin(background.lr(), fireworks.lr())
                 }
               }
+            </script>
+          </section>
+          <section><h2>Automatic Graph Layout</h2>
+          <canvas id="graphs"></canvas>
+          <script>
+            with (new Constrain.Figure("graphs")) {
+                with (g = makeGraph()) {
+                    const a = [], n = 7
+                    g.sparsity = 2
+                    for (let i = 1; i <= n; i++) {
+                        let row = 0, column = 0, j = i
+                        while (j <= n) { row++; j *=2 }
+                        column = i % j
+                        a[i] = circle().setW(30).setFillStyle("red")
+                        label(i.toString()).at(a[i])
+                        if (i > 1) {
+                            dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
+                        }
+                    }
+                    geq(a[5].x(), a[2].x())
+                    align("center", "none", a[1], canvasRect())
+                    equal(a[1].y(), times(canvasRect().h(), 0.3))
+                }
+            }
             </script>
           </section>
           <section><h2>Programming with Constrain</h2>
@@ -229,7 +260,7 @@ with (fig) {
 
             <canvas id="programming"></canvas>
             <script>
-              let fig4 = new Figure("programming")
+              let fig4 = new Constrain.Figure("programming")
               with (fig4) {
                 let [f0, f1, f2, f3, _] = addFrame("start", "square", "yellow", "thick", null) 
                     f4 = addFrame("constraints").setLength(500)
@@ -241,7 +272,7 @@ with (fig) {
                     lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
                 drawAfter(f4, lh, lv)
 
-                equal(s3.w(), smooth(f4, 100, min(150, times(canvasSize().w(), 0.3)))) // w = 150
+                equal(s3.w(), smooth(f4, 100, min(150, times(canvasRect().w(), 0.3)))) // w = 150
                 pin(s1.ul(), s2.ul(), s3.ul())
                 equal(s1.w(), s2.w(), s3.w())
                 equal(s3.y0(), smooth(f4, 100, times(2, s3.h()))) // y0 = 2*h
@@ -259,7 +290,7 @@ with (fig) {
             <ul><li>
             <a href="https://github.com/andrewcmyers/constrain"><kbd>github.com/andrewcmyers/constrain</kbd></a>
             </li>
-            <li>Feedback, contributions welcome</li>
+            <li>Feedback, suggestions, contributions welcome</li>
             </ul>
           </section>
         </div> <!-- end of slides -->

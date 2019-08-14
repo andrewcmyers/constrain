@@ -18,9 +18,9 @@
 <script>
 const canvas = document.getElementsByTagName("canvas")[0]
 
-fullWindowCanvas(canvas)
+Constrain.fullWindowCanvas(canvas)
 
-const figure = new Figure(canvas)
+const figure = new Constrain.Figure(canvas)
 
 canvas.style.backgroundColor = "#eee"
 
@@ -39,31 +39,32 @@ with (figure) {
         t2 = label("Con", 48, "Optima-Bold")
         t2b = label("strain", 48, "Optima-Bold")
 
-    ensure(equal(t1.y0(), 20),
-           equal(t1.x(), canvasSize().x()),
-           equal(s1.y0(), new Minus(t1.y0(), 10)),
-           equal(s1.x0(), t1.x0()),
-           equal(s1.w(), t2.w()),
-           equal(s2.w(), t2b.w()),
-           equal(s2.y0(), s1.y0()),
-           equal(s2.x0(), s1.x1())
-    )
+    equal(t1.y0(), 20),
+    equal(t1.x(), canvasRect().x())
+    equal(s1.y0(), minus(t1.y0(), 10))
+    equal(s1.x0(), t1.x0())
+    equal(s1.w(), t2.w())
+    equal(s2.w(), t2b.w())
+    equal(s2.y0(), s1.y0())
+    equal(s2.x0(), s1.x1())
+
     t2.visible = t2b.visible = () => false
     figure.fillStyle = "black"
     figure.fontSize = 24
 
 
     let bullet1, bullet2, bullet3
-    ensure(aligned("left", "distribute",
+    align("left", "distribute",
         (bullet1 = label("Allows web pages to include 2D animated, interactive figures")),
         label("• Reveal.js presentations can contain Constrain animations"),
-        bullet3 = label("• Good for diagrams in course notes and other online documents")),
-      equal(bullet1.x0(), new Plus(canvasSize().x0(), 100)),
-      equal(bullet1.y0(), new Plus(t1.y1(), 40)),
-      equal(bullet3.y1(), new Minus(canvasSize().y1(), 40))
-    )
+        bullet3 = label("• Good for diagrams in course notes and other online documents"))
+    equal(bullet1.x0(), plus(canvasRect().x0(), 100))
+    equal(bullet1.y0(), plus(t1.y1(), 40))
+    equal(bullet3.y1(), minus(canvasRect().y1(), 40))
+    ready()
     start()
 }
+Constrain.autoResize()
 
 </script>
 </body>
