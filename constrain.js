@@ -133,6 +133,7 @@ class Figure {
     initObjects() {
         this.GraphicalObjects = []
         this.Constraints = []
+        this.Graphs = []
         this.Variables = []
         this.numVariables = 0
         this.interactives = []
@@ -329,6 +330,7 @@ class Figure {
         // console.log("Rendering figure at time " + t)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
+        this.Graphs.forEach(g => g.setupHints())
         let solved
         [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.001)
         this.renderFromValuation()
@@ -839,7 +841,9 @@ class Figure {
         return new AdvanceButton(this)
     }
     makeGraph() {
-        return new Graph(this)
+        const g = new Graph(this)
+        this.Graphs.push(g)
+        return g
     }
 // ---- Utility methods for creating expressions ----
     plus(...args) {
@@ -3171,6 +3175,7 @@ class Graph {
         this.repulsion = GRAPH_REPULSION
         this.branchSpread = GRAPH_BRANCH_SPREAD
         this.horizontalLayout = false
+        this.hintsComputed = false
         this.nodes = []
         this.edges = []
     }
@@ -3251,6 +3256,36 @@ class Graph {
         }
         return this.edge(g1, g2)
     }
+    setupHints() {
+        const graph = this
+        if (graph.hintsComputed) return
+        graph.hintsComputed = true
+        if (this.nodes.length == 0) return
+        let root = this.nodes[0], visited = []
+        function traverse(n, level, x, y) {
+            if (x === undefined) x = 200
+            if (y === undefined) y = 100
+            if (visited.includes(n)) return
+            visited.push(n)
+            let outgoing = 0
+            graph.edges.forEach(e => {
+                const [g1, g2] = e
+                if (g1 == n || g2 == n) outgoing++
+            })
+            let kid = 0
+            let spread = 128 >> level
+            graph.edges.forEach(e => {
+                let [g1, g2] = e
+                const n2 = g1 == n ? g2 : g1,
+                      x2 = x + (kid/outgoing - 0.5) * spread,
+                      y2 = y + 50
+                console.log("Hinting " + n2 + " at " + x2 + " , " + y2)
+                n2.x().setHint(x2); n2.y().setHint(y2)
+                traverse(n2, level+1, x2, y2)
+            })
+        }
+        traverse(root, 0, root.x().hint, root.y().hint)
+    }
 }
 
 function autoResize() {
@@ -3263,7 +3298,8 @@ function autoResize() {
         )
 }
 
-  return ({ Figure: Figure,
+  return ({
+    Figure: Figure,
     Figures: Figures,
     Frame: Frame,
     Variable: Variable,
