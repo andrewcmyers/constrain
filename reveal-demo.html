@@ -221,7 +221,7 @@
                         let row = 0, column = 0, j = i
                         while (j <= n) { row++; j *=2 }
                         column = i % j
-                        a[i] = circle().setW(30).setFillStyle("red").setName("C" + i)
+                        a[i] = circle().setW(times(canvasRect().h(), 0.03)).setFillStyle("red").setName("C" + i)
                         label(i.toString()).at(a[i])
                         if (i > 1) dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
                     }
