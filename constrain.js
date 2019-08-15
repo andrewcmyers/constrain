@@ -3193,9 +3193,9 @@ const GRAPH_COST = 0.01
 // How densely laid out nodes in a graph are, relative to their size, by default.
 const GRAPH_SPARSITY = 1
 
-const GRAPH_GRAVITY = 50
+const GRAPH_GRAVITY = 40
 const GRAPH_REPULSION = 1000
-const GRAPH_BRANCH_SPREAD = 500
+const GRAPH_BRANCH_SPREAD = 400
 
 class Graph {
     constructor(figure) {
