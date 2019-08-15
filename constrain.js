@@ -1959,11 +1959,13 @@ class Constraint extends Temporal {
     }
 }
 
-class NearZero extends Constraint {
-    constructor(figure, expr, cost) {
+// A Loss just directly expresses the cost that
+// it will report. So it can report negative costs.
+class Loss extends Constraint {
+    constructor(figure, expr) {
         super(figure)
-        this.expr = new Sqr(expr)
-        this.cost = cost || 1
+        this.expr = expr
+        this.cost = 1
     }
     addToTask(task) {
         task.addTask(this.expr, this.cost)
@@ -1979,6 +1981,15 @@ class NearZero extends Constraint {
     }
     variables() {
         return exprVariables(this.expr)
+    }
+}
+
+// A NearZero constraint tries to ensure that its expression is as close to
+// zero as possible.
+class NearZero extends Loss {
+    constructor(figure, expr, cost) {
+        super(figure, new Sqr(expr))
+        this.cost = cost || 1
     }
 }
 
@@ -3182,7 +3193,7 @@ const GRAPH_COST = 0.01
 // How densely laid out nodes in a graph are, relative to their size, by default.
 const GRAPH_SPARSITY = 1
 
-const GRAPH_GRAVITY = 1
+const GRAPH_GRAVITY = 50
 const GRAPH_REPULSION = 1000
 const GRAPH_BRANCH_SPREAD = 500
 
@@ -3273,7 +3284,8 @@ class Graph {
         if (this.horizontalLayout) {
             fig.geq(fig.minus(g2.x0(), g1.x1()), fig.times(0.25, fig.plus(g1.w(), g2.w()))).changeCost(this.cost * this.gravity)
         } else {
-            fig.geq(fig.minus(g2.y0(), g1.y1()), fig.times(0.25, fig.plus(g1.h(), g2.h()))).changeCost(this.cost * this.gravity)
+            new Loss(fig, new Minus(g1.y(), g2.y())).changeCost(this.cost * this.gravity)
+            // fig.geq(fig.minus(g2.y0(), g1.y1()), fig.times(0.25, fig.plus(g1.h(), g2.h()))).changeCost(this.cost * this.gravity)
         }
         return this.edge(g1, g2)
     }
