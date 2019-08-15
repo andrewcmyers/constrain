@@ -215,8 +215,8 @@
           <script>
             with (new Constrain.Figure("graphs")) {
                 with (g = makeGraph()) {
-                    const a = [], n = 7
-                    g.sparsity = 2
+                    const a = [], n = 15
+                    g.sparsity = 1
                     for (let i = 1; i <= n; i++) {
                         let row = 0, column = 0, j = i
                         while (j <= n) { row++; j *=2 }
@@ -229,7 +229,7 @@
                     equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
                     a[1].x().setHint(g.figure.canvas.width/2)
                     a[1].y().setHint(g.figure.canvas.height/3)
-                    g.figure.setAnimatedSolving(false)
+                    g.figure.setAnimatedSolving(true)
                 }
             }
             </script>

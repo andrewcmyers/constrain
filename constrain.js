@@ -339,7 +339,7 @@ class Figure {
         [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.0001)
         this.renderFromValuation()
         if (!solved) {
-            setTimeout(() => this.render(animating), 20) // XXX might be nice to use Promise
+            setTimeout(() => this.render(animating), 10) // XXX might be nice to use Promise
         } else {
             if (this.animatedSolving) console.log("solved")
         }
@@ -948,7 +948,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             msg = "Newton step smaller than tol"
             break
         }
-        t = 1
+        t = 1.0
         df0 = dot(g0, step)
         // line search
         x1 = x0
@@ -959,7 +959,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             s = mul(step, t)
             x1 = add(x0, s)
             f1 = fg(x1)
-            if (f1 - f0 >= 0.1 * t * df0 || isNaN(f1)) {
+            if (f1 - f0 >= 0 * t * df0 || isNaN(f1)) {
                 t *= 0.5
                 it++
                 continue
@@ -979,7 +979,10 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         y = sub(g1, g0)
         const ys = dot(y, s), Hy = dot(H1, y)
         if (ys == 0) console.error("y.s == zero")
-        if (ys < 0) console.error("warning: y.s is negative")
+        if (ys < 0) {
+            console.error("warning: y.s is negative")
+            H1 = numeric.identity(n)
+        }
         switch (algorithm) {
             case UNCMIN_BFGS:
                 H1 = sub(add(H1,
@@ -992,7 +995,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                       t1 = mul(ten(Hy, Hy), -1/yHy),
                       t2 = mul(ys, ten(s,s))
                 H1 = add(add(H1, t1), t2)
-                // H1 = add(H1, t1)
                 break
             case UNCMIN_GRADIENT: break
         }
@@ -3294,7 +3296,7 @@ class Graph {
                 if (g1 == n) {
                     const n2 = g1 == n ? g2 : g1,
                         x2 = x + ((++kid)/(outgoing + 1) - 0.5) * spread + Math.random(),
-                        y2 = y + 100
+                        y2 = y + 100 * graph.sparsity
                     n2.x().setHint(x2); n2.y().setHint(y2)
                     traverse(n2, level+1, x2, y2)
                 }
