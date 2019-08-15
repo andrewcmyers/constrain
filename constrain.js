@@ -68,7 +68,7 @@ class Figure {
         this.is_started = false // whether a request for rendering has occurred
         this.setupListeners()
         this.initObjects()
-        this.scale = window.devicePixelRatio ? window.devicePixelRatio : 1; // canvas units per HTML "pixel"
+        this.scale = window.devicePixelRatio || 1; // canvas units per HTML "pixel"
         this.time = 0
         this.currentFrame = undefined // current frame object
         this.frameRate = Figure_defaults.FRAMERATE
@@ -133,6 +133,7 @@ class Figure {
     initObjects() {
         this.GraphicalObjects = []
         this.Constraints = []
+        this.Graphs = []
         this.Variables = []
         this.numVariables = 0
         this.interactives = []
@@ -293,17 +294,21 @@ class Figure {
         let result, callback, maxit = 2000
         if (this.animatedSolving) {
             callback = (it, x0, f0, g0, H1) => true
+        } else {
+            this.invHessian
         }
         if (doGrad) {
             if (USE_BACKPROPAGATION)
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
-                            valuation, tol, maxit, callback)
+                            valuation, tol, maxit, callback, {Hinv: this.invHessian})
             else
-                result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback)
+                result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback, {Hinv: this.invHessian})
         } else {
-            result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit)
+            result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, {Hinv: this.invHessian})
         }
         // console.log(result)
+        this.invHessian = result.invHessian
+        if (result.message != CALLBACK_RETURNED_TRUE) console.log(result.message)
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE]
     }
 
@@ -329,22 +334,15 @@ class Figure {
         // console.log("Rendering figure at time " + t)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
+        this.Graphs.forEach(g => g.setupHints())
         let solved
-        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.001)
+        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.0001)
         this.renderFromValuation()
         if (!solved) {
-            setTimeout(() => this.render(animating), 10)
+            setTimeout(() => this.render(animating), 20) // XXX might be nice to use Promise
         } else {
             if (this.animatedSolving) console.log("solved")
         }
-        /*
-        new Promise((resolve, rect) => {
-            this.renderFromValuation()
-            resolve()
-        }).then(() => {
-            / if (!solved) this.render(animating)
-        })
-        */
     }
 
     // Render the figure using the current valuation, whatever it is.
@@ -451,7 +449,7 @@ class Figure {
             if (this.repeat) {
                 this.animate(1000, 80,
                   () => {
-                    const col = this.fadeColor ? this.fadeColor : 'white'
+                    const col = this.fadeColor || 'white'
                     this.ctx.fillStyle = col
                     this.ctx.globalAlpha = 0.3
                     this.ctx.fillRect(0, 0, this.width, this.height)
@@ -565,6 +563,10 @@ class Figure {
         }
     }
 
+    setAnimatedSolving(t) {
+        this.animatedSolving = t
+    }
+
 // ---- default style control: some objects will use figure defaults if style parameters are not provided ----
 
     // Set the default fill style
@@ -623,8 +625,13 @@ class Figure {
     positive(e) {
         return this.geq(e, 0)
     }
-    leq(e1, e2, c) {
-        return new NearZero(this, new Relu(new Minus(e1, e2)), c)
+    leq(...args) {
+        if (args.length == 2) return new NearZero(this, new Relu(new Minus(args[0], args[1])))
+        const a = []
+        for (let i = 1; i < args.length; i++) {
+            a.push(new NearZero(this, new Relu(new Minus(args[i-1], args[i]))))
+        }
+        return new ConstraintGroup(this, a)
     }
 
     // constraints to pin all the objects at the same location
@@ -839,7 +846,9 @@ class Figure {
         return new AdvanceButton(this)
     }
     makeGraph() {
-        return new Graph(this)
+        const g = new Graph(this)
+        this.Graphs.push(g)
+        return g
     }
 // ---- Utility methods for creating expressions ----
     plus(...args) {
@@ -877,7 +886,7 @@ function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2
 const algorithm = UNCMIN_BFGS
 
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
@@ -916,12 +925,13 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         add = numeric.add,
         ten = numeric.tensor,
         div = numeric.div,
-        mul = numeric.mul
+        mul = numeric.mul,
+        transpose = numeric.transpose
     const all = numeric.all,
         isfinite = numeric.isFinite,
         neg = numeric.neg
     let it = 0,
-        i, s, x1, y, Hy, Hs, ys, i0, t, nstep, t1, t2
+        i, s, x1, y, Hs, i0, t, nstep, t1, t2
     let msg = ""
     while (it < maxit) {
         if (!all(isfinite(g0))) {
@@ -956,7 +966,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             }
             break
         }
-        if (t * nstep < tol) {
+        if (t * nstep < tol/10) {
             msg = "Line search step size smaller than tol"
             break
         }
@@ -967,15 +977,22 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         [f1, g1] = fg(x1, true)
         if (g1 === undefined) g1 = gradient(x1)
         y = sub(g1, g0)
-        ys = dot(y, s)
+        const ys = dot(y, s), Hy = dot(H1, y)
         if (ys == 0) console.error("y.s == zero")
+        if (ys < 0) console.error("warning: y.s is negative")
         switch (algorithm) {
             case UNCMIN_BFGS:
-                Hy = dot(H1, y)
                 H1 = sub(add(H1,
                             mul((ys + dot(y, Hy)) / (ys * ys),
                                 ten(s, s))),
-                        div(add(ten(Hy, s), ten(s, Hy)), ys))
+                         div(add(ten(Hy, s), ten(s, Hy)), ys))
+                break
+            case UNCMIN_DFP:
+                const yHy = dot(y, Hy),
+                      t1 = mul(ten(Hy, Hy), -1/yHy),
+                      t2 = mul(ys, ten(s,s))
+                H1 = add(add(H1, t1), t2)
+                // H1 = add(H1, t1)
                 break
             case UNCMIN_GRADIENT: break
         }
@@ -1608,7 +1625,7 @@ class Sqrt extends UnaryExpression {
         let a = evaluate(this.expr, task.valuation)
         const d = this.bpDiff
         if (a <= 0) {
-            console.error("Trying to take the sqrt of a nonpositive number")
+            console.log("Trying to take the sqrt of a nonpositive number")
             a = Math.random()/1000 + 0.001
         }
         task.propagate(this.expr, d * 0.5/a)
@@ -1939,7 +1956,7 @@ class NearZero extends Constraint {
     constructor(figure, expr, cost) {
         super(figure)
         this.expr = new Sqr(expr)
-        this.cost = cost ? cost : 1
+        this.cost = cost || 1
     }
     addToTask(task) {
         task.addTask(this.expr, this.cost)
@@ -2306,7 +2323,7 @@ class Rectangle extends GraphicalObject {
         }
         if (this.strokeStyle) {
             ctx.strokeStyle = this.strokeStyle
-            ctx.setLineDash(this.lineDash ? this.lineDash : [])
+            ctx.setLineDash(this.lineDash || [])
             ctx.stroke()
         }
         ctx.restore()
@@ -2399,7 +2416,7 @@ class Ellipse extends GraphicalObject {
         }
         if (this.strokeStyle) {
             ctx.strokeStyle = this.strokeStyle
-            ctx.setLineDash(this.lineDash ? this.lineDash : [])
+            ctx.setLineDash(this.lineDash || [])
             ctx.stroke()
         }
         ctx.restore()
@@ -2512,7 +2529,7 @@ class Line extends GraphicalObject {
                 cosa = xd/d, sina = yd/d
         if (this.fillstyle) ctx.fillStyle = this.fillStyle
         else ctx.fillStyle = this.strokeStyle;
-        ctx.setLineDash(this.lineDash ? this.lineDash : [])
+        ctx.setLineDash(this.lineDash || [])
         let [x2, y2] = drawLineEndDir(ctx, this.startArrowStyle, this.arrowSize, x0, y0, -cosa, -sina),
             [x3, y3] = drawLineEndDir(ctx, this.endArrowStyle, this.arrowSize, x1, y1, cosa, sina)
 
@@ -2604,7 +2621,7 @@ class Connector extends GraphicalObject {
         [ pts[m].x, pts[m].y ] = objs[m].bestConnectionPt(pts[m-1].x, pts[m-1].y, valuation);
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
-        ctx.setLineDash(this.lineDash ? this.lineDash : [])
+        ctx.setLineDash(this.lineDash || [])
         if (this.fillStyle) ctx.fillStyle = this.fillStyle
         if (this.startArrowStyle) {
             [pts[0].x, pts[0].y] = 
@@ -3160,7 +3177,7 @@ const GRAPH_SPARSITY = 1
 
 const GRAPH_GRAVITY = 1
 const GRAPH_REPULSION = 1000
-const GRAPH_BRANCH_SPREAD = 5
+const GRAPH_BRANCH_SPREAD = 500
 
 class Graph {
     constructor(figure) {
@@ -3171,6 +3188,7 @@ class Graph {
         this.repulsion = GRAPH_REPULSION
         this.branchSpread = GRAPH_BRANCH_SPREAD
         this.horizontalLayout = false
+        this.hintsComputed = false
         this.nodes = []
         this.edges = []
     }
@@ -3233,7 +3251,8 @@ class Graph {
             let normalization = new Times(new Max(d1, 0.001), new Max(d2, 0.001)),
                 cos = new Divide(dot, normalization)
             // cos = new DebugExpr("cos", cos)
-            fig.costEqual(this.cost * this.branchSpread, new Sqrt(new Minus(1, cos)), 2)
+            fig.costEqual(this.cost * this.branchSpread * this.sparsity,
+                            new Sqrt(new Minus(1, cos)), 2)
         }
         this.edges.push([g1, g2])
         return fig.connector(g1, g2)
@@ -3251,6 +3270,38 @@ class Graph {
         }
         return this.edge(g1, g2)
     }
+    setupHints() {
+        const graph = this
+        if (graph.hintsComputed) return
+        graph.hintsComputed = true
+        if (this.nodes.length == 0) return
+        let root = this.nodes[0], visited = []
+        function traverse(n, level, x, y) {
+            if (x === undefined) x = 200
+            if (y === undefined) y = 100
+            if (visited.includes(n)) return
+            console.log("Hinting " + n + " at " + x + ", " + y)
+            visited.push(n)
+            let outgoing = 0
+            graph.edges.forEach(e => {
+                const [g1, g2] = e
+                if (g1 == n) outgoing++
+            })
+            let kid = 0
+            let spread = 256 >> level
+            graph.edges.forEach(e => {
+                let [g1, g2] = e
+                if (g1 == n) {
+                    const n2 = g1 == n ? g2 : g1,
+                        x2 = x + ((++kid)/(outgoing + 1) - 0.5) * spread + Math.random(),
+                        y2 = y + 100
+                    n2.x().setHint(x2); n2.y().setHint(y2)
+                    traverse(n2, level+1, x2, y2)
+                }
+            })
+        }
+        traverse(root, 0, root.x().hint, root.y().hint)
+    }
 }
 
 function autoResize() {
@@ -3263,7 +3314,8 @@ function autoResize() {
         )
 }
 
-  return ({ Figure: Figure,
+  return ({
+    Figure: Figure,
     Figures: Figures,
     Frame: Frame,
     Variable: Variable,

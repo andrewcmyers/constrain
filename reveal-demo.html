@@ -221,15 +221,15 @@
                         let row = 0, column = 0, j = i
                         while (j <= n) { row++; j *=2 }
                         column = i % j
-                        a[i] = circle().setW(30).setFillStyle("red")
+                        a[i] = circle().setW(30).setFillStyle("red").setName("C" + i)
                         label(i.toString()).at(a[i])
-                        if (i > 1) {
-                            dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
-                        }
+                        if (i > 1) dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
                     }
-                    geq(a[5].x(), a[2].x())
-                    align("center", "none", a[1], canvasRect())
-                    equal(a[1].y(), times(canvasRect().h(), 0.3))
+                    equal(a[1].x(), canvasRect().x()).changeCost(0.001)
+                    equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
+                    a[1].x().setHint(g.figure.canvas.width/2)
+                    a[1].y().setHint(g.figure.canvas.height/3)
+                    g.figure.setAnimatedSolving(false)
                 }
             }
             </script>
@@ -253,9 +253,9 @@ with (fig) {
             </li>
             <li class=fragment>Variable values are determined by solving constraints:
             <pre>
-equal(s.w(), 150)    // w = 150
-equal(s.x0(), s.w()) // x0 = w
-equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
+  equal(s.w(), 150)    // w = 150
+  equal(s.x0(), s.w()) // x0 = w
+  equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
             </li>
 
             <canvas id="programming"></canvas>
