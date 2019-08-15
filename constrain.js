@@ -150,7 +150,7 @@ class Figure {
         for (let i = 0; i < this.activeVariables.length; i++) {
             const v = this.activeVariables[i]
             if (v.hint != null) result[i] = v.hint
-            else result[i] = 100 + Math.random()*50// why not?
+            else result[i] = 100
         }
         return result
     }
@@ -336,7 +336,7 @@ class Figure {
         this.ctx.clearRect(0, 0, this.width, this.height)
         this.Graphs.forEach(g => g.setupHints())
         let solved
-        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.0001)
+        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.001)
         this.renderFromValuation()
         if (!solved) {
             setTimeout(() => this.render(animating), 10) // XXX might be nice to use Promise
@@ -1402,7 +1402,9 @@ class Times extends BinaryExpression {
 
 class Divide extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
-    operation(a, b) { return b == 0 ? Math.random() - 0.5 : a / b }
+    operation(a, b) {
+        if (b == 0) console.log("warning: divide by zero, using random answer")
+        return b == 0 ? Math.random() - 0.5 : a / b }
     gradop(a, b, da, db) {
         return [a / b, numeric.add(numeric.mul(-a/(b*b), db),  numeric.mul(da, 1/b))]
     }
@@ -1413,6 +1415,7 @@ class Divide extends BinaryExpression {
               b = currentValue(this.e2),
               ib = (b == 0) ? Math.random() - 0.5 : 1/b,
               d = this.bpDiff
+        if (b == 0) console.log("warning: divide by zero, using random answer")
         task.propagate(this.e1, ib*d)
         task.propagate(this.e2, -a*ib*ib*d)
     }
@@ -1554,6 +1557,8 @@ class Distance extends Expression {
         } else {
             // positions of points are considered arbitrary, so generate a
             // differential in a random direction.
+            console.log("Warning: zero distance between points, generating force at random angle")
+
             const ang = Math.random() * Math.PI * 2, 
                   dx = d * Math.cos(ang), dy = d * Math.sin(ang)
             task.propagate(this.p1, [dx, dy])
@@ -1627,7 +1632,7 @@ class Sqrt extends UnaryExpression {
         let a = evaluate(this.expr, task.valuation)
         const d = this.bpDiff
         if (a <= 0) {
-            console.log("Trying to take the sqrt of a nonpositive number")
+            console.log("Trying to take the sqrt of a nonpositive number, generating random answer")
             a = Math.random()/1000 + 0.001
         }
         task.propagate(this.expr, d * 0.5/a)
@@ -3295,7 +3300,7 @@ class Graph {
                 let [g1, g2] = e
                 if (g1 == n) {
                     const n2 = g1 == n ? g2 : g1,
-                        x2 = x + ((++kid)/(outgoing + 1) - 0.5) * spread + Math.random(),
+                        x2 = x + ((++kid)/(outgoing + 1) - 0.5) * spread,
                         y2 = y + 100 * graph.sparsity
                     n2.x().setHint(x2); n2.y().setHint(y2)
                     traverse(n2, level+1, x2, y2)
