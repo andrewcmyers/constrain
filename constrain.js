@@ -291,7 +291,7 @@ class Figure {
         if (USE_BACKPROPAGATION) {
             this.setupBackPropagation(task)
         }
-        let result, callback, maxit = 2000
+        let result, callback, maxit = 1000
         if (this.animatedSolving) {
             callback = (it, x0, f0, g0, H1) => true
         } else {
@@ -336,7 +336,7 @@ class Figure {
         this.ctx.clearRect(0, 0, this.width, this.height)
         this.Graphs.forEach(g => g.setupHints())
         let solved
-        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.001)
+        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.01)
         this.renderFromValuation()
         if (!solved) {
             setTimeout(() => this.render(animating), 10) // XXX might be nice to use Promise
@@ -2439,8 +2439,31 @@ class Ellipse extends GraphicalObject {
         }
         ctx.restore()
     }
-    connectionPts() {
-        return [this.cl(), this.cr(), this.uc(), this.lc()]
+    bestConnectionPt(px, py, valuation) {
+        const x = evaluate(this.x(), valuation),
+              y = evaluate(this.y(), valuation),
+              pdx = px - x,
+              pdy = py - y
+        let xr = evaluate(this.w(), valuation)/2,
+            yr = evaluate(this.h(), valuation)/2
+        if (xr == 0 || yr == 0) return [x,y]
+        xr = xr * xr
+        yr = yr * yr
+        let s = pdy/pdx,
+              dx = Math.sqrt(xr*yr / (xr*s*s + yr^2)),
+              dy = s * dx
+        // I (pdx>0, pdy>0, S>0): dy II(pdx<0, pdy >0,S<0): -dy
+        // III: pdx<0, pdy<0, S>0 : -dy
+        // IV:  pdx>0, pdy<0, S<0 :  dy
+        if (pdx < 0) { dx = -dx; dy = -dy }
+        return [x + dx, y + dy]
+        // dy/dx = (py - y)/(px - x) = S
+        // (dy/yr)^2 + (dx/xr)^2 = 1
+        // dy = S dx
+        // S^2 dx^2/yr^2 + dx^2/xr^2 = 1
+        // dx^2 (S^2/yr^2 + 1/xr^2) = 1
+        // dx = sqrt(1/(s^2/yr^2 + 1/xr^2) = sqrt(xr^2 yr^2 / (xr^2 s^2 + yr^2))
+
     }
 }
 
@@ -2450,6 +2473,14 @@ class Circle extends Ellipse {
         figure.equal(this.h(), this.w())
     }
     type() { return "circle" }
+    bestConnectionPt(px, py, valuation) {
+        const x = evaluate(this.x(), valuation),
+              y = evaluate(this.y(), valuation),
+              r = evaluate(this.h(), valuation)/2,
+              d = norm2d(px - x, py - y)
+        if (d == 0) return [x,y]
+        return [x + (px - x)*r/d, y + (py-y)*r/d]
+    }
 }
 
 // Draw an arrowhead of size s in the current style,
@@ -3193,8 +3224,13 @@ const GRAPH_COST = 0.01
 // How densely laid out nodes in a graph are, relative to their size, by default.
 const GRAPH_SPARSITY = 1
 
+// gravity force on directed edges
 const GRAPH_GRAVITY = 40
+
+// 1/r^2 force pushing all nodes apart from each other
 const GRAPH_REPULSION = 1000
+
+// Torsional force spreading edges apart
 const GRAPH_BRANCH_SPREAD = 400
 
 class Graph {

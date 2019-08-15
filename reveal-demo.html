@@ -215,13 +215,15 @@
           <script>
             with (new Constrain.Figure("graphs")) {
                 with (g = makeGraph()) {
-                    const a = [], n = 14
+                    const a = [], n = 10
                     g.sparsity = 1.5
                     for (let i = 1; i <= n; i++) {
                         let row = 0, column = 0, j = i
                         while (j <= n) { row++; j *=2 }
                         column = i % j
-                        a[i] = circle().setW(times(canvasRect().h(), 0.03)).setFillStyle("red").setName("C" + i)
+                        a[i] = ellipse().setW(times(canvasRect().h(), 0.05))
+                                        .setH(times(canvasRect().h(), 0.04))
+                                        .setFillStyle("red").setName("C" + i)
                         label(i.toString()).at(a[i])
                         if (i > 1) dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
                     }
@@ -229,7 +231,7 @@
                     equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
                     a[1].x().setHint(g.figure.canvas.width/2)
                     a[1].y().setHint(g.figure.canvas.height/3)
-                    g.figure.setAnimatedSolving(true)
+                    g.figure.setAnimatedSolving(false)
                 }
             }
             </script>
