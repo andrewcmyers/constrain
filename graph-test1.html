@@ -1,0 +1,61 @@
+<html>
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+</style>
+  
+</head>
+<body>
+<h1>Graph Layout Test Page</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+Constrain.fullWindowCanvas(canvas)
+var figure = new Constrain.Figure(canvas)
+
+canvas.style.backgroundColor = "#eee"
+
+var a, b
+var c, g, f
+with (f = figure) {
+    let s = rectangle(), s2 = rectangle().setFillStyle("red")
+    equal(s.w(), times(s.h(), 2))
+    equal(times(300, divide(s2.w(), s2.h())), 600)
+    align("center", "abut", s, s2)
+    function node(x) {
+        let r = square().setW(20).setName(x)
+        align("center", "center", r, label(x))
+        return r
+    }
+    f.animatedSolving = true
+    a = node("a")
+    b = node("b")
+    c = node("c")
+    let d = node("d")
+    g = makeGraph()
+    costEqual(0.001, a.x(), canvasRect().x())
+    costEqual(0.001, a.y(), canvasRect().y())
+    with (g) {
+        g.sparsity *= 2
+        g.repulsion *= 1
+        g.cost *= 100
+        g.branchSpread *= 100000
+        edge(a, b)
+        edge(a, c)
+        edge(a, d)
+    }
+    start()
+}
+
+</script>
+</body>
+<script>
+    Constrain.autoResize()
+</script>
+</html>
