@@ -1,0 +1,9 @@
+span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px; z-index: 2 }
+em { color: #889ee5 }
+canvas { position: fixed; left: 0; top: 0;
+            width: 100%; height: 100%; z-index: -1 }
+/* #fig1 { background-color: #eef;  } */
+section {width: 1024px; height:768px}
+kbd {font-size: 90%; color: #468}
+pre {background-color: #efd; color: #236}
+.slides {background-color: white}
