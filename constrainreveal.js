@@ -14,7 +14,7 @@ var ConstrainReveal = function() {
     const Figures = Constrain.Figures
 
     function newSlideHook(e) {
-        console.log("new slide hook: " + e.type)
+        // console.log("new slide hook: " + e.type)
         currentFigure = null
         const slide = Reveal.getCurrentSlide() 
         canvases = slide.querySelectorAll('canvas')
@@ -28,8 +28,8 @@ var ConstrainReveal = function() {
                 }
             }
         }
-         console.log(Figures.length + " figures")
-         console.log(slideFigures.length + " figures on this slide")
+        // console.log(Figures.length + " figures")
+        // console.log(slideFigures.length + " figures on this slide")
     }
 
     function hasClass(elem, cls) {
@@ -138,8 +138,41 @@ var ConstrainReveal = function() {
     }
 
     return {
-        initialize: function() {
-        console.log("initializing ConstrainReveal")
+        initialize: function(dir) {
+            if (!dir) dir = '.'
+            Reveal.initialize({
+                    history: true,
+                    controls: false,
+                    progress: false,
+                    center: false,
+                    margin: 0,
+
+
+                    // More info https://github.com/hakimel/reveal.js#dependencies
+                    dependencies: [
+                            { src: dir + '/reveal.js/plugin/markdown/marked.js' },
+                            { src: dir + '/reveal.js/plugin/markdown/markdown.js' },
+                            { src: dir + '/reveal.js/plugin/notes/notes.js', async: true },
+                            { src: dir + '/reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+                    ],
+
+                    keyboard: {
+                        // override N and P to jump by whole slides
+                        78: function() {
+                            if (!Reveal.isLastSlide())
+                                Reveal.slide(Reveal.getIndices().h + 1,
+                                            Reveal.getIndices().v, 0);
+                        },
+                        80: function() {
+                            if (!Reveal.isFirstSlide())
+                                Reveal.slide(Reveal.getIndices().h - 1,
+                                                Reveal.getIndices().v, 0);
+                        }
+                    },
+                    width: 1024,
+                    height: 768
+            });
+
             Reveal.addEventListener( 'slidechanged', newSlideHook);
             Reveal.addEventListener( 'ready', newSlideHook);
 

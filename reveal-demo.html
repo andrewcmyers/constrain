@@ -231,7 +231,7 @@
                     equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
                     a[1].x().setHint(g.figure.canvas.width/2)
                     a[1].y().setHint(g.figure.canvas.height/3)
-                    g.figure.setAnimatedSolving(false)
+                    g.figure.setAnimatedSolving(true)
                 }
             }
             </script>
@@ -300,41 +300,7 @@ with (fig) {
         <!-- <script src="reveal.js/lib/js/head.min.js"></script> -->
         <script src="reveal.js/js/reveal.js"></script>
         <script src="constrainreveal.js"></script>
-
         <script>
-                // Set up Reveal
-                Reveal.initialize({
-                        history: true,
-                        controls: false,
-                        progress: false,
-                        center: false,
-                        margin: 0,
-
-                        // More info https://github.com/hakimel/reveal.js#dependencies
-                        dependencies: [
-                                { src: 'reveal.js/plugin/markdown/marked.js' },
-                                { src: 'reveal.js/plugin/markdown/markdown.js' },
-                                { src: 'reveal.js/plugin/notes/notes.js', async: true },
-                                { src: 'reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
-                        ],
-
-                        keyboard: {
-                            // override N and P to jump by whole slides
-                            78: function() {
-                                if (!Reveal.isLastSlide())
-                                    Reveal.slide(Reveal.getIndices().h + 1,
-                                                Reveal.getIndices().v, 0);
-                            },
-                            80: function() {
-                                if (!Reveal.isFirstSlide())
-                                    Reveal.slide(Reveal.getIndices().h - 1,
-                                                 Reveal.getIndices().v, 0);
-                            }
-                        },
-                        width: 1024,
-                        height: 768
-                });
-
             // Set up figures
             ConstrainReveal.initialize()
         </script>
