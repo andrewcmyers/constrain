@@ -30,27 +30,48 @@ with (f = figure) {
     align("center", "abut", s, s2)
     function node(x) {
         let r = square().setW(20).setName(x)
+        keepInside(r, canvasRect())
         align("center", "center", r, label(x))
         return r
     }
-    f.animatedSolving = true
-    a = node("a")
-    b = node("b")
-    c = node("c")
-    let d = node("d")
+    a = node("a"); b = node("b"); c = node("c")
+    // equal(s.w(), abs(minus(b.x(), a.x())))
+    align("left", "none", s, a)
+    let d = node("d"),
+        e = node("e"),
+        h = node("h"),
+        j = node("j")
     g = makeGraph()
-    costEqual(0.001, a.x(), canvasRect().x())
-    costEqual(0.001, a.y(), canvasRect().y())
+     equal(a.x(), canvasRect().x()).changeCost(0.001)
+     equal(a.y(), canvasRect().y()).changeCost(0.001)
+     equal(s.w(), s2.w(), abs(minus(b.x(), d.x())))
     with (g) {
         g.sparsity *= 2
         g.repulsion *= 1
-        g.cost *= 100
-        g.branchSpread *= 100000
+        g.cost *= 1
+        g.branchSpread *= 2
         edge(a, b)
         edge(a, c)
         edge(a, d)
+        dedge(c, e).setEndArrow("arrow")
+        dedge(c, h).setEndArrow("arrow")
+        dedge(e, j).setEndArrow("arrow")
+        edge(h, j).setEndArrow("arrow")
+        align("center", "none", a, c)
     }
+    setAnimatedSolving(true)
     start()
+    /*
+    new Promise((resolve, reject) => {
+        updateValuation()
+        resolve()
+    }).then(() => {
+        let hh = handle()
+        hh.x().hint = d.x().currentValue
+        hh.y().hint = d.y().currentValue
+        //pin(hh, d)
+    }).then(render())
+    */
 }
 
 </script>

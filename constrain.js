@@ -297,14 +297,15 @@ class Figure {
         } else {
             this.invHessian
         }
+        const uncmin_options = {Hinv: this.invHessian, stepSize: 5, overshoot: 0.1}
         if (doGrad) {
             if (USE_BACKPROPAGATION)
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
-                            valuation, tol, maxit, callback, {Hinv: this.invHessian})
+                            valuation, tol, maxit, callback, uncmin_options)
             else
-                result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback, {Hinv: this.invHessian})
+                result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback, uncmin_options)
         } else {
-            result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, {Hinv: this.invHessian})
+            result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
         // console.log(result)
         this.invHessian = result.invHessian
@@ -754,6 +755,12 @@ class Figure {
             this.geq(g1.x0(), g2.x0()),
             this.geq(g1.y0(), g2.y0()))
     }
+    // keep g1 and g2 the same size
+    sameSize(g1, g2) {
+        return new ConstraintGroup(this,
+            this.equal(g1.w(), g2.w()),
+            this.equal(g1.h(), g2.h()))
+    }
 
     after(frame, ...objs) {
         if (objs.length == 1) return new After(this, frame, objs[0])
@@ -891,12 +898,56 @@ function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2
-const algorithm = UNCMIN_BFGS
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_BFGS_SPARSE = 4
+const algorithm = UNCMIN_BFGS_SPARSE
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
       BAD_GRADIENT = "Gradient has Infinity or NaN"
+
+const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPSILON = 1e-8
+
+function partition(a, l, r) {
+    const p = a[l] // better: swap a[l] with random element first
+    let i = l, j = r
+    j--
+    while (a[j] > p) j--
+    while (i < j) {
+        const t = a[i]; a[i] = a[j]; a[j] = t
+        i++
+        while (a[i] < p) i++
+        j--
+        while (a[j] > p) j--
+    }
+    return j+1
+}
+
+/**
+ * Returns: the (n-l+1)th smallest element in the subarray {@code a[l..r)}
+ * Requires: {@code 0 ≤ l ≤ n < r ≤ a.length}
+ */
+function qselect(a, l, r, n) {
+    while (l+1 < r) {
+        let k = partition(a, l, r)
+        if (n < k) r = k
+        else l = k
+    }
+    return a[l];
+}
+
+// Turn all but the three biggest contributors to the matrix product m.v in
+// in each row of m into 0
+function sparsify(m, v) {
+    const n = v.length,
+          vm = numeric.rep([n], v),
+          prod = numeric.transpose(numeric.abs(numeric.mul(m, vm)))
+    for (let i = 0; i < n; i++) {
+        const p = qselect(prod[i], 0, n, 0)
+        for (let j = 0; j < n; j++) {
+            if (prod[i][j] < p) m[j][i] = 0
+        }
+    }
+}
 
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
 // various functions from that package.
@@ -934,20 +985,43 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         add = numeric.add,
         ten = numeric.tensor,
         div = numeric.div,
+        sqrt = numeric.sqrt,
         mul = numeric.mul,
         transpose = numeric.transpose
     const all = numeric.all,
         isfinite = numeric.isFinite,
         neg = numeric.neg
     let it = 0,
-        i, s, x1, y, Hs, i0, t, nstep, t1, t2
+        i, s, x1, y, Hs, i0, t, nstep, t1, t2,
+        m, v // ADAM
+    let overshoot = options.overshoot || 0.1
     let msg = ""
+    if (algorithm == UNCMIN_ADAM) {
+        m = getZeros(n)
+        v = getZeros(n)
+    }
     while (it < maxit) {
         if (!all(isfinite(g0))) {
             msg = BAD_GRADIENT
             break
         }
-        step = neg(dot(H1, g0))
+        t = options.stepSize || 1.0
+        switch (algorithm) {
+            case UNCMIN_BFGS_SPARSE:
+            case UNCMIN_BFGS:
+            case UNCMIN_DFP:
+                step = neg(dot(H1, g0))
+                break
+            case UNCMIN_GRADIENT:
+                step = neg(g0)
+                break
+            case UNCMIN_ADAM:
+                m = add(mul(ADAM_BETA1, m), mul(1 - ADAM_BETA1, g0))
+                v = add(mul(ADAM_BETA2, v), mul(1 - ADAM_BETA2, mul(g0, g0)))
+                step = div(mul(-t, m), add(sqrt(v), ADAM_EPSILON))
+                break
+        }
+
         if (!all(isfinite(step))) {
             msg = BAD_SEARCH_DIRECTION
             break
@@ -957,7 +1031,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             msg = "Newton step smaller than tol"
             break
         }
-        t = 1.0
         df0 = dot(g0, step)
         // line search
         x1 = x0
@@ -968,7 +1041,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             s = mul(step, t)
             x1 = add(x0, s)
             f1 = fg(x1)
-            if (f1 - f0 >= 0 * t * df0 || isNaN(f1)) {
+            if (f1 - f0 >= overshoot * t * df0 || isNaN(f1)) {
                 t *= 0.5
                 it++
                 continue
@@ -985,27 +1058,38 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         }
         [f1, g1] = fg(x1, true)
         if (g1 === undefined) g1 = gradient(x1)
-        y = sub(g1, g0)
-        const ys = dot(y, s)
-        if (ys <= 0) {
-            H1 = numeric.identity(n) // inverse Hessian is broken, restart
-        } else {
-            const Hy = dot(H1, y)
-            switch (algorithm) {
-                case UNCMIN_BFGS:
+        switch (algorithm) {
+            case UNCMIN_BFGS_SPARSE:
+            case UNCMIN_BFGS: {
+                y = sub(g1, g0)
+                const ys = dot(y, s)
+                if (ys <= 0) {
+                    H1 = numeric.identity(n) // inverse Hessian looks broken, restart
+                    console.log("resetting inverse Hessian estimate")
+                } else {
+                    const Hy = dot(H1, y)
                     H1 = sub(add(H1,
                                 mul((ys + dot(y, Hy)) / (ys * ys),
                                     ten(s, s))),
                             div(add(ten(Hy, s), ten(s, Hy)), ys))
-                    break
-                case UNCMIN_DFP:
-                    const yHy = dot(y, Hy),
-                        t1 = mul(ten(Hy, Hy), -1/yHy),
-                        t2 = mul(ys, ten(s,s))
-                    H1 = add(add(H1, t1), t2)
-                    break
-                case UNCMIN_GRADIENT: break
+                    if (algorithm == UNCMIN_BFGS_SPARSE) {
+                        sparsify(H1, g1)
+                    }
+                }
             }
+            break
+
+            case UNCMIN_DFP: {
+                y = sub(g1, g0)
+                const ys = dot(y, s)
+                const yHy = dot(y, Hy),
+                    t1 = mul(ten(Hy, Hy), -1/yHy),
+                    t2 = mul(ys, ten(s,s))
+                H1 = add(add(H1, t1), t2)
+            }
+            break
+
+            case UNCMIN_GRADIENT: break
         }
         x0 = x1
         f0 = f1
@@ -1613,7 +1697,7 @@ class Abs extends UnaryExpression {
         return [-a, -da]
     }
     backprop(task) {
-        const a = evaluate(this, task.valuation),
+        const a = currentValue(this.expr),
               d = this.bpDiff
         if (a < 0) task.propagate(this.expr, -d)
         else task.propagate(this.expr, d)

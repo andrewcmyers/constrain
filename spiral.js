@@ -64,5 +64,4 @@ align("none", "top", t, figure.canvasRect())
 
 }
 Constrain.autoResize()
-figure.ready()
 figure.start()
