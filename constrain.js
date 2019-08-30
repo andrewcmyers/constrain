@@ -813,9 +813,19 @@ class Figure {
     vertLine(strokeStyle, lineWidth, x, y0, y1) {
         return new VertLine(this, strokeStyle, lineWidth, x, y0, y1)
     }
-    hspace() { return new HSpace(this) }
-    vspace() { return new VSpace(this) }
+    hspace(w) {
+        const r = new HSpace(this)
+        if (w) r.setW(w)
+        return r
+    }
+    vspace(h) {
+        const r = new VSpace(this)
+        if (h) r.setH(h)
+        return r
+    }
+    box() { return new Box(this) }
     text(...t) { return new FormattedText(this, ...t) }
+    textFrame(txt, fillStyle) { return new TextFrame(this, txt, fillStyle) }
     label(string, fontSize, fontName, fillStyle, x, y) {
         return new Label(this, string, fontSize, fontName, fillStyle, x, y)
     }
@@ -2336,6 +2346,7 @@ class GraphicalObject extends Box {
         return this
     }
     addText(t) {
+        if (typeof t == "string") t = text(t)
         this.text = t
         return this
     }
@@ -2420,6 +2431,22 @@ class Group extends GraphicalObject {
     align(horz, vert) {
         this.figure.align(horz, vert, ...this.objects)
         return this
+    }
+}
+
+// A Frame is a graphical object that doesn't have any rendering but does format contained
+// text into a rectangular shape.
+class TextFrame extends GraphicalObject {
+    constructor(figure, text, fillStyle) {
+        super(figure, fillStyle)
+        this.text = text
+        figure.positive(this.h())
+        figure.positive(this.w())
+    }
+    render() {
+        if (this.text) {
+            this.text.renderIn(this.figure, this)
+        }
     }
 }
 
