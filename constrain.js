@@ -825,7 +825,10 @@ class Figure {
     }
     box() { return new Box(this) }
     text(...t) { return new FormattedText(this, ...t) }
-    textFrame(txt, fillStyle) { return new TextFrame(this, txt, fillStyle) }
+    textFrame(txt, fillStyle) {
+        if (typeof txt == "string") txt = new FormattedText(this, txt)
+        return new TextFrame(this, txt, fillStyle)
+    }
     label(string, fontSize, fontName, fillStyle, x, y) {
         return new Label(this, string, fontSize, fontName, fillStyle, x, y)
     }
@@ -2259,6 +2262,14 @@ class LayoutObject extends Expression {
         r.h = () => new Minus(this.h(), new Times(2, v))
         return r
     }
+    expand(v) {
+        const r = new LayoutObject()
+        r.x = () => this.x()
+        r.y = () => this.y()
+        r.w = () => new Plus(this.w(), new Times(2, v))
+        r.h = () => new Plus(this.h(), new Times(2, v))
+        return r
+    }
 }
 
 // A Box is a layout object with a width and height. It does not necessarily
@@ -2980,11 +2991,12 @@ class FormattedText {
         this.fontName = figure.fontName
         this.lineSpacing = figure.lineSpacing
         this.inset = 3
-        text.forEach(t =>
+        text.forEach(t => {
+            t = t.toString();
             t.split(/  */).forEach(w => {
                 if (w) this.words.push(w)
             })
-        )
+        })
     }
     setFillStyle(s) {
         this.fillStyle = s
@@ -3501,7 +3513,7 @@ class Graph {
         for (let i = 0; i < this.nodes.length; i++) {
             let g2 = this.nodes[i];
             let dist = fig.distance(g2, g), cr = new CanvasRect(this.figure)
-            let bdist = new Min(new Max(dist, 1), new Times(0.5, cr.w()), new Times(0.5, cr.h())) // repulsion cuts off below 1 pixel and at canvas size
+            let bdist = new Min(new Max(dist, 1), new Times(1.0, cr.w()), new Times(1.0, cr.h())) // repulsion cuts off below 1 pixel and at canvas size
             let potential = fig.divide(this.repulsion * this.sparsity, bdist)
             // potential = new DebugExpr("potential between " + g + " and " + g2, potential)
             fig.costEqual(this.cost, potential, 0)
