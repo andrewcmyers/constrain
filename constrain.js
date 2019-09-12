@@ -96,6 +96,12 @@ class Figure {
 //       console.log("Width, height are " + _width + "," + _height)
         this.canvas.width = _width * this.scale;
         this.canvas.height = _height * this.scale;
+        this.centerX = new Variable(this, "cx", this.canvas.width/2)
+        this.centerY = new Variable(this, "cy", this.canvas.height/2)
+        this.figureCenteredX = new NearZero(this,
+                        new Minus(this.centerX, this.canvas.width/2), 0.001)
+        this.figureCenteredY = new NearZero(this,
+                        new Minus(this.centerY, this.canvas.height/2), 0.001)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
     }
     setupListeners() {
