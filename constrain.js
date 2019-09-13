@@ -84,6 +84,12 @@ class Figure {
         this.repeat = false
         this.animatedSolving = false
         this.fadeColor = 'white'
+        this.centerX = new Variable(this, "cx", this.canvas.width/2)
+        this.centerY = new Variable(this, "cy", this.canvas.height/2)
+        this.figureCenteredX = new NearZero(this,
+                        new Minus(this.centerX, this.canvas.width/2), 0.001)
+        this.figureCenteredY = new NearZero(this,
+                        new Minus(this.centerY, this.canvas.height/2), 0.001)
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
             console.error("Canvas input will not work correctly with padding")
@@ -96,12 +102,6 @@ class Figure {
 //       console.log("Width, height are " + _width + "," + _height)
         this.canvas.width = _width * this.scale;
         this.canvas.height = _height * this.scale;
-        this.centerX = new Variable(this, "cx", this.canvas.width/2)
-        this.centerY = new Variable(this, "cy", this.canvas.height/2)
-        this.figureCenteredX = new NearZero(this,
-                        new Minus(this.centerX, this.canvas.width/2), 0.001)
-        this.figureCenteredY = new NearZero(this,
-                        new Minus(this.centerY, this.canvas.height/2), 0.001)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
     }
     setupListeners() {
@@ -176,7 +176,8 @@ class Figure {
         }
         this.GraphicalObjects.forEach(g => {
             if (g.active()) {
-                g.variables().forEach(activate)
+                const v = g.variables()
+                v.forEach(activate)
             }
         })
         this.Constraints.forEach(c => {
@@ -303,7 +304,7 @@ class Figure {
         } else {
             this.invHessian
         }
-        const uncmin_options = {Hinv: this.invHessian, stepSize: 5, overshoot: 0.1}
+        const uncmin_options = {Hinv: this.invHessian, stepSize: 1, overshoot: 0.1}
         if (doGrad) {
             if (USE_BACKPROPAGATION)
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
@@ -917,8 +918,8 @@ function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_BFGS_SPARSE = 4
-const algorithm = UNCMIN_BFGS_SPARSE
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3
+const algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -952,20 +953,6 @@ function qselect(a, l, r, n) {
         else l = k
     }
     return a[l];
-}
-
-// Turn all but the three biggest contributors to the matrix product m.v in
-// in each row of m into 0
-function sparsify(m, v) {
-    const n = v.length,
-          vm = numeric.rep([n], v),
-          prod = numeric.transpose(numeric.abs(numeric.mul(m, vm)))
-    for (let i = 0; i < n; i++) {
-        const p = qselect(prod[i], 0, n, 0)
-        for (let j = 0; j < n; j++) {
-            if (prod[i][j] < p) m[j][i] = 0
-        }
-    }
 }
 
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
@@ -1026,7 +1013,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         }
         t = options.stepSize || 1.0
         switch (algorithm) {
-            case UNCMIN_BFGS_SPARSE:
             case UNCMIN_BFGS:
             case UNCMIN_DFP:
                 step = neg(dot(H1, g0))
@@ -1078,7 +1064,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         [f1, g1] = fg(x1, true)
         if (g1 === undefined) g1 = gradient(x1)
         switch (algorithm) {
-            case UNCMIN_BFGS_SPARSE:
             case UNCMIN_BFGS: {
                 y = sub(g1, g0)
                 const ys = dot(y, s)
@@ -1091,9 +1076,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                                 mul((ys + dot(y, Hy)) / (ys * ys),
                                     ten(s, s))),
                             div(add(ten(Hy, s), ten(s, Hy)), ys))
-                    if (algorithm == UNCMIN_BFGS_SPARSE) {
-                        sparsify(H1, g1)
-                    }
                 }
             }
             break
@@ -1226,7 +1208,6 @@ function currentValue(e) {
 // keep track of its own value. A variable has an index that determines
 // its location in the valuation array.
 //
-// XXX Does it really need to know its figure?
 class Variable extends Expression {
     constructor(figure, basename, hint) {
         super()
@@ -1482,6 +1463,17 @@ class Plus extends BinaryExpression {
         task.propagate(this.e2, this.bpDiff)
     }
     opName() { return "+" }
+    setHint(a) {
+        if (typeof this.e2 == "number" && this.e1.setHint) {
+            this.e1.setHint(a - this.e2) 
+        } else if (typeof this.e1 == "number" && this.e2.setHint) {
+            this.e2.setHint(a - this.e1)
+        } else if (this.e2.hint !== undefined && this.e1.setHint) {
+            this.e1.setHint(a - this.e2.hint)
+        } else if (this.e1.hint !== undefined && this.e2.setHint) {
+            this.e2.setHint(a - this.e1.hint)
+        }
+    }
 }
 
 class Average extends BinaryExpression {
@@ -2286,8 +2278,8 @@ class Box extends LayoutObject {
         super()
         this.figure = figure
         const prefix = this.toString() + "_"
-        this.x_= new Variable(figure, prefix + "x", x_hint)
-        this.y_ = new Variable(figure, prefix + "y", y_hint)
+        this.x_= new Plus(figure.centerX, new Variable(figure, prefix + "x", x_hint))
+        this.y_ = new Plus(figure.centerY, new Variable(figure, prefix + "y", y_hint))
         this.w_ = new Variable(figure, prefix + "w", w_hint)
         this.h_ = new Variable(figure, prefix + "h", h_hint)
     }
@@ -2296,7 +2288,10 @@ class Box extends LayoutObject {
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
-        return [this.x(), this.y(), this.w(), this.h()]
+        return this.x().variables()
+               .concat(this.y().variables())
+               .concat(this.w().variables())
+               .concat(this.h().variables())
     }
 // convenience methods for positioning (by adding constraints)
 
@@ -2943,7 +2938,7 @@ class Label extends GraphicalObject {
         // Have to override GraphicalObject in the object itself
         this.w = function() { return this.width }
         this.h = function() { return this.fontSize }
-        this.variables = function() { return [this.x(), this.y()] }
+        this.variables = function() { return this.x().variables().concat(this.y().variables()) }
     }
     installFont() {
         this.figure.ctx.font = this.fontSize + "pt " + this.fontName

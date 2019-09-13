@@ -229,8 +229,6 @@
                     }
                     equal(a[1].x(), canvasRect().x()).changeCost(0.001)
                     equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
-                    a[1].x().setHint(g.figure.canvas.width/2)
-                    a[1].y().setHint(g.figure.canvas.height/3)
                     g.figure.setAnimatedSolving(true)
                 }
             }
