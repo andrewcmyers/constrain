@@ -814,9 +814,22 @@ class Figure {
     vertLine(strokeStyle, lineWidth, x, y0, y1) {
         return new VertLine(this, strokeStyle, lineWidth, x, y0, y1)
     }
-    hspace() { return new HSpace(this) }
-    vspace() { return new VSpace(this) }
+    hspace(w) {
+        const r = new HSpace(this)
+        if (w) r.setW(w)
+        return r
+    }
+    vspace(h) {
+        const r = new VSpace(this)
+        if (h) r.setH(h)
+        return r
+    }
+    box() { return new Box(this) }
     text(...t) { return new FormattedText(this, ...t) }
+    textFrame(txt, fillStyle) {
+        if (typeof txt == "string") txt = new FormattedText(this, txt)
+        return new TextFrame(this, txt, fillStyle)
+    }
     label(string, fontSize, fontName, fillStyle, x, y) {
         return new Label(this, string, fontSize, fontName, fillStyle, x, y)
     }
@@ -2253,6 +2266,14 @@ class LayoutObject extends Expression {
         r.h = () => new Minus(this.h(), new Times(2, v))
         return r
     }
+    expand(v) {
+        const r = new LayoutObject()
+        r.x = () => this.x()
+        r.y = () => this.y()
+        r.w = () => new Plus(this.w(), new Times(2, v))
+        r.h = () => new Plus(this.h(), new Times(2, v))
+        return r
+    }
 }
 
 // A Box is a layout object with a width and height. It does not necessarily
@@ -2340,6 +2361,7 @@ class GraphicalObject extends Box {
         return this
     }
     addText(t) {
+        if (typeof t == "string") t = text(t)
         this.text = t
         return this
     }
@@ -2424,6 +2446,22 @@ class Group extends GraphicalObject {
     align(horz, vert) {
         this.figure.align(horz, vert, ...this.objects)
         return this
+    }
+}
+
+// A Frame is a graphical object that doesn't have any rendering but does format contained
+// text into a rectangular shape.
+class TextFrame extends GraphicalObject {
+    constructor(figure, text, fillStyle) {
+        super(figure, fillStyle)
+        this.text = text
+        figure.positive(this.h())
+        figure.positive(this.w())
+    }
+    render() {
+        if (this.text) {
+            this.text.renderIn(this.figure, this)
+        }
     }
 }
 
@@ -2957,11 +2995,12 @@ class FormattedText {
         this.fontName = figure.fontName
         this.lineSpacing = figure.lineSpacing
         this.inset = 3
-        text.forEach(t =>
+        text.forEach(t => {
+            t = t.toString();
             t.split(/  */).forEach(w => {
                 if (w) this.words.push(w)
             })
-        )
+        })
     }
     setFillStyle(s) {
         this.fillStyle = s
@@ -3478,7 +3517,7 @@ class Graph {
         for (let i = 0; i < this.nodes.length; i++) {
             let g2 = this.nodes[i];
             let dist = fig.distance(g2, g), cr = new CanvasRect(this.figure)
-            let bdist = new Min(new Max(dist, 1), new Times(0.5, cr.w()), new Times(0.5, cr.h())) // repulsion cuts off below 1 pixel and at canvas size
+            let bdist = new Min(new Max(dist, 1), new Times(1.0, cr.w()), new Times(1.0, cr.h())) // repulsion cuts off below 1 pixel and at canvas size
             let potential = fig.divide(this.repulsion * this.sparsity, bdist)
             // potential = new DebugExpr("potential between " + g + " and " + g2, potential)
             fig.costEqual(this.cost, potential, 0)
