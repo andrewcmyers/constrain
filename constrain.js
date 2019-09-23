@@ -2969,6 +2969,7 @@ class Label extends GraphicalObject {
     // Set font size
     setFontSize(s) {
         this.fontSize = s
+        this.computeWidth(this.figure.ctx)
         return this
     }
 
