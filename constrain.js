@@ -911,8 +911,8 @@ function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_BFGS_SPARSE = 4
-const algorithm = UNCMIN_BFGS_SPARSE
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3
+const algorithm = UNCMIN_ADAM
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -933,33 +933,6 @@ function partition(a, l, r) {
         while (a[j] > p) j--
     }
     return j+1
-}
-
-/**
- * Returns: the (n-l+1)th smallest element in the subarray {@code a[l..r)}
- * Requires: {@code 0 ≤ l ≤ n < r ≤ a.length}
- */
-function qselect(a, l, r, n) {
-    while (l+1 < r) {
-        let k = partition(a, l, r)
-        if (n < k) r = k
-        else l = k
-    }
-    return a[l];
-}
-
-// Turn all but the three biggest contributors to the matrix product m.v in
-// in each row of m into 0
-function sparsify(m, v) {
-    const n = v.length,
-          vm = numeric.rep([n], v),
-          prod = numeric.transpose(numeric.abs(numeric.mul(m, vm)))
-    for (let i = 0; i < n; i++) {
-        const p = qselect(prod[i], 0, n, 0)
-        for (let j = 0; j < n; j++) {
-            if (prod[i][j] < p) m[j][i] = 0
-        }
-    }
 }
 
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
@@ -1020,7 +993,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         }
         t = options.stepSize || 1.0
         switch (algorithm) {
-            case UNCMIN_BFGS_SPARSE:
             case UNCMIN_BFGS:
             case UNCMIN_DFP:
                 step = neg(dot(H1, g0))
@@ -1072,7 +1044,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         [f1, g1] = fg(x1, true)
         if (g1 === undefined) g1 = gradient(x1)
         switch (algorithm) {
-            case UNCMIN_BFGS_SPARSE:
             case UNCMIN_BFGS: {
                 y = sub(g1, g0)
                 const ys = dot(y, s)
@@ -1085,9 +1056,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                                 mul((ys + dot(y, Hy)) / (ys * ys),
                                     ten(s, s))),
                             div(add(ten(Hy, s), ten(s, Hy)), ys))
-                    if (algorithm == UNCMIN_BFGS_SPARSE) {
-                        sparsify(H1, g1)
-                    }
                 }
             }
             break
