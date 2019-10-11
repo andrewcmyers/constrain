@@ -294,16 +294,15 @@ class Figure {
         let result, callback, maxit = 1000
         if (this.animatedSolving) {
             callback = (it, x0, f0, g0, H1) => true
-        } else {
-            this.invHessian
         }
         const uncmin_options = {Hinv: this.invHessian, stepSize: 5, overshoot: 0.1}
         if (doGrad) {
-            if (USE_BACKPROPAGATION)
+            if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
-                            valuation, tol, maxit, callback, uncmin_options)
-            else
+                                valuation, tol, maxit, callback, uncmin_options)
+            } else {
                 result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback, uncmin_options)
+            }
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
@@ -950,8 +949,8 @@ function partition(a, l, r) {
 function uncmin(fg, x0, tol, maxit, callback, options) {
     const grad = numeric.gradient
     if (options === undefined) options = {}
-    if (tol === undefined) tol = 1e-8
-    if (maxit === undefined) maxit = 1000
+    tol = options.tol || 1e-8
+    maxit = options.maxit || 1000
 
     const gradient = x => grad(fg, x)
     x0 = numeric.clone(x0)
