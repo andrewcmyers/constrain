@@ -166,7 +166,7 @@ class Figure {
             if (v.constructor != Variable)
                 console.error("not a variable")
             v.setIndex(i)
-            a[i] = v
+            a.push(v)
             i++
         }
         this.GraphicalObjects.forEach(g => {
@@ -296,15 +296,17 @@ class Figure {
         if (this.animatedSolving) {
             callback = (it, x0, f0, g0, H1) => true
         }
+        if (this.invHessian && this.invHessian.length != valuation.length) this.invHessian = undefined
         const uncmin_options = {Hinv: this.invHessian,
                                 stepSize: UNCMIN_STEPSIZE,
                                 overshoot: UNCMIN_OVERSHOOT}
         if (doGrad) {
-            if (USE_BACKPROPAGATION)
+            if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
-                            valuation, tol, maxit, callback, uncmin_options)
-            else
+                                valuation, tol, maxit, callback, uncmin_options)
+            } else {
                 result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback, uncmin_options)
+            }
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
@@ -923,6 +925,21 @@ const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPSILON = 1e-8
 const UNCMIN_OVERSHOOT = 0.1, UNCMIN_STEPSIZE = 1
 const UNCMIN_LBFGS_M = 10
 
+function partition(a, l, r) {
+    const p = a[l] // better: swap a[l] with random element first
+    let i = l, j = r
+    j--
+    while (a[j] > p) j--
+    while (i < j) {
+        const t = a[i]; a[i] = a[j]; a[j] = t
+        i++
+        while (a[i] < p) i++
+        j--
+        while (a[j] > p) j--
+    }
+    return j+1
+}
+
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
 // various functions from that package.
 //
@@ -949,8 +966,8 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         isfinite = numeric.isFinite,
         neg = numeric.neg
     if (options === undefined) options = {}
-    if (tol === undefined) tol = 1e-8
-    if (maxit === undefined) maxit = 1000
+    tol = options.tol || 1e-8
+    maxit = options.maxit || 1000
 
     const gradient = x => grad(fg, x)
     x0 = numeric.clone(x0)
@@ -965,6 +982,10 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         norm2 = numeric.norm2
     tol = max(tol, numeric.epsilon)
     let step, H1 = options.Hinv || mul(numeric.identity(n), options.stepSize || 1)
+    if (H1.length != n) {
+        throw new Error("Inverse Hessian has wrong dimensions")
+    }
+
     let it = 0,
         i, s, x1, y, ys, Hs, i0, t, nstep, t1, t2,
         m, v // ADAM
@@ -2973,6 +2994,7 @@ class Label extends GraphicalObject {
     // Set font size
     setFontSize(s) {
         this.fontSize = s
+        this.computeWidth(this.figure.ctx)
         return this
     }
 

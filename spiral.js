@@ -54,14 +54,17 @@ for (let i = 0; i < steps; i++) {
 }
 
 let c = nearZero(minus(border.w(), canvasRect().x()))
-figure.currentValuation = updateValuation()
-figure.removeConstraints(c)
+let success;
+  [figure.currentValuation, success] = updateValuation()
 
-let phi = Constrain.evaluate(divide(border.w(), border.h()), figure.currentValuation),
+let mw = Constrain.evaluate(border.w(), figure.currentValuation),
+    mh = Constrain.evaluate(border.h(), figure.currentValuation)
+let phi = mw/mh
     t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow", undefined, 1, canvas.width/2, 100)
 align("center", "none", t, border)
 align("none", "top", t, figure.canvasRect())
 
+figure.removeConstraints(c)
 }
 Constrain.autoResize()
 figure.start()
