@@ -295,7 +295,8 @@ class Figure {
         if (this.animatedSolving) {
             callback = (it, x0, f0, g0, H1) => true
         }
-        const uncmin_options = {Hinv: this.invHessian, stepSize: 5, overshoot: 0.1}
+        if (this.invHessian && this.invHessian.length != valuation.length) this.invHessian = undefined
+        const uncmin_options = {Hinv: this.invHessian, stepSize: 1, overshoot: 0.1}
         if (doGrad) {
             if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
@@ -911,7 +912,7 @@ function isFigure(figure) {
 }
 
 const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3
-const algorithm = UNCMIN_ADAM
+const algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -965,6 +966,10 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         norm2 = numeric.norm2
     tol = max(tol, numeric.epsilon)
     let step, H1 = options.Hinv || numeric.identity(n)
+    if (H1.length != n) {
+        throw new Error("Inverse Hessian has wrong dimensions")
+    }
+
     const dot = numeric.dot,
         sub = numeric.sub,
         add = numeric.add,
