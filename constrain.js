@@ -3427,8 +3427,8 @@ class DOMElementBox extends LayoutObject {
 
 function fullWindowCanvas(canvas) {
     const resizeCanvasToWindow = () => {
-        const _width = window.outerWidth,
-              _height = window.outerHeight
+        const _width = window.innerWidth,
+              _height = window.innerHeight
         // console.log("Resizing to " + _width + " " + _height)
         canvas.style.width = _width + "px"
         canvas.style.height = _height + "px"
