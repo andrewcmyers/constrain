@@ -56,8 +56,13 @@ class Figure {
         if (typeof canvas == OBJECT_STR && canvas.constructor == HTMLCanvasElement) {
             this.canvas = canvas
         } else if (typeof canvas == "string") {
-            this.canvas = canvas = document.getElementById(canvas)
-            this.name = canvas.id
+            const c = document.getElementById(canvas)
+            if (c) {
+                this.canvas = canvas = c
+                this.name = c.id
+            } else {
+                console.error("Could not find any canvas with id " + c)
+            }
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
             return
@@ -404,6 +409,22 @@ class Figure {
                 console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
             })
+        }
+    }
+    // Clear this figure and move it back to unready status
+    stop() {
+        if (this.is_started) {
+            this.ctx.clearRect(0, 0, this.width, this.height)
+            this.is_started = false
+            this.is_ready = false
+        }
+    }
+    // Stop this figure and remove it from the list of figures
+    destroy() {
+        if (this.is_started) this.stop()
+        let f = Figures.pop()
+        for (let i = 0; i < Figures.length; i++) {
+            if (Figures[i] === this) Figures[i] = f
         }
     }
 
