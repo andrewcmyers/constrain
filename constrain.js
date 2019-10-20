@@ -910,6 +910,10 @@ class Figure {
     group(...g) { return new Group(this, ...g) }
 }
 
+function figure(nm) {
+    return new Figure(nm)
+}
+
 function isFigure(figure) {
     return (figure.connector !== undefined)
 }
@@ -2295,6 +2299,27 @@ class LayoutObject extends Expression {
         r.h = () => new Plus(this.h(), new Times(2, v))
         return r
     }
+    // Builder to constrain both the x and y coordinates of a graphical object.
+    // Arguments can be:
+    //   x, y: the coordinates
+    //   [x, y]: the coordinates
+    //   a LayoutObject: coordinates are its x() and y()
+    at() {
+        if (arguments.length == 2) {
+            this.figure.equal(this.x(), arguments[0])
+            this.figure.equal(this.y(), arguments[1])
+        } else if (arguments.length == 1) {
+            const p = arguments[0]
+            if (p.constructor == Array) {
+                this.figure.equal(this.x(), p[0])
+                this.figure.equal(this.y(), p[1])
+            } else {
+                this.figure.equal(this.x(), p.x())
+                this.figure.equal(this.y(), p.y())
+            }
+        }
+        return this
+    }
 }
 
 // A Box is a layout object with a width and height. It does not necessarily
@@ -2324,27 +2349,6 @@ class Box extends LayoutObject {
     // Builder to constrain the y coordinate of the object.
     setY(y) { this.figure.equal(this.y(), y); return this }
 
-    // Builder to constrain both the x and y coordinates of a graphical object.
-    // Arguments can be:
-    //   x, y: the coordinates
-    //   [x, y]: the coordinates
-    //   a LayoutObject: coordinates are its x() and y()
-    at() {
-        if (arguments.length == 2) {
-            this.figure.equal(this.x(), arguments[0])
-            this.figure.equal(this.y(), arguments[1])
-        } else if (arguments.length == 1) {
-            const p = arguments[0]
-            if (p.constructor == Array) {
-                this.figure.equal(this.x(), p[0])
-                this.figure.equal(this.y(), p[1])
-            } else {
-                this.figure.equal(this.x(), p.x())
-                this.figure.equal(this.y(), p.y())
-            }
-        }
-        return this
-    }
     // Builder to constrain the width of this object.
     setW(w) { this.figure.equal(this.w(), w); return this }
     // Builder to constrain the height of this object.
@@ -3653,6 +3657,7 @@ function autoResize() {
 }
 
   return ({
+    figure: figure,
     Figure: Figure,
     Figures: Figures,
     Frame: Frame,
