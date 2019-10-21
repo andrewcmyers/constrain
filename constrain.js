@@ -1482,7 +1482,7 @@ class Average extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return (a + b)/2 }
     gradop(a, b, da, db) {
-        return [ (a + b)/2, numeric.mul(numeric.add(da, db), 0.5) ]
+        return [ numeric.mul(0.5, numeric.add(a, b)), numeric.mul(numeric.add(da, db), 0.5) ]
     }
     backprop(task) {
         task.propagate(this.e1, 0.5*this.bpDiff)
