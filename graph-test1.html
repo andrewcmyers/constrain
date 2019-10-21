@@ -59,19 +59,23 @@ with (f = figure) {
         edge(h, j).setEndArrow("arrow")
         align("center", "none", a, c)
     }
-    setAnimatedSolving(true)
+    setAnimatedSolving(false)
     start()
-    /*
+
     new Promise((resolve, reject) => {
         updateValuation()
+        render()
         resolve()
-    }).then(() => {
-        let hh = handle()
-        hh.x().hint = d.x().currentValue
-        hh.y().hint = d.y().currentValue
+    })
+    .then(() => {
+        setTimeout(() => {
+            let hh = handle()
+            hh.x().hint = d.x().currentValue
+            hh.y().hint = d.y().currentValue
+            render() }, 1000)
         //pin(hh, d)
-    }).then(render())
-    */
+    })
+    .then(render())
 }
 
 </script>

@@ -56,8 +56,13 @@ class Figure {
         if (typeof canvas == OBJECT_STR && canvas.constructor == HTMLCanvasElement) {
             this.canvas = canvas
         } else if (typeof canvas == "string") {
-            this.canvas = canvas = document.getElementById(canvas)
-            this.name = canvas.id
+            const c = document.getElementById(canvas)
+            if (c) {
+                this.canvas = canvas = c
+                this.name = c.id
+            } else {
+                console.error("Could not find any canvas with id " + c)
+            }
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
             return
@@ -149,7 +154,8 @@ class Figure {
         const result = new Array(this.activeVariables.length)
         for (let i = 0; i < this.activeVariables.length; i++) {
             const v = this.activeVariables[i]
-            if (v.hint != null) result[i] = v.hint
+            if (v.currentValue != null) result[i] = v.currentValue
+            else if (v.hint != null) result[i] = v.hint
             else result[i] = 100
         }
         return result
@@ -165,7 +171,7 @@ class Figure {
             if (v.constructor != Variable)
                 console.error("not a variable")
             v.setIndex(i)
-            a[i] = v
+            a.push(v)
             i++
         }
         this.GraphicalObjects.forEach(g => {
@@ -294,16 +300,18 @@ class Figure {
         let result, callback, maxit = 1000
         if (this.animatedSolving) {
             callback = (it, x0, f0, g0, H1) => true
-        } else {
-            this.invHessian
         }
-        const uncmin_options = {Hinv: this.invHessian, stepSize: 5, overshoot: 0.1}
+        if (this.invHessian && this.invHessian.length != valuation.length) this.invHessian = undefined
+        const uncmin_options = {Hinv: this.invHessian,
+                                stepSize: UNCMIN_STEPSIZE,
+                                overshoot: UNCMIN_OVERSHOOT}
         if (doGrad) {
-            if (USE_BACKPROPAGATION)
+            if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
-                            valuation, tol, maxit, callback, uncmin_options)
-            else
+                                valuation, tol, maxit, callback, uncmin_options)
+            } else {
                 result = uncmin((v,d) => fig.costGrad(v,d), valuation, tol, maxit, callback, uncmin_options)
+            }
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
@@ -401,6 +409,22 @@ class Figure {
                 console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
             })
+        }
+    }
+    // Clear this figure and move it back to unready status
+    stop() {
+        if (this.is_started) {
+            this.ctx.clearRect(0, 0, this.width, this.height)
+            this.is_started = false
+            this.is_ready = false
+        }
+    }
+    // Stop this figure and remove it from the list of figures
+    destroy() {
+        if (this.is_started) this.stop()
+        let f = Figures.pop()
+        for (let i = 0; i < Figures.length; i++) {
+            if (Figures[i] === this) Figures[i] = f
         }
     }
 
@@ -907,18 +931,24 @@ class Figure {
     group(...g) { return new Group(this, ...g) }
 }
 
+function figure(nm) {
+    return new Figure(nm)
+}
+
 function isFigure(figure) {
     return (figure.connector !== undefined)
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_BFGS_SPARSE = 4
-const algorithm = UNCMIN_BFGS_SPARSE
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4
+const algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
       BAD_GRADIENT = "Gradient has Infinity or NaN"
 
 const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPSILON = 1e-8
+const UNCMIN_OVERSHOOT = 0.1, UNCMIN_STEPSIZE = 1
+const UNCMIN_LBFGS_M = 10
 
 function partition(a, l, r) {
     const p = a[l] // better: swap a[l] with random element first
@@ -935,33 +965,6 @@ function partition(a, l, r) {
     return j+1
 }
 
-/**
- * Returns: the (n-l+1)th smallest element in the subarray {@code a[l..r)}
- * Requires: {@code 0 ≤ l ≤ n < r ≤ a.length}
- */
-function qselect(a, l, r, n) {
-    while (l+1 < r) {
-        let k = partition(a, l, r)
-        if (n < k) r = k
-        else l = k
-    }
-    return a[l];
-}
-
-// Turn all but the three biggest contributors to the matrix product m.v in
-// in each row of m into 0
-function sparsify(m, v) {
-    const n = v.length,
-          vm = numeric.rep([n], v),
-          prod = numeric.transpose(numeric.abs(numeric.mul(m, vm)))
-    for (let i = 0; i < n; i++) {
-        const p = qselect(prod[i], 0, n, 0)
-        for (let j = 0; j < n; j++) {
-            if (prod[i][j] < p) m[j][i] = 0
-        }
-    }
-}
-
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
 // various functions from that package.
 //
@@ -975,10 +978,21 @@ function sparsify(m, v) {
 // Effects: if callback is a function, it is invoked on each iteration of the algorithm.
 //    If it returns true, the search for the local minimum halts.
 function uncmin(fg, x0, tol, maxit, callback, options) {
-    const grad = numeric.gradient
+    const grad = numeric.gradient,
+        dot = numeric.dot,
+        sub = numeric.sub,
+        add = numeric.add,
+        ten = numeric.tensor,
+        div = numeric.div,
+        sqrt = numeric.sqrt,
+        mul = numeric.mul,
+        transpose = numeric.transpose,
+        all = numeric.all,
+        isfinite = numeric.isFinite,
+        neg = numeric.neg
     if (options === undefined) options = {}
-    if (tol === undefined) tol = 1e-8
-    if (maxit === undefined) maxit = 1000
+    tol = options.tol || 1e-8
+    maxit = options.maxit || 1000
 
     const gradient = x => grad(fg, x)
     x0 = numeric.clone(x0)
@@ -992,20 +1006,13 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
     const max = Math.max,
         norm2 = numeric.norm2
     tol = max(tol, numeric.epsilon)
-    let step, H1 = options.Hinv || numeric.identity(n)
-    const dot = numeric.dot,
-        sub = numeric.sub,
-        add = numeric.add,
-        ten = numeric.tensor,
-        div = numeric.div,
-        sqrt = numeric.sqrt,
-        mul = numeric.mul,
-        transpose = numeric.transpose
-    const all = numeric.all,
-        isfinite = numeric.isFinite,
-        neg = numeric.neg
+    let step, H1 = options.Hinv || mul(numeric.identity(n), options.stepSize || 1)
+    if (H1.length != n) {
+        throw new Error("Inverse Hessian has wrong dimensions")
+    }
+
     let it = 0,
-        i, s, x1, y, Hs, i0, t, nstep, t1, t2,
+        i, s, x1, y, ys, Hs, i0, t, nstep, t1, t2,
         m, v // ADAM
     let overshoot = options.overshoot || 0.1
     let msg = ""
@@ -1013,17 +1020,47 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         m = getZeros(n)
         v = getZeros(n)
     }
+    let hist, y_hist, s_hist, rho // L-BFGS
+    if (algorithm == UNCMIN_LBFGS) {
+        if (options.Hinv) {
+            hist = options.Hinv.hist
+            y_hist = options.Hinv.y_hist
+            s_hist = options.Hinv.s_hist
+            rho = options.Hinv.rho
+        } else {
+            hist = 0 // the m of L-BFGS
+            y_hist = []; s_hist = []; rho = [] // length of each is hist
+        }
+    }
     while (it < maxit) {
         if (!all(isfinite(g0))) {
             msg = BAD_GRADIENT
             break
         }
-        t = options.stepSize || 1.0
+        t = 1.0
         switch (algorithm) {
-            case UNCMIN_BFGS_SPARSE:
             case UNCMIN_BFGS:
             case UNCMIN_DFP:
                 step = neg(dot(H1, g0))
+                break
+            case UNCMIN_LBFGS: {
+                    let q = g0
+                    const alpha = new Array(hist)
+                    for (let i = hist-1; i >= 0; i--) {
+                        alpha[i] = rho[i] * dot(s_hist[i], q)
+                        q = sub(q, mul(alpha[i], y_hist[i]))
+                    }
+                    const gamma = // use rho for numerator?
+                        hist > 0 ? dot(s_hist[hist-1], y_hist[hist-1])/dot(y_hist[hist-1], y_hist[hist-1])
+                                 : 1
+                    let z = mul(gamma, q)
+                    for (let i = 0; i < hist; i++) {
+                        const beta_i = rho[i] * dot(y_hist[i], z)
+                        z = add(z, mul(s_hist[i], alpha[i] - beta_i))
+                    }
+                    step = neg(z)
+                }
+
                 break
             case UNCMIN_GRADIENT:
                 step = neg(g0)
@@ -1054,7 +1091,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             s = mul(step, t)
             x1 = add(x0, s)
             f1 = fg(x1)
-            if (f1 - f0 >= overshoot * t * df0 || isNaN(f1)) {
+            if (algorithm != UNCMIN_ADAM && f1 - f0 >= overshoot * t * df0 || isNaN(f1)) {
                 t *= 0.5
                 it++
                 continue
@@ -1072,10 +1109,9 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         [f1, g1] = fg(x1, true)
         if (g1 === undefined) g1 = gradient(x1)
         switch (algorithm) {
-            case UNCMIN_BFGS_SPARSE:
             case UNCMIN_BFGS: {
                 y = sub(g1, g0)
-                const ys = dot(y, s)
+                ys = dot(y, s)
                 if (ys <= 0) {
                     H1 = numeric.identity(n) // inverse Hessian looks broken, restart
                     console.log("resetting inverse Hessian estimate")
@@ -1085,9 +1121,6 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                                 mul((ys + dot(y, Hy)) / (ys * ys),
                                     ten(s, s))),
                             div(add(ten(Hy, s), ten(s, Hy)), ys))
-                    if (algorithm == UNCMIN_BFGS_SPARSE) {
-                        sparsify(H1, g1)
-                    }
                 }
             }
             break
@@ -1102,7 +1135,21 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
             }
             break
 
-            case UNCMIN_GRADIENT: break
+            case UNCMIN_LBFGS: {
+                y = sub(g1, g0)
+                s_hist.push(s)
+                y_hist.push(y)
+                rho.push(1/dot(y, s))
+                hist++
+                if (hist > UNCMIN_LBFGS_M) {
+                    s_hist.shift()
+                    y_hist.shift()
+                    rho.shift()
+                    hist--
+                }
+            }
+
+            default: break
         }
         x0 = x1
         f0 = f1
@@ -1114,6 +1161,9 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                 break
             }
         }
+    }
+    if (algorithm == UNCMIN_LBFGS) {
+        H1 = { hist: hist, s_hist: s_hist, y_hist: y_hist, rho: rho }
     }
     return {
         solution: x0,
@@ -1664,7 +1714,7 @@ class Distance extends Expression {
         } else {
             // positions of points are considered arbitrary, so generate a
             // differential in a random direction.
-            console.log("Warning: zero distance between points, generating force at random angle")
+            // console.log("Warning: zero distance between points, generating force at random angle")
 
             const ang = Math.random() * Math.PI * 2, 
                   dx = d * Math.cos(ang), dy = d * Math.sin(ang)
@@ -2270,6 +2320,27 @@ class LayoutObject extends Expression {
         r.h = () => new Plus(this.h(), new Times(2, v))
         return r
     }
+    // Builder to constrain both the x and y coordinates of a graphical object.
+    // Arguments can be:
+    //   x, y: the coordinates
+    //   [x, y]: the coordinates
+    //   a LayoutObject: coordinates are its x() and y()
+    at() {
+        if (arguments.length == 2) {
+            this.figure.equal(this.x(), arguments[0])
+            this.figure.equal(this.y(), arguments[1])
+        } else if (arguments.length == 1) {
+            const p = arguments[0]
+            if (p.constructor == Array) {
+                this.figure.equal(this.x(), p[0])
+                this.figure.equal(this.y(), p[1])
+            } else {
+                this.figure.equal(this.x(), p.x())
+                this.figure.equal(this.y(), p.y())
+            }
+        }
+        return this
+    }
 }
 
 // A Box is a layout object with a width and height. It does not necessarily
@@ -2299,27 +2370,6 @@ class Box extends LayoutObject {
     // Builder to constrain the y coordinate of the object.
     setY(y) { this.figure.equal(this.y(), y); return this }
 
-    // Builder to constrain both the x and y coordinates of a graphical object.
-    // Arguments can be:
-    //   x, y: the coordinates
-    //   [x, y]: the coordinates
-    //   a LayoutObject: coordinates are its x() and y()
-    at() {
-        if (arguments.length == 2) {
-            this.figure.equal(this.x(), arguments[0])
-            this.figure.equal(this.y(), arguments[1])
-        } else if (arguments.length == 1) {
-            const p = arguments[0]
-            if (p.constructor == Array) {
-                this.figure.equal(this.x(), p[0])
-                this.figure.equal(this.y(), p[1])
-            } else {
-                this.figure.equal(this.x(), p.x())
-                this.figure.equal(this.y(), p.y())
-            }
-        }
-        return this
-    }
     // Builder to constrain the width of this object.
     setW(w) { this.figure.equal(this.w(), w); return this }
     // Builder to constrain the height of this object.
@@ -3398,8 +3448,8 @@ class DOMElementBox extends LayoutObject {
 
 function fullWindowCanvas(canvas) {
     const resizeCanvasToWindow = () => {
-        const _width = window.outerWidth,
-              _height = window.outerHeight
+        const _width = window.innerWidth,
+              _height = window.innerHeight
         // console.log("Resizing to " + _width + " " + _height)
         canvas.style.width = _width + "px"
         canvas.style.height = _height + "px"
@@ -3628,6 +3678,7 @@ function autoResize() {
 }
 
   return ({
+    figure: figure,
     Figure: Figure,
     Figures: Figures,
     Frame: Frame,
