@@ -48,12 +48,13 @@
             const fig1 = new Figure("fig1")
             var f0, f1, s1, s2, s3, l1
             with (fig1) {
+                setAnimatedSolving(false)
                 setLineWidth(2)
                 setStrokeStyle('gray')
                 f0 = addFrame("start"); f1 = addFrame("next").setLength(1000); f2 = addFrame().setLength(1500).setAutoAdvance(true)
                 s1 = square("white"); s3 = drawAfter(f1, square("#fdd")); s2 = square("#dfd")
                 t1 = DOMElement("title")
-                equal(s1.x(), canvasRect().x())
+                equal(s1.x(), canvasRect().x()).changeCost(10)
                 pin(s1.lr(), s2)
                 equal(s1.w(), s2.w(), plus(t1.w(), 10))
                 equal(s1.y0(), minus(t1.y0(), 10))
@@ -67,7 +68,7 @@
                     equal(distance(l1.p1(), l1.p2()),
                           distance(s3.ll(), s3.ul())),
                     equal(distance(l1.p2(), s3.ul()),
-                        smooth(f2, 0, distance(s3.ul(), s3.lr())))
+                        smooth(f2, 0, distance(s3.ul(), s3.lr()))).changeCost(0.1)
                 )
                 f3 = addFrame().setLength(500)
                 let t2 = DOMElement("html"),
@@ -92,7 +93,6 @@
             const fig2 = new Constrain.Figure("fig2")
             var circ
             with (fig2) {
-                fig2.animateSolving = true
                 const [f0, f1, f1a, f2, f3, f4] = addFrame(null, "rectangles", "rect2", "lines", "circles", "connect")
                 const s1 = drawAfter(f1, square().setFillStyle("#f88")),
                       r1 = drawAfter(f1a, rectangle().setFillStyle("#8f8").setCornerRadius(8)),

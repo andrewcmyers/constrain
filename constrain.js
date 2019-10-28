@@ -2114,6 +2114,7 @@ class Constraint extends Temporal {
     }
     changeCost(cost) {
         this.cost *= cost
+        return this;
     }
 }
 
