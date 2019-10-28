@@ -32,11 +32,13 @@ class SpiralPiece extends Constrain.Square {
             const tx = ax, ty = ay
             ax = bx; ay = by; bx = cx; by = cy; cx = dx; cy = dy; dx = tx; dy = ty
         }
-        const ctx = this.figure.ctx, k2 = bezier_k, k1 = 1 - k2
+        const ctx = this.figure.ctx, f = 0.8,
+                    k2 = bezier_k*f, k1 = 1 - k2,
+                    k4 = bezier_k/f, k3 = 1 - k4
         ctx.beginPath()
         ctx.moveTo(ax, ay)
         ctx.bezierCurveTo(ax*k1 + bx*k2, ay*k1 + by*k2,
-                          cx*k1 + bx*k2, cy*k1 + by*k2,
+                          cx*k3 + bx*k4, cy*k3 + by*k4,
                           cx, cy)
         ctx.strokeStyle = "yellow"
         ctx.lineWidth = scale*Math.sqrt(x1-x0)/5
