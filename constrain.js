@@ -3430,9 +3430,7 @@ function fullWindowCanvas(canvas) {
         canvas.style.height = _height + "px"
     }
     addEventListener('resize', 
-        () => {
-            resizeCanvasToWindow(canvas)
-        }
+        () => resizeCanvasToWindow(canvas)
     )
     resizeCanvasToWindow(canvas)
 }
