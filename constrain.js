@@ -56,8 +56,13 @@ class Figure {
         if (typeof canvas == OBJECT_STR && canvas.constructor == HTMLCanvasElement) {
             this.canvas = canvas
         } else if (typeof canvas == "string") {
-            this.canvas = canvas = document.getElementById(canvas)
-            this.name = canvas.id
+            const c = document.getElementById(canvas)
+            if (c) {
+                this.canvas = canvas = c
+                this.name = c.id
+            } else {
+                console.error("Could not find any canvas with id " + c)
+            }
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
             return
@@ -404,6 +409,22 @@ class Figure {
                 console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
             })
+        }
+    }
+    // Clear this figure and move it back to unready status
+    stop() {
+        if (this.is_started) {
+            this.ctx.clearRect(0, 0, this.width, this.height)
+            this.is_started = false
+            this.is_ready = false
+        }
+    }
+    // Stop this figure and remove it from the list of figures
+    destroy() {
+        if (this.is_started) this.stop()
+        let f = Figures.pop()
+        for (let i = 0; i < Figures.length; i++) {
+            if (Figures[i] === this) Figures[i] = f
         }
     }
 
@@ -908,6 +929,10 @@ class Figure {
     nearZero(e, cost) { return new NearZero(this, e, cost) }
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
     group(...g) { return new Group(this, ...g) }
+}
+
+function figure(nm) {
+    return new Figure(nm)
 }
 
 function isFigure(figure) {
@@ -1507,7 +1532,7 @@ class Average extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return (a + b)/2 }
     gradop(a, b, da, db) {
-        return [ (a + b)/2, numeric.mul(numeric.add(da, db), 0.5) ]
+        return [ numeric.mul(0.5, numeric.add(a, b)), numeric.mul(numeric.add(da, db), 0.5) ]
     }
     backprop(task) {
         task.propagate(this.e1, 0.5*this.bpDiff)
@@ -2089,6 +2114,7 @@ class Constraint extends Temporal {
     }
     changeCost(cost) {
         this.cost *= cost
+        return this;
     }
 }
 
@@ -2295,6 +2321,27 @@ class LayoutObject extends Expression {
         r.h = () => new Plus(this.h(), new Times(2, v))
         return r
     }
+    // Builder to constrain both the x and y coordinates of a graphical object.
+    // Arguments can be:
+    //   x, y: the coordinates
+    //   [x, y]: the coordinates
+    //   a LayoutObject: coordinates are its x() and y()
+    at() {
+        if (arguments.length == 2) {
+            this.figure.equal(this.x(), arguments[0])
+            this.figure.equal(this.y(), arguments[1])
+        } else if (arguments.length == 1) {
+            const p = arguments[0]
+            if (p.constructor == Array) {
+                this.figure.equal(this.x(), p[0])
+                this.figure.equal(this.y(), p[1])
+            } else {
+                this.figure.equal(this.x(), p.x())
+                this.figure.equal(this.y(), p.y())
+            }
+        }
+        return this
+    }
 }
 
 // A Box is a layout object with a width and height. It does not necessarily
@@ -2324,27 +2371,6 @@ class Box extends LayoutObject {
     // Builder to constrain the y coordinate of the object.
     setY(y) { this.figure.equal(this.y(), y); return this }
 
-    // Builder to constrain both the x and y coordinates of a graphical object.
-    // Arguments can be:
-    //   x, y: the coordinates
-    //   [x, y]: the coordinates
-    //   a LayoutObject: coordinates are its x() and y()
-    at() {
-        if (arguments.length == 2) {
-            this.figure.equal(this.x(), arguments[0])
-            this.figure.equal(this.y(), arguments[1])
-        } else if (arguments.length == 1) {
-            const p = arguments[0]
-            if (p.constructor == Array) {
-                this.figure.equal(this.x(), p[0])
-                this.figure.equal(this.y(), p[1])
-            } else {
-                this.figure.equal(this.x(), p.x())
-                this.figure.equal(this.y(), p.y())
-            }
-        }
-        return this
-    }
     // Builder to constrain the width of this object.
     setW(w) { this.figure.equal(this.w(), w); return this }
     // Builder to constrain the height of this object.
@@ -3423,8 +3449,8 @@ class DOMElementBox extends LayoutObject {
 
 function fullWindowCanvas(canvas) {
     const resizeCanvasToWindow = () => {
-        const _width = window.outerWidth,
-              _height = window.outerHeight
+        const _width = window.innerWidth,
+              _height = window.innerHeight
         // console.log("Resizing to " + _width + " " + _height)
         canvas.style.width = _width + "px"
         canvas.style.height = _height + "px"
@@ -3651,6 +3677,7 @@ function autoResize() {
 }
 
   return ({
+    figure: figure,
     Figure: Figure,
     Figures: Figures,
     Frame: Frame,

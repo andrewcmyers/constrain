@@ -4,6 +4,13 @@ Constrain.fullWindowCanvas(canvas)
 
 const figure = new Constrain.Figure(canvas)
 
+// Bezier constant for a circular arc: (4/3) tan(theta/4)
+function circularArcConstant(degrees) {
+    return (4/3) * Math.tan(degrees * Math.PI / 180 / 4)
+}
+
+const bezier_k = circularArcConstant(90)
+
 with (figure) {
 var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
     h = handle("yellow", 300, 300)
@@ -25,10 +32,14 @@ class SpiralPiece extends Constrain.Square {
             const tx = ax, ty = ay
             ax = bx; ay = by; bx = cx; by = cy; cx = dx; cy = dy; dx = tx; dy = ty
         }
-        const ctx = this.figure.ctx
+        const ctx = this.figure.ctx, f = 0.8,
+                    k2 = bezier_k*f, k1 = 1 - k2,
+                    k4 = bezier_k/f, k3 = 1 - k4
         ctx.beginPath()
         ctx.moveTo(ax, ay)
-        ctx.quadraticCurveTo(bx, by, cx, cy)
+        ctx.bezierCurveTo(ax*k1 + bx*k2, ay*k1 + by*k2,
+                          cx*k3 + bx*k4, cy*k3 + by*k4,
+                          cx, cy)
         ctx.strokeStyle = "yellow"
         ctx.lineWidth = scale*Math.sqrt(x1-x0)/5
         ctx.stroke()
