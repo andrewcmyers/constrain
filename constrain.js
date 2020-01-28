@@ -12,7 +12,7 @@ var Constrain = function() {
 const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
-      CHECK_NAN = false,
+      CHECK_NAN = true,
       COMPARE_GRADIENTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
@@ -1530,15 +1530,19 @@ class Plus extends BinaryExpression {
 
 class Average extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
-    operation(a, b) { return (a + b)/2 }
+    operation(a, b) { return numeric.mul(0.5, numeric.add(a, b)) }
     gradop(a, b, da, db) {
         return [ numeric.mul(0.5, numeric.add(a, b)), numeric.mul(numeric.add(da, db), 0.5) ]
     }
     backprop(task) {
-        task.propagate(this.e1, 0.5*this.bpDiff)
-        task.propagate(this.e2, 0.5*this.bpDiff)
+        task.propagate(this.e1, numeric.mul(0.5, this.bpDiff))
+        task.propagate(this.e2, numeric.mul(0.5, this.bpDiff))
     }
     opName() { return " avg " }
+    x() { return new Projection(this, 0, 2) }
+    y() { return new Projection(this, 1, 2) }
+    h() { return 0 }
+    w() { return 0 }
 }
 
 class Times extends BinaryExpression {
@@ -2343,6 +2347,14 @@ class LayoutObject extends Expression {
         return this
     }
 }
+Average.prototype.toTop = LayoutObject.prototype.toTop
+Average.prototype.toLeft = LayoutObject.prototype.toLeft
+Average.prototype.toBottom = LayoutObject.prototype.toBottom
+Average.prototype.toRight = LayoutObject.prototype.toRight
+Average.prototype.x0 = LayoutObject.prototype.x0
+Average.prototype.x1 = LayoutObject.prototype.x1
+Average.prototype.y0 = LayoutObject.prototype.y0
+Average.prototype.y1 = LayoutObject.prototype.y1
 
 // A Box is a layout object with a width and height. It does not necessarily
 // render but is useful for positioning other objects, because it can be used
