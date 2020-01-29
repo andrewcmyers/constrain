@@ -2351,10 +2351,10 @@ Average.prototype.toTop = LayoutObject.prototype.toTop
 Average.prototype.toLeft = LayoutObject.prototype.toLeft
 Average.prototype.toBottom = LayoutObject.prototype.toBottom
 Average.prototype.toRight = LayoutObject.prototype.toRight
-Average.prototype.x0 = LayoutObject.prototype.x0
-Average.prototype.x1 = LayoutObject.prototype.x1
-Average.prototype.y0 = LayoutObject.prototype.y0
-Average.prototype.y1 = LayoutObject.prototype.y1
+Average.prototype.x0 = Average.prototype.x
+Average.prototype.x1 = Average.prototype.x
+Average.prototype.y0 = Average.prototype.y
+Average.prototype.y1 = Average.prototype.y
 
 // A Box is a layout object with a width and height. It does not necessarily
 // render but is useful for positioning other objects, because it can be used
