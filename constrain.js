@@ -2420,7 +2420,7 @@ class GraphicalObject extends Box {
         return this
     }
     addText(t) {
-        if (typeof t == "string") t = text(t)
+        if (typeof t == "string") t = this.figure.text(t)
         this.text = t
         return this
     }
