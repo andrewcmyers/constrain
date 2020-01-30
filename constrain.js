@@ -3697,6 +3697,8 @@ function autoResize() {
     GraphicalObject: GraphicalObject,
     Point: Point,
     Box: Box,
+    Line: Line,
+    Connector: Connector,
     Rectangle: Rectangle,
     Square: Square,
     Circle: Circle,
@@ -3722,6 +3724,7 @@ function autoResize() {
     fullWindowCanvas: fullWindowCanvas,
     isFigure: isFigure,
     statistics: statistics,
-    currentValue: currentValue
+    currentValue: currentValue,
+    drawLineEndSeg: drawLineEndSeg
   })
 }()

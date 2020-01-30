@@ -24,8 +24,9 @@ class SpiralPiece extends Constrain.Square {
        super(figure, style, "white", 1, 300, 300, 300)
        this.side = side
     }
-    render(valuation) {
-        super.render(valuation)
+    render() {
+        super.render()
+        let valuation = this.figure.currentValuation
         let [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], valuation)
         let ax = x0, ay = y0, bx = x0, by = y1, cx = x1, cy = y1, dx = x1, dy = y0, s = this.side
         while (s--) {
