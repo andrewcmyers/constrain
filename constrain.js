@@ -2738,25 +2738,36 @@ function drawBSplines(ctx, bs_pts) {
     ctx.beginPath()
     ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
     let n = bs_pts.length
+    switch(n) {
+        case 0:
+        case 1: return
+        case 2:
+            ctx.lineTo(bs_pts[1][0], bs_pts[1][1])
+            ctx.stroke()
+            return
+        case 4:
+            ctx.bezierCurveTo(bs_pts[1][0], bs_pts[1][1],
+                              bs_pts[2][0], bs_pts[2][1],
+                              bs_pts[3][0], bs_pts[3][1])
+            ctx.stroke()
+            return
+        default: break
+    }
     for (let i = 0; i < n - 1; i += 2) {
         let p1=[], p2=[], p3=[]
         if (i >= 1) {
-            p1[0] = bs_pts[i-1][0]*0.25 + bs_pts[i][0]*0.5
-                    + bs_pts[i+1][0]*0.25
-            p1[1] = bs_pts[i-1][1]*0.25 + bs_pts[i][1]*0.5
-                    + bs_pts[i+1][1]*0.25
+            p1[0] = bs_pts[i-1][0]*0.25 + bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.25
+            p1[1] = bs_pts[i-1][1]*0.25 + bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.25
         } else {
             p1[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
             p1[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
         }
-        if (i + 2 < n) {
-            p2[0] = bs_pts[i][0]*0.25 + bs_pts[i+1][0]*0.5
-                    + bs_pts[i+2][0]*0.25
-            p2[1] = bs_pts[i][1]*0.25 + bs_pts[i+1][1]*0.5
-                    + bs_pts[i+2][1]*0.25
+        if (i + 3 < n) {
+            p2[0] = bs_pts[i][0]*0.25 + bs_pts[i+1][0]*0.5 + bs_pts[i+2][0]*0.25
+            p2[1] = bs_pts[i][1]*0.25 + bs_pts[i+1][1]*0.5 + bs_pts[i+2][1]*0.25
         } else {
-            p2[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
-            p2[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
+            p2[0] = bs_pts[n-2][0]*0.5 + bs_pts[n-1][0]*0.5
+            p2[1] = bs_pts[n-2][1]*0.5 + bs_pts[n-1][1]*0.5
         }
         if (i + 3 < n) {
             p3[0] = bs_pts[i][0]*0.125 + bs_pts[i+1][0]*0.375
