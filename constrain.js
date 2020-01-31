@@ -2730,35 +2730,42 @@ class Polygon extends GraphicalObject {
 }
 
 // Using ctx and the current line style, draw a curve of cubic splines
-// going through or near the points in bs_pts.
+// going through or near the points in bs_pts. Near the endpoints,
+// it acts like a Bezier spline: the curve goes through the first
+// and last point and its initial and final direction are toward the
+// second and second-to-last points.
 function drawBSplines(ctx, bs_pts) {
     ctx.beginPath()
     ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
     let n = bs_pts.length
     for (let i = 0; i < n - 1; i += 2) {
-        const p1 = (i >= 1) ?
-            numeric.add(
-                numeric.mul(bs_pts[i-1], 0.25),
-                numeric.mul(bs_pts[i], 0.5),
-                numeric.mul(bs_pts[i+1], 0.25))
-            : numeric.add(
-                numeric.mul(bs_pts[i], 0.5),
-                numeric.mul(bs_pts[i+1], 0.5))
-        const p2 = (i + 2 < n) ?
-            numeric.add(
-                numeric.mul(bs_pts[i], 0.25),
-                numeric.mul(bs_pts[i+1], 0.5),
-                numeric.mul(bs_pts[i+2], 0.25))
-            : numeric.add(
-                numeric.mul(bs_pts[i], 0.5),
-                numeric.mul(bs_pts[i+1], 0.5))
-        const p3 = (i + 3 < n) ?
-            numeric.add(
-                numeric.mul(bs_pts[i], 0.125),
-                numeric.mul(bs_pts[i+1], 0.375),
-                numeric.mul(bs_pts[i+2], 0.375),
-                numeric.mul(bs_pts[i+3], 0.125))
-            : bs_pts[n-1]
+        let p1=[], p2=[], p3=[]
+        if (i >= 1) {
+            p1[0] = bs_pts[i-1][0]*0.25 + bs_pts[i][0]*0.5
+                    + bs_pts[i+1][0]*0.25
+            p1[1] = bs_pts[i-1][1]*0.25 + bs_pts[i][1]*0.5
+                    + bs_pts[i+1][1]*0.25
+        } else {
+            p1[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
+            p1[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
+        }
+        if (i + 2 < n) {
+            p2[0] = bs_pts[i][0]*0.25 + bs_pts[i+1][0]*0.5
+                    + bs_pts[i+2][0]*0.25
+            p2[1] = bs_pts[i][1]*0.25 + bs_pts[i+1][1]*0.5
+                    + bs_pts[i+2][1]*0.25
+        } else {
+            p2[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
+            p2[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
+        }
+        if (i + 3 < n) {
+            p3[0] = bs_pts[i][0]*0.125 + bs_pts[i+1][0]*0.375
+                    + bs_pts[i+2][0]*0.375 + bs_pts[i+3][0]*0.125
+            p3[1] = bs_pts[i][1]*0.125 + bs_pts[i+1][1]*0.375
+                    + bs_pts[i+2][1]*0.375 + bs_pts[i+3][1]*0.125
+        } else {
+            p3 = bs_pts[n-1]
+        }
         ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
     }
     ctx.stroke()
