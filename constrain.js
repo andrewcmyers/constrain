@@ -2729,6 +2729,41 @@ class Polygon extends GraphicalObject {
     }
 }
 
+// Using ctx and the current line style, draw a curve of cubic splines
+// going through or near the points in bs_pts.
+function drawBSplines(ctx, bs_pts) {
+    ctx.beginPath()
+    ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
+    let n = bs_pts.length
+    for (let i = 0; i < n - 1; i += 2) {
+        const p1 = (i >= 1) ?
+            numeric.add(
+                numeric.mul(bs_pts[i-1], 0.25),
+                numeric.mul(bs_pts[i], 0.5),
+                numeric.mul(bs_pts[i+1], 0.25))
+            : numeric.add(
+                numeric.mul(bs_pts[i], 0.5),
+                numeric.mul(bs_pts[i+1], 0.5))
+        const p2 = (i + 2 < n) ?
+            numeric.add(
+                numeric.mul(bs_pts[i], 0.25),
+                numeric.mul(bs_pts[i+1], 0.5),
+                numeric.mul(bs_pts[i+2], 0.25))
+            : numeric.add(
+                numeric.mul(bs_pts[i], 0.5),
+                numeric.mul(bs_pts[i+1], 0.5))
+        const p3 = (i + 3 < n) ?
+            numeric.add(
+                numeric.mul(bs_pts[i], 0.125),
+                numeric.mul(bs_pts[i+1], 0.375),
+                numeric.mul(bs_pts[i+2], 0.375),
+                numeric.mul(bs_pts[i+3], 0.125))
+            : bs_pts[n-1]
+        ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
+    }
+    ctx.stroke()
+}
+
 // Draw an arrowhead of size s in the current style,
 // based at x0,y0 and heading toward x1, y1
 function drawArrowhead(ctx, x0, y0, x1, y1, s) {
@@ -2906,41 +2941,29 @@ class Connector extends GraphicalObject {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         let objs = this.objects,
             i = 0, m = objs.length-1
-        const pts = objs.map(o => {return {x: evaluate(o.x(), valuation),
-                                           y: evaluate(o.y(), valuation) }});
+        const pts = objs.map(o => 
+            [ evaluate(o.x(), valuation),
+              evaluate(o.y(), valuation) ]);
 
-        [ pts[0].x, pts[0].y ] = objs[0].bestConnectionPt(pts[1].x, pts[1].y, valuation);
-        [ pts[m].x, pts[m].y ] = objs[m].bestConnectionPt(pts[m-1].x, pts[m-1].y, valuation);
+        [ pts[0][0], pts[0][1] ] = objs[0].bestConnectionPt(pts[1][0], pts[1][1], valuation);
+        [ pts[m][0], pts[m][1] ] = objs[m].bestConnectionPt(pts[m-1][0], pts[m-1][1], valuation);
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         ctx.setLineDash(this.lineDash || [])
         if (this.fillStyle) ctx.fillStyle = this.fillStyle
         if (this.startArrowStyle) {
-            [pts[0].x, pts[0].y] = 
+            [pts[0][0], pts[0][1]] = 
                 drawLineEndSeg(ctx, this.startArrowStyle, this.arrowSize,
-                               pts[0].x, pts[0].y, pts[1].x, pts[1].y)
+                               pts[0][0], pts[0][1], pts[1][0], pts[1][1])
         }
         if (this.endArrowStyle) {
-            [pts[m].x, pts[m].y] = 
+            [pts[m][0], pts[m][1]] = 
                 drawLineEndSeg(ctx, this.endArrowStyle, this.arrowSize,
-                               pts[m].x, pts[m].y, pts[m-1].x, pts[m-1].y)
+                               pts[m][0], pts[m][1], pts[m-1][0], pts[m-1][1])
         }
 
-        ctx.beginPath()
-        ctx.moveTo(pts[0].x, pts[0].y)
-        let n = 0
-        for (i = 0; i < m; i += n) {
-            n = Math.min(3, m - i) // number of points in this segment, minus 1 (1-3)
-            switch (n) {
-                case 1: ctx.lineTo(pts[i+1].x, pts[i+1].y); break
-                case 2: ctx.quadraticCurveTo(pts[i+1].x, pts[i+1].y, pts[i+2].x, pts[i+2].y); break
-                case 3: ctx.bezierCurveTo(pts[i+1].x, pts[i+1].y, pts[i+2].x, pts[i+2].y,
-                                          pts[i+3].x, pts[i+3].y); break
-                default: console.error("internal error in Connector.render")
-            }
-        }
         ctx.strokeStyle = this.strokeStyle
-        ctx.stroke()
+        drawBSplines(ctx, pts)
     }
     insert(object, pos) {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
@@ -3725,6 +3748,7 @@ function autoResize() {
     isFigure: isFigure,
     statistics: statistics,
     currentValue: currentValue,
-    drawLineEndSeg: drawLineEndSeg
+    drawLineEndSeg: drawLineEndSeg,
+    drawBSplines: drawBSplines
   })
 }()
