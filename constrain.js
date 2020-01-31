@@ -2739,8 +2739,7 @@ function drawBSplines(ctx, bs_pts) {
     ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
     let n = bs_pts.length
     switch(n) {
-        case 0:
-        case 1: return
+        case 1: ctx.stroke(); return
         case 2:
             ctx.lineTo(bs_pts[1][0], bs_pts[1][1])
             ctx.stroke()
