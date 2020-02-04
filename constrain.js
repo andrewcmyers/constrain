@@ -680,6 +680,13 @@ class Figure {
         return new Distance(p1, p2)
     }
 
+// dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
+    collinear(p0, p1, p2) {
+        return this.equal(
+          this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
+          this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+    }
+
     // Return a list of constraints that align a variable number of objects both
     // horizontal and vertically.
     // Allowed options for horizontal alignment:
@@ -827,6 +834,9 @@ class Figure {
     }
     ellipse(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint) {
         return new Ellipse(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
+    }
+    polygon(points, fillStyle, strokeStyle, lineWidth) {
+        return new Polygon(this, points, fillStyle, strokeStyle, lineWidth)
     }
     line(strokeStyle, lineWidth, x0, y0, x1, y1) {
         return new Line(this, strokeStyle, lineWidth, x0, y0, x1, y1)
@@ -2705,6 +2715,10 @@ class Polygon extends GraphicalObject {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
         super(figure, fillStyle, strokeStyle, lineWidth)
         this.points = points
+        figure.equal(this.x1(), figure.max(points.map(p => p.x())))
+        figure.equal(this.y1(), figure.max(points.map(p => p.y())))
+        figure.equal(this.x0(), figure.min(points.map(p => p.x())))
+        figure.equal(this.y0(), figure.min(points.map(p => p.y())))
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -2714,8 +2728,9 @@ class Polygon extends GraphicalObject {
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         ctx.lineDash = this.lineDash
         ctx.beginPath()
-        for (let i = 0; i < points.length; i++) {
-            const [x, y] = evaluate(points[i], valuation)
+        ctx.fillStyle = this.fillStyle
+        for (let i = 0; i < this.points.length; i++) {
+            const [x, y] = evaluate(this.points[i], valuation)
             if (i == 0) {
                 ctx.moveTo(x - x0, y - y0)
             } else {
@@ -2724,8 +2739,18 @@ class Polygon extends GraphicalObject {
         }
         ctx.closePath()
         ctx.fill()
-        if (this.strokeStyle) ctx.stroke()
+        if (this.strokeStyle) {
+            ctx.strokeStyle = this.strokeStyle
+            ctx.stroke()
+        }
         ctx.restore()
+    }
+    variables() {
+        let result = GraphicalObject.prototype.variables.call(this)
+        this.points.forEach(p => {
+            result = result.concat(p.variables())
+        });
+        return result
     }
 }
 
@@ -2993,7 +3018,6 @@ class Connector extends GraphicalObject {
             r = r.concat(o.variables()))
         return r
     }
-    // XXX what about x0, x1, y0, y1...
 }
 
 class HSpace extends GraphicalObject {
@@ -3733,6 +3757,7 @@ function autoResize() {
     Square: Square,
     Circle: Circle,
     Ellipse: Ellipse,
+    Polygon: Polygon,
     FormattedText: FormattedText,
     Group: Group,
     ConstraintGroup: ConstraintGroup,
