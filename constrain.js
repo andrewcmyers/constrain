@@ -1,14 +1,16 @@
 "use strict";
 
-// A package for creating animated figures in JavaScript canvases, similar to
-// the sort of animated figure you would put into a slide presentation, or for
-// web-based course notes.
+// Constrain: A package for creating animated figures in JavaScript canvases,
+// similar to the sort of animated figure you would put into a slide
+// presentation, or for web-based course notes.
 // 
-// There is a set of Figure objects recorded in the array Figures. Each one
-// is attached to a separate canvas.
+// Author: Andrew Myers, 2019-2020
 
 var Constrain = function() {
 
+// There is a set of Figure objects recorded in the array Figures. Each one
+// is attached to a separate canvas.
+// 
 const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
@@ -866,6 +868,9 @@ class Figure {
     label(string, fontSize, fontName, fillStyle, x, y) {
         return new Label(this, string, fontSize, fontName, fillStyle, x, y)
     }
+    lineLabel(string, position, offset) {
+        return new LineLabel(this, string, position, offset)
+    }
     handle(style) {
         return new Handle(this, style)
     }
@@ -1482,6 +1487,7 @@ class BackPropagation {
     }
 }
 
+// A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
         super()
@@ -1514,6 +1520,7 @@ class BinaryExpression extends Expression {
     }
 }
 
+// An expression x - y
 class Minus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a - b }
@@ -1527,6 +1534,7 @@ class Minus extends BinaryExpression {
     opName() { return "-" }
 }
 
+// An expression x + y
 class Plus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a + b }
@@ -1538,6 +1546,7 @@ class Plus extends BinaryExpression {
     opName() { return "+" }
 }
 
+// The average of two numbers or points
 class Average extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.mul(0.5, numeric.add(a, b)) }
@@ -1555,6 +1564,7 @@ class Average extends BinaryExpression {
     w() { return 0 }
 }
 
+// An expression x * y
 class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return a * b }
@@ -1571,6 +1581,7 @@ class Times extends BinaryExpression {
     opName() { return " * " }
 }
 
+// An expression x / y
 class Divide extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) {
@@ -1593,6 +1604,7 @@ class Divide extends BinaryExpression {
     opName() { return "/" }
 }
 
+// An expression that expects an arbitrary number of arguments.
 class NaryExpression extends Expression {
     constructor(...arglist) {
         super()
@@ -1618,6 +1630,7 @@ class NaryExpression extends Expression {
     }
 }
 
+// The minimum of some number of arguments.
 class Min extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
@@ -1647,6 +1660,7 @@ class Min extends NaryExpression {
     toString() { return "min(" + this.args + ")" }
 }
 
+// The maximum of some number of arguments.
 class Max extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
@@ -1676,6 +1690,7 @@ class Max extends NaryExpression {
     toString() { return "max(" + this.args + ")" }
 }
 
+// The distance between two points
 class Distance extends Expression {
     constructor(p1, p2) {
         super()
@@ -1747,6 +1762,7 @@ class Distance extends Expression {
     toString() { return "distance(" + this.p1 + "," + this.p2 + ")" }
 }
 
+// A unary expression like -x
 class UnaryExpression extends Expression {
     constructor(e) {
         super()
@@ -1766,6 +1782,7 @@ class UnaryExpression extends Expression {
     }
 }
 
+// Expression for an absolute value |x|
 class Abs extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return Math.abs(a) }
@@ -1781,6 +1798,7 @@ class Abs extends UnaryExpression {
     }
 }
 
+// The expression -x
 class Neg extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return -a }
@@ -1790,7 +1808,7 @@ class Neg extends UnaryExpression {
     }
 }
 
-// square root operation
+// The square root operation
 class Sqrt extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return Math.sqrt(a) }
@@ -1810,7 +1828,7 @@ class Sqrt extends UnaryExpression {
     }
 }
 
-// squaring operation
+// The squaring operation
 class Sqr extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return a*a }
@@ -1918,6 +1936,8 @@ class Linear extends Expression {
     }
 }
 
+// A cubic spline interpolator with slow out
+// and slow in
 class Smooth extends Linear {
     constructor(figure, frame, e1, e2) {
         super(figure, frame, e1, e2)
@@ -2043,6 +2063,8 @@ function zeroCost(valuation, doGrad) {
     return doGrad ? [0, getZeros(valuation.length)] : 0
 }
 
+// An After wraps another object and makes it exist only on and
+// after the specified frame.
 class After extends TemporalFilter {
     constructor(figure, frame, obj) {
         super(figure, obj)
@@ -2053,6 +2075,9 @@ class After extends TemporalFilter {
     }
 }
 
+// An After wraps another object and makes it appear only on and
+// after the specified frame. However, it still exists for solving
+// purposes.
 class DrawAfter extends TemporalFilter {
     constructor(figure, frame, obj) {
         super(figure, obj)
@@ -2066,6 +2091,8 @@ class DrawAfter extends TemporalFilter {
     }
 }
 
+// A Before wraps another object and makes it exist only before
+// after the specified frame.
 class Before extends TemporalFilter {
     constructor(figure, frame, obj) {
         super(figure, obj)
@@ -2076,6 +2103,9 @@ class Before extends TemporalFilter {
     }
 }
 
+// A Before wraps another object and makes it appear only before
+// after the specified frame. However, it still exists for solving
+// purposes.
 class DrawBefore extends TemporalFilter {
     constructor(figure, frame, obj) {
         super(figure, obj)
@@ -2086,8 +2116,7 @@ class DrawBefore extends TemporalFilter {
     }
 }
 
-
-// A Constraint has a cost that the system tries to minimize
+// A Constraint has a cost that the system tries to minimize.
 class Constraint extends Temporal {
     constructor(figure) {
         super(figure)
@@ -2185,6 +2214,7 @@ function constraintsCost(a, valuation, doGrad) {
     }
 }
 
+// A group of constraints that will treated as a single constraint.
 class ConstraintGroup extends Constraint {
     constructor(figure, ...constraints) {
         super(figure)
@@ -2525,8 +2555,8 @@ class Group extends GraphicalObject {
     }
 }
 
-// A Frame is a graphical object that doesn't have any rendering but does format contained
-// text into a rectangular shape.
+// A Frame is a graphical object that doesn't have any rendering but does
+// format contained text into a rectangular shape.
 class TextFrame extends GraphicalObject {
     constructor(figure, text, fillStyle) {
         super(figure, fillStyle)
@@ -2541,6 +2571,7 @@ class TextFrame extends GraphicalObject {
     }
 }
 
+// A filled rectangle. It can have text inside it.
 class Rectangle extends GraphicalObject {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y, w_hint, h_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y, w_hint, h_hint)
@@ -2597,6 +2628,7 @@ class Rectangle extends GraphicalObject {
     }
 }
 
+// Some useful paths for rendering.
 const Paths = {
     roundedRect: function (ctx, x0, x1, y0, y1, r) {
         const k = bezier_k
@@ -2761,11 +2793,68 @@ class Polygon extends GraphicalObject {
     }
 }
 
+function drawLineLabels(ctx, bs_pts, labels, startAdj, endAdj) {
+    let n = bs_pts.length
+    if (startAdj === undefined) startAdj = 0
+    if (endAdj === undefined) endAdj = 0
+    if (labels && labels.length > 0) {
+      let total_d = -startAdj, cdists = [total_d], dists = []
+      for (i = 0; i < n - 1; i++) {
+        let d = norm2d(bs_pts[i+1][0] - bs_pts[i][0],
+                       bs_pts[i+1][1] - bs_pts[i][1])
+        dists[i] = d
+        total_d += d
+        cdists[i+1] = total_d
+      }
+      if (startAdj) {
+        dists[0] += startAdj
+        total_d += startAdj
+      }
+      if (endAdj) {
+        dists[n-2] += endAdj
+        cdists[n-1] += endAdj
+        total_d += endAdj
+      }
+
+      labels.forEach(linelabel => {
+        let pos = linelabel.position,
+            offset = linelabel.offset,
+            dpos = pos * total_d
+        for (i = 0; i < n - 1; i++) {
+            if (cdists[i+1] > dpos) break
+        }
+        let x1 = bs_pts[i][0],
+            y1 = bs_pts[i][1],
+            x2 = bs_pts[i+1][0],
+            y2 = bs_pts[i+1][1],
+            d = norm2d(x2-x1, y2-y1),
+            dx = (x2 - x1)/d,
+            dy = (y2 - y1)/d
+        if (i == 0) {
+            x1 -= startAdj * dx
+            y1 -= startAdj * dy
+            d += startAdj
+        }
+        if (i == n-2) {
+            x2 += endAdj * dx
+            y2 += endAdj * dy
+            d += endAdj
+        }
+        let f = (dpos - cdists[i])/d,
+            x = x1 + (x2 - x1) * f + dy * offset,
+            y = y1 + (y2 - y1) * f - dx * offset
+        linelabel.drawAt(ctx, x, y)
+      })
+    }
+}
+
 // Using ctx and the current line style, draw a curve of cubic splines
 // going through or near the points in bs_pts. Near the endpoints,
 // it acts like a Bezier spline: the curve goes through the first
 // and last point and its initial and final direction are toward the
 // second and second-to-last points.
+// 
+// XXX Should this be in Paths?
 function drawBSplines(ctx, bs_pts) {
     ctx.beginPath()
     ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
@@ -2885,6 +2974,7 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
     return [x1, y1]
 }
 
+// A straight line from (x0,y0) to (x1, y1).
 class Line extends GraphicalObject {
     constructor(figure, strokeStyle, lineWidth, x0, y0, x1, y1) {
         if (x0 == null) x0 = 100
@@ -2944,6 +3034,7 @@ class Line extends GraphicalObject {
     }
 }
 
+// A horizontal line.
 class HorzLine extends Line {
     constructor(figure, strokeStyle, lineWidth, x0, x1, y) {
         super(figure, strokeStyle, lineWidth, x0, y, x1, y)
@@ -2951,6 +3042,7 @@ class HorzLine extends Line {
     }
 }
 
+// A vertical line.
 class VertLine extends Line {
     constructor(figure, strokeStyle, lineWidth, x, y0, y1) {
         super(figure, strokeStyle, lineWidth, x, y0, x, y1)
@@ -3014,12 +3106,16 @@ class Connector extends GraphicalObject {
 
         ctx.strokeStyle = this.strokeStyle
         drawBSplines(ctx, pts)
+        if (this.labels && this.labels.length > 0)
+            drawLineLabels(ctx, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
+                            this.endArrowStyle ? this.arrowSize : 0)
     }
     insert(object, pos) {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
     }
-    addLabel(object, pos, offset) {
-        this.labels.push([object, pos, offset])
+    addLabel(obj) {
+        this.labels.push(obj)
+        return this
     }
     setStartArrow(style) {
         this.startArrowStyle = style
@@ -3041,6 +3137,7 @@ class Connector extends GraphicalObject {
     }
 }
 
+// Horizontal space.
 class HSpace extends GraphicalObject {
     constructor(figure) {
         super(figure)
@@ -3050,6 +3147,7 @@ class HSpace extends GraphicalObject {
     renderIfVisible() {}
 }
 
+// Vertical space.
 class VSpace extends GraphicalObject {
     constructor(figure) {
         super(figure)
@@ -3059,6 +3157,7 @@ class VSpace extends GraphicalObject {
     renderIfVisible() {}
 }
 
+// A label.
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
@@ -3116,6 +3215,37 @@ class Label extends GraphicalObject {
         this.fontName = f
         return this
     }
+}
+
+// A label somewhere along a connector.
+// By default the label is simply text, but
+// overriding the drawAt method allows rendering
+// other graphics along the connector.
+// position: fractional position along connector.
+// offset: (optional) offset toward the port side of
+// the connector.
+class LineLabel {
+    constructor(figure, text, position, offset) {
+        this.text = text
+        this.position = position
+        this.offset = offset || figure.fontSize
+        this.strokeStyle = figure.strokeStyle
+        this.fillStyle = "#000000"
+        this.fontSize = figure.fontSize
+        this.fontName = figure.fontName
+    }
+    drawAt(ctx, x, y) {
+        ctx.font = this.fontSize + "pt " + this.fontName
+        ctx.strokeStyle = undefined
+        ctx.fillStyle = this.fillStyle
+        x -= ctx.measureText(this.text).width / 2
+        y += this.fontSize/2
+        ctx.fillText(this.text, x, y)
+    }
+    setFillStyle(s) { this.fillStyle = s; return this }
+    setStrokeStyle(s) { this.strokeStyle = s; return this }
+    setFontName(n) { this.fontName = s; return this }
+    setFontSize(s) { this.fontSize = s; return this }
 }
 
 // A FormattedText is some text that can be formatted inside
@@ -3282,6 +3412,7 @@ class InteractiveObject extends LayoutObject {
 InteractiveObject.prototype.renderIfVisible = GraphicalObject.prototype.renderIfVisible
 InteractiveObject.prototype.visible = GraphicalObject.prototype.visible
 
+// A handle that can be dragged interactively.
 class Handle extends InteractiveObject {
     constructor(figure, strokeStyle, x, y) {
         super(figure)
@@ -3354,6 +3485,7 @@ class Handle extends InteractiveObject {
     visible() { return true }
 }
 
+// A button that advances the animation.
 class AdvanceButton extends InteractiveObject {
     constructor(figure, x, y) {
         super(figure)
@@ -3474,6 +3606,8 @@ class Global extends Expression {
     }
 }
 
+// An expression that reports its value and gives information
+// about backpropagation.
 class DebugExpr extends Expression {
     constructor(name, expr) {
         super()
@@ -3780,6 +3914,7 @@ function autoResize() {
     Ellipse: Ellipse,
     Polygon: Polygon,
     FormattedText: FormattedText,
+    LineLabel: LineLabel,
     Group: Group,
     ConstraintGroup: ConstraintGroup,
     Corners: Corners,
