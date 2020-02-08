@@ -2516,6 +2516,13 @@ class Group extends GraphicalObject {
         this.figure.align(horz, vert, ...this.objects)
         return this
     }
+    setBounds(object) {
+        this.x0 = () => object.x0()
+        this.x1 = () => object.x1()
+        this.y0 = () => object.y0()
+        this.y1 = () => object.y1()
+        return this
+    }
 }
 
 // A Frame is a graphical object that doesn't have any rendering but does format contained
@@ -2977,6 +2984,7 @@ class Connector extends GraphicalObject {
         super(figure, undefined, figure.strokeStyle, figure.lineWidth)
         this.fillStyle = this.strokeStyle
         this.objects = objects.flat()
+        this.labels = []
         this.arrowSize = Figure_defaults.ARROW_SIZE
     }
     render() {
@@ -3009,6 +3017,9 @@ class Connector extends GraphicalObject {
     }
     insert(object, pos) {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
+    }
+    addLabel(object, pos, offset) {
+        this.labels.push([object, pos, offset])
     }
     setStartArrow(style) {
         this.startArrowStyle = style
