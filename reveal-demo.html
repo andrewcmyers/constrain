@@ -115,7 +115,11 @@
                 pin(r1.ll(), l2.p2())
                 let p1, p2
                 let c1 = drawAfter(f4,
-                    connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow").setLineWidth(2))
+                    connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow")
+                      .setLineWidth(2)
+                      .addLabel(lineLabel("a label", 0.5,
+                                times(canvasRect().h(), 0.01)))
+                )
                 equal(p1.x(), s1.x())
                 equal(p2.x(), r1.x())
                 equal(p1.y(), average(s1.y(), canvasRect().y1()))

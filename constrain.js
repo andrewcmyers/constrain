@@ -2793,13 +2793,14 @@ class Polygon extends GraphicalObject {
     }
 }
 
-function drawLineLabels(ctx, bs_pts, labels, startAdj, endAdj) {
-    let n = bs_pts.length
+function drawLineLabels(figure, bs_pts, labels, startAdj, endAdj) {
+    let ctx = figure.ctx,
+        n = bs_pts.length
     if (startAdj === undefined) startAdj = 0
     if (endAdj === undefined) endAdj = 0
     if (labels && labels.length > 0) {
       let total_d = -startAdj, cdists = [total_d], dists = []
-      for (i = 0; i < n - 1; i++) {
+      for (let i = 0; i < n - 1; i++) {
         let d = norm2d(bs_pts[i+1][0] - bs_pts[i][0],
                        bs_pts[i+1][1] - bs_pts[i][1])
         dists[i] = d
@@ -2818,8 +2819,10 @@ function drawLineLabels(ctx, bs_pts, labels, startAdj, endAdj) {
 
       labels.forEach(linelabel => {
         let pos = linelabel.position,
-            offset = linelabel.offset,
+            offset = evaluate(linelabel.offset,
+                              figure.currentValuation),
             dpos = pos * total_d
+        let i = 0
         for (i = 0; i < n - 1; i++) {
             if (cdists[i+1] > dpos) break
         }
@@ -3107,7 +3110,7 @@ class Connector extends GraphicalObject {
         ctx.strokeStyle = this.strokeStyle
         drawBSplines(ctx, pts)
         if (this.labels && this.labels.length > 0)
-            drawLineLabels(ctx, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
+            drawLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
                             this.endArrowStyle ? this.arrowSize : 0)
     }
     insert(object, pos) {
