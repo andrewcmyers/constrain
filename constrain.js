@@ -2818,7 +2818,8 @@ function drawLineLabels(figure, bs_pts, labels, startAdj, endAdj) {
       }
 
       labels.forEach(linelabel => {
-        let pos = linelabel.position,
+        let pos = evaluate(linelabel.position,
+                              figure.currentValuation),
             offset = evaluate(linelabel.offset,
                               figure.currentValuation),
             dpos = pos * total_d
