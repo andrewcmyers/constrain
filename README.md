@@ -14,4 +14,5 @@
 
 [Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/reveal-demo.html)
 
-[Course notes using Constrain for embedded figures](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects)
+Course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
+[CS 4120](https://www.cs.cornell.edu/courses/cs4120/2020sp/notes.html?id=bottomup)
