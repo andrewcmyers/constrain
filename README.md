@@ -16,9 +16,3 @@
 
 Course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
 [CS 4120](https://www.cs.cornell.edu/courses/cs4120/2020sp/notes.html?id=bottomup)
-
-<canvas id=example style="width:400px; height: 300px">
-</canvas>
-<script type="application/javascript">
-  console.log("Running script")
-</script>
