@@ -15,3 +15,9 @@
 [Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/reveal-demo.html)
 
 [Course notes using Constrain for embedded figures](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects)
+
+<canvas id=example style="width:400px; height: 300px">
+</canvas>
+<script type="application/javascript">
+  console.log("Running script")
+</script>
