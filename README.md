@@ -1,4 +1,4 @@
-# Constrain - a constraint-based animated figure package for JavaScript (ES6)
+# Constrain - a JS (ES6) library for responsive, animated figures, based on declarative constraint solving
 
 - Supports including responsive animated figures in web pages
 - Integrates with [Reveal.js](https://revealjs.com) presentations
