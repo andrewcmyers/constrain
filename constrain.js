@@ -2668,6 +2668,56 @@ const Paths = {
         ctx.bezierCurveTo(x1, y2,  x2, y1,  x, y1);
         ctx.bezierCurveTo(x3, y1,  x4, y2,  x4, y);
         ctx.closePath()
+    },
+    // Using ctx and the current line style, create a path of cubic splines
+    // going through or near the points in bs_pts. Near the endpoints,
+    // it acts like a Bezier spline: the curve goes through the first
+    // and last point and its initial and final direction are toward the
+    // second and second-to-last points.
+    bsplines: function(ctx, bs_pts) {
+        ctx.beginPath()
+        ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
+        let n = bs_pts.length
+        switch(n) {
+            case 1: ctx.stroke(); return
+            case 2:
+                ctx.lineTo(bs_pts[1][0], bs_pts[1][1])
+                ctx.stroke()
+                return
+            case 4:
+                ctx.bezierCurveTo(bs_pts[1][0], bs_pts[1][1],
+                                bs_pts[2][0], bs_pts[2][1],
+                                bs_pts[3][0], bs_pts[3][1])
+                ctx.stroke()
+                return
+            default: break
+        }
+        for (let i = 0; i < n - 1; i += 2) {
+            let p1=[], p2=[], p3=[]
+            if (i >= 1) {
+                p1[0] = bs_pts[i-1][0]*0.25 + bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.25
+                p1[1] = bs_pts[i-1][1]*0.25 + bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.25
+            } else {
+                p1[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
+                p1[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
+            }
+            if (i + 3 < n) {
+                p2[0] = bs_pts[i][0]*0.25 + bs_pts[i+1][0]*0.5 + bs_pts[i+2][0]*0.25
+                p2[1] = bs_pts[i][1]*0.25 + bs_pts[i+1][1]*0.5 + bs_pts[i+2][1]*0.25
+            } else {
+                p2[0] = bs_pts[n-2][0]*0.5 + bs_pts[n-1][0]*0.5
+                p2[1] = bs_pts[n-2][1]*0.5 + bs_pts[n-1][1]*0.5
+            }
+            if (i + 3 < n) {
+                p3[0] = bs_pts[i][0]*0.125 + bs_pts[i+1][0]*0.375
+                        + bs_pts[i+2][0]*0.375 + bs_pts[i+3][0]*0.125
+                p3[1] = bs_pts[i][1]*0.125 + bs_pts[i+1][1]*0.375
+                        + bs_pts[i+2][1]*0.375 + bs_pts[i+3][1]*0.125
+            } else {
+                p3 = bs_pts[n-1]
+            }
+            ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
+        }
     }
 }
 
@@ -2747,8 +2797,7 @@ class Circle extends Ellipse {
 }
 
 // A filled polygon. The vertices must be specified explicitly.
-//
-// TODO support cornerRadius
+// Doesn't support cornerRadius yet.
 //
 class Polygon extends GraphicalObject {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
@@ -2850,60 +2899,6 @@ function drawLineLabels(figure, bs_pts, labels, startAdj, endAdj) {
         linelabel.drawAt(ctx, x, y)
       })
     }
-}
-
-// Using ctx and the current line style, draw a curve of cubic splines
-// going through or near the points in bs_pts. Near the endpoints,
-// it acts like a Bezier spline: the curve goes through the first
-// and last point and its initial and final direction are toward the
-// second and second-to-last points.
-// 
-// XXX Should this be in Paths?
-function drawBSplines(ctx, bs_pts) {
-    ctx.beginPath()
-    ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
-    let n = bs_pts.length
-    switch(n) {
-        case 1: ctx.stroke(); return
-        case 2:
-            ctx.lineTo(bs_pts[1][0], bs_pts[1][1])
-            ctx.stroke()
-            return
-        case 4:
-            ctx.bezierCurveTo(bs_pts[1][0], bs_pts[1][1],
-                              bs_pts[2][0], bs_pts[2][1],
-                              bs_pts[3][0], bs_pts[3][1])
-            ctx.stroke()
-            return
-        default: break
-    }
-    for (let i = 0; i < n - 1; i += 2) {
-        let p1=[], p2=[], p3=[]
-        if (i >= 1) {
-            p1[0] = bs_pts[i-1][0]*0.25 + bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.25
-            p1[1] = bs_pts[i-1][1]*0.25 + bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.25
-        } else {
-            p1[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
-            p1[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
-        }
-        if (i + 3 < n) {
-            p2[0] = bs_pts[i][0]*0.25 + bs_pts[i+1][0]*0.5 + bs_pts[i+2][0]*0.25
-            p2[1] = bs_pts[i][1]*0.25 + bs_pts[i+1][1]*0.5 + bs_pts[i+2][1]*0.25
-        } else {
-            p2[0] = bs_pts[n-2][0]*0.5 + bs_pts[n-1][0]*0.5
-            p2[1] = bs_pts[n-2][1]*0.5 + bs_pts[n-1][1]*0.5
-        }
-        if (i + 3 < n) {
-            p3[0] = bs_pts[i][0]*0.125 + bs_pts[i+1][0]*0.375
-                    + bs_pts[i+2][0]*0.375 + bs_pts[i+3][0]*0.125
-            p3[1] = bs_pts[i][1]*0.125 + bs_pts[i+1][1]*0.375
-                    + bs_pts[i+2][1]*0.375 + bs_pts[i+3][1]*0.125
-        } else {
-            p3 = bs_pts[n-1]
-        }
-        ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
-    }
-    ctx.stroke()
 }
 
 // Draw an arrowhead of size s in the current style,
@@ -3109,7 +3104,8 @@ class Connector extends GraphicalObject {
         }
 
         ctx.strokeStyle = this.strokeStyle
-        drawBSplines(ctx, pts)
+        Paths.bsplines(ctx, pts)
+        ctx.stroke()
         if (this.labels && this.labels.length > 0)
             drawLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
                             this.endArrowStyle ? this.arrowSize : 0)
@@ -3940,7 +3936,6 @@ function autoResize() {
     isFigure: isFigure,
     statistics: statistics,
     currentValue: currentValue,
-    drawLineEndSeg: drawLineEndSeg,
-    drawBSplines: drawBSplines
+    drawLineEndSeg: drawLineEndSeg
   })
 }()
