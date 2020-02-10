@@ -1,6 +1,7 @@
 # Constrain - a JS (ES6) library for responsive, animated figures, based on declarative constraint solving
 
-- Supports including responsive animated figures in web pages
+- Supports responsive, animated figures embedded in web pages
+- Figures implemented declaratively with time-dependent constraints on graphical objects
 - Integrates with [Reveal.js](https://revealjs.com) presentations
 - [GitHub repository](https://github.com/andrewcmyers/constrain)
 
@@ -8,11 +9,11 @@
 
 ## Demos
 
-[Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/spiral.html)
+[Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/spiral.html) (Drag the diamond!)
 
 [Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/reveal-demo.html)
 
-Course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
+Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
 [CS 4120](https://www.cs.cornell.edu/courses/cs4120/2020sp/notes.html?id=bottomup)
 
 ## Requirements
