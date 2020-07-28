@@ -5,8 +5,6 @@
 - Integrates with [Reveal.js](https://revealjs.com) presentations
 - [GitHub repository](https://github.com/andrewcmyers/constrain)
 
-### Warning: API is still in flux
-
 ## Demos
 
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/spiral.html) (Drag the diamond!)
