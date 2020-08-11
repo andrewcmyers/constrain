@@ -4,6 +4,7 @@
 - Figures implemented declaratively with time-dependent constraints on graphical objects
 - Integrates with [Reveal.js](https://revealjs.com) presentations
 - [GitHub repository](https://github.com/andrewcmyers/constrain)
+- [Reference manual](https://andrewcmyers.github.io/constrain/doc)
 
 ## Demos
 
