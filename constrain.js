@@ -840,14 +840,14 @@ class Figure {
     polygon(points, fillStyle, strokeStyle, lineWidth) {
         return new Polygon(this, points, fillStyle, strokeStyle, lineWidth)
     }
-    line(strokeStyle, lineWidth, x0, y0, x1, y1) {
-        return new Line(this, strokeStyle, lineWidth, x0, y0, x1, y1)
+    line(strokeStyle, lineWidth) {
+        return new Line(this, strokeStyle, lineWidth)
     }
-    horzLine(strokeStyle, lineWidth, x0, x1, y) {
-        return new HorzLine(this, strokeStyle, lineWidth, x0, x1, y)
+    horzLine(strokeStyle, lineWidth) {
+        return new HorzLine(this, strokeStyle, lineWidth)
     }
-    vertLine(strokeStyle, lineWidth, x, y0, y1) {
-        return new VertLine(this, strokeStyle, lineWidth, x, y0, y1)
+    vertLine(strokeStyle, lineWidth) {
+        return new VertLine(this, strokeStyle, lineWidth)
     }
     hspace(w) {
         const r = new HSpace(this)
@@ -865,8 +865,8 @@ class Figure {
         if (typeof txt == "string") txt = new FormattedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
-    label(string, fontSize, fontName, fillStyle, x, y) {
-        return new Label(this, string, fontSize, fontName, fillStyle, x, y)
+    label(string, fontSize, fontName, fillStyle) {
+        return new Label(this, string, fontSize, fontName, fillStyle)
     }
     lineLabel(string, position, offset) {
         return new LineLabel(this, string, position, offset)
@@ -1599,7 +1599,7 @@ class Divide extends BinaryExpression {
               d = this.bpDiff
         if (b == 0) console.log("warning: divide by zero, using random answer")
         task.propagate(this.e1, ib*d)
-        task.propagate(this.e2, -a*ib*ib*d)
+        task.propagate(this.e2, numeric.mul(a, -ib*ib*d))
     }
     opName() { return "/" }
 }
@@ -3024,11 +3024,11 @@ class Line extends GraphicalObject {
         return new Point(this.x1(), this.y1())
     }
     setStart(p) {
-        this.figure.pin(new Point(this.x0(), this.y0()), p)
+        this.figure.pin(p1(), p)
         return this
     }
     setEnd(p) {
-        this.figure.pin(new Point(this.x1(), this.y1()), p)
+        this.figure.pin(p2(), p)
         return this
     }
 }
@@ -3289,6 +3289,11 @@ class FormattedText {
         this.verticalAlign = va
         return this
     }
+    atCenter() {
+        this.setJustification("center")
+        this.setVerticalAlign("center")
+        return this
+    } 
     // Draw this text inside a graphical object
     renderIn(figure, container) {
         const ctx = figure.ctx, valuation = figure.currentValuation,
