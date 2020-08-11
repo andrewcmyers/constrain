@@ -3037,7 +3037,7 @@ class Line extends GraphicalObject {
 class HorzLine extends Line {
     constructor(figure, strokeStyle, lineWidth, x0, x1, y) {
         super(figure, strokeStyle, lineWidth, x0, y, x1, y)
-        figure.equal(this.h(), 0)
+        figure.equal(this.height(), 0)
     }
 }
 
@@ -3045,7 +3045,7 @@ class HorzLine extends Line {
 class VertLine extends Line {
     constructor(figure, strokeStyle, lineWidth, x, y0, y1) {
         super(figure, strokeStyle, lineWidth, x, y0, x, y1)
-        figure.equal(this.w(), 0)
+        figure.equal(this.width(), 0)
     }
 }
 
