@@ -8,8 +8,9 @@
         max-width: 100%; width: 200px; height: 200px;
     }
     h1, h2 { font-family: Optima, sans-serif; text-align: center; color: #008 }
+    h1 > small { font-size: 50% }
     h3, h4 { font-family: Optima, sans-serif; color: #008 }
-    h1 { font-size: 400% }
+    h1 { font-size: 400%; font-weight: 666; }
     h2 { font-size: 300% }
     h3 { font-size: 150% }
     h4 { font-size: 95%; font-family: Menlo, Consolas, fixed }
@@ -36,8 +37,8 @@
 </script>
 
 <div class=content>
-<h1>Constrain</h1>
-<h2>Constraint-Based Animated Figures for Web Pages</h2>
+<h1>Constrain<br>
+<small>Constraint-Based Animated Figures for Web Pages</small></h1>
 
 <p>
   Constrain is designed for adding diagrams to web pages and
@@ -308,11 +309,12 @@ you can draw the diamond-shaped handle to change the figure.
 <script>
   with (new Constrain.Figure("handle_ex_fig")) {
     let c = circle("#def"), h1 = handle(),
-        h2 = point(150, 150), h3 = point(50, 150)
+        p2 = point(150, 150), p3 = point(50, 150)
     h1.x().setHint(20); h1.y().setHint(20)
-    polygon([h1, h2, h3])
-    equal(distance(c, h1), distance(c, h2),
-          distance(c, h3))
+    polygon([h1, p2, p3])
+    equal(distance(c, h1), distance(c, p2),
+          distance(c, p3))
+    geq(minus(p3.y(), h1.y()), 10)
     c.setW(times(2, distance(c, h1)))
   }
 </script>
