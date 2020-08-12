@@ -26,6 +26,9 @@
         pre.code {
             page-break-inside: avoid;
         }
+        h2 { font-size: 18pt }
+        h3 { font-size: 14pt }
+        h4 { font-size: 10pt }
     }
 
 </style>
@@ -471,8 +474,12 @@ box that nominally contains the object.
 </p>
 
 <h2>Figure control</h2>
+
+<h3>Figure control methods</h3>
+
 <p>
-Figure objects offer some methods for controlling the figure as a whole:
+Figure objects offer some methods for controlling the figure as a whole.
+</p>
 
 <h4>start()</h4>
 
@@ -491,7 +498,7 @@ telling each one to start:
 
 <p>Destroys the figure and removes it from the list of figures (<code>Constrain.Figures</code>).</p>
 
-<h3>Other operations</h3>
+<h3>Other figure control operations</h3>
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
 <p>
 Makes the specified canvas automatically resize to fill the window.
@@ -756,6 +763,7 @@ constructor. It is useful for interfacing Constrain diagrams with external
 data sources.
 </p>
 <h2>Positions</h2>
+<h3>Graphical object positioning methods</h3>
 <p>
 Graphical objects provide methods that return expressions for scalars and
 points relating to their position in the figure.
@@ -883,6 +891,114 @@ object, except moved inward by distance <code>d</code>.
 <p>Returns a box element whose bounding box is the same as the bounding box of this
 object, except moved outward by distance <code>d</code>.
 </p>
+
+<h3>Line positioning methods</h3>
+<h4>p1(), p2()</h4>
+<p>
+These methods return the points corresponding to the start and end of the line.
+</p>
+
+<h4>setStart(p), setEnd(p)</h4>
+<p>
+These methods constrain the start or end of the line to be at the specified point <code>p</code>
+</p>
+
+<h2>Style</h2>
+<p>Graphical objects offer some standard methods for controlling their appearance,
+and some object have more specialized methods for this purpose.</p>
+
+<h3>Graphical object style methods</h3>
+<p>The following methods return the graphical object while also changing its style
+in the specified way.</p>
+
+<h4>setFillStyle(s)</h4>
+<p>Set the fill style of the object. If this method is not used, then the object
+gets its fill style from the constructor call, or from the figure itself if the
+not provided.</h4>
+
+<h4>setStrokeStyle(s)</h4>
+<p>Set the stroke style of the object. If this method is not used, then the object
+gets its stroke style from the constructor call, or from the figure itself if the
+not provided.</h4>
+
+<h4>setLineWidth(w)</h4>
+<p>Set the line width for drawing the boundary of the object. If this method is
+not used, then the object gets its stroke style from the constructor call, or
+from the figure itself if the not provided.</h4>
+
+<h4>setLineDash(dash)</h4>
+<p>Set the line dash specification for the boundary of the object. The argument
+is an array specifying the lengths of the dash segments.
+</p>
+
+<h4>addText(text)</h4>
+<p>
+Graphical objects generally have the ability to hold some text, which is specified
+by calling the <code>addText</code> method. The argument should be either a string 
+or a <code>FormattedText</code> object.
+
+<h3>Rectangle methods</h3>
+
+<h4>setCornerRadius(r)</h4>
+<p>This method rounds the corners of the rectangle to the radius <code>r</code>.
+
+<h3>Line and Connector methods</h3>
+
+<h4>setStartArrow(style), setEndArrow(style)</h4>
+By default, lines and connectors do not have arrowheads or other terminators.
+These methods allow overriding this behavior to add some kind of terminator.
+The legal choices of <code>style</code> are currently just "arrow" and "bullet".
+
+<h4>setArrowSize(s)</h4>
+<p>
+This method sets the scale of the arrowhead if there is any.
+</p>
+
+<h3>Label methods</h3>
+
+<h4>setFontName(name)</h4>
+<p>Set the name (or names) of the font(s) to be used by the label.
+</p>
+
+<h4>setFontSize(s)</h4>
+<p>Set the size of the font used by the label.</p>
+
+<h4>addLabel(linelabel)</h4>
+<p>Add a label to the connector. The text, position, and offset of the label are specified by
+the <code>LineLabel</code> object itself.</code>
+
+<h3>FormattedText methods</h3>
+<p>
+An object of class <code>FormattedText</code> can be created by the method 
+<code>text</code> of <code>Figure</code> objects.  A <code>FormattedText</code>
+is not a graphical object; to be useful, it needs to be added as the text
+associated with a graphical object and typically, some of the following methods
+are used to control its appearance.
+</p>
+<h4>setFillStyle(s)</h4>
+<p>Set the fill style with which text will be rendered.</p>
+
+<h4>setLineSpacing(s)</h4>
+<p>Set the spacing of lines of text, as a multiplier applied to the font size.
+By default the line spacing is 1.3.</p>
+
+<h4>setInset(d)</h4>
+<p>Set the amount by which text is inset inside the boundary of the containing graphical object.</p>
+
+<h4>setJustification(j)</h4>
+<p>The justification of text can be either <code>"left"</code> (the default) or
+<code>"center"</code>.
+
+<h4>atCenter()</h4>
+<p>
+This is equivalent to setting both the justification and vertical alignment to <code>"center"</code>.
+
+<h4>setVerticalAlign(pos)</h4>
+<p>The vertical positioning of text can be either <code>"top"</code> (the default),
+<code>"center"</code>, or <code>"bottom"</code>.
+
+<h4>setFontSize(s), setFontName(f)</h4>
+<p>These methods act like the corresponding methods on labels.</p>
 
 <h2>Animation</h2>
 
@@ -1056,6 +1172,14 @@ is controlled by the <code>branchSpread</code> property.
 <p>
 This property controls the direction of gravity. By default, it is false, meaning downward gravity.
 If true, gravity pulls to the right.
+</p>
+
+<h2>Reveal.js integration</h2>
+<p>
+To use Constrain with Reveal.js, the script <code>constrainreveal.js</code>
+should be included in the presentation. It relies on some hooks being added to
+Reveal, so you must also use the version of Reveal.js that comes with
+Constrain.
 </p>
 
 <h2>Acknowledgments</h2>
