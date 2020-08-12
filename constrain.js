@@ -698,11 +698,18 @@ class Figure {
 
     // Add a hint that value v is a good initial guess for the solution to expression e.
     hint(e, v) {
-        if (e.constructor == Variable) {
+        if (e.constructor == Variable && typeof v == NUMBER) {
             e.setHint(v)
         } else {
-            const variable = new Variable(this, "hint", v)
-            this.equal(variable, e)
+            if (typeof v == NUMBER) {
+                const variable = new Variable(this, "hint", v)
+                this.equal(variable, e)
+            } else if (Array.isArray(v)) {
+                for (let i = 0; i < v.length; i++) {
+                    const variable = new Variable(this, "hint"+i+"_", v[i])
+                    this.equal(variable, new Projection(e, i, v.length))
+                }
+            }
         }
         return e
     }

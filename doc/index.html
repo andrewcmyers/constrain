@@ -8,6 +8,7 @@
         max-width: 100%; width: 200px; height: 200px;
     }
     h1, h2 { font-family: Optima, sans-serif; text-align: center; color: #008 }
+    h1 { padding-top: 1ex }
     h1 > small { font-size: 50% }
     h3, h4 { font-family: Optima, sans-serif; color: #008 }
     h1 { font-size: 400%; font-weight: 666; }
@@ -36,8 +37,6 @@
     elem(pre_id).innerText = elem(div_id).outerHTML
         .replace(/^.*\n/, "")
         .replace(/<\/div>$/, "")
-
-
   }
 </script>
 
@@ -58,8 +57,8 @@
         their appearance smoothly or discontinuously. To make animations smooth,
         it uses a fast solver based on backpropagation.
     <li>Constrain is based on declaring constraints that are automatically
-        solved. This makes it is easy to produce very precise diagrams,
-        and makes it easier to build and modify complex diagrams.
+        solved. This makes it easy to produce very precise diagrams,
+        and easier to build and modify complex diagrams.
     <li>Constrain includes an integration for the Reveal.js web-based presentation
         framework, so you can use it for presentations too.
   </ul>
@@ -313,10 +312,10 @@ currently supported for simple lines, although they ought to be.)
 <canvas id=linelabel_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("linelabel_ex_fig")) {
-    let c1 = square().setW(30).setLineDash([4,4])
+    let s1 = square().setW(30).setLineDash([4,4])
                      .at(point(30, 100))
-        c2 = square().setW(30).at(c1.toRight(100))
-    connector(c1, c2)
+        s2 = square().setW(30).at(s1.toRight(100))
+    connector(s1, s2)
         .setStartArrow("bullet")
         .setEndArrow("bullet")
         .addLabel(lineLabel("label", 0.5, 10))
@@ -344,7 +343,7 @@ you can draw the diamond-shaped handle to change the figure.
   with (new Constrain.Figure("handle_ex_fig")) {
     let c = circle("#def"), h1 = handle(),
         p2 = point(150, 150), p3 = point(50, 150)
-    hint(h1.x(), 20); hint(h1.y(), 20)
+    hint(h1.x(), 10); hint(h1.y(), 20)
     polygon([h1, p2, p3])
     equal(distance(c, h1), distance(c, p2),
           distance(c, p3))
@@ -434,6 +433,7 @@ graphics onto regular web page content, as demonstrated in
 <script>
   with (new Constrain.Figure("title_canvas")) {
     align("left right", "top bottom",
+        ellipse().setFillStyle("#dfe").inset(5),
         ellipse().setFillStyle("#ffd"),
         DOMElement("constrain_name"))
   }
@@ -1056,6 +1056,15 @@ is controlled by the <code>branchSpread</code> property.
 This property controls the direction of gravity. By default, it is false, meaning downward gravity.
 If true, gravity pulls to the right.
 </p>
+
+<h2>Acknowledgments</h2>
+<p>
+Constrain was designed and implemented by Andrew Myers. Its design draws on
+several previous systems, notably the <a
+href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html"> Juno-2
+constraint-based drawing editor</a> by Greg Nelson and Allan Heydon.
+</p>
+
 </div>
 
 <div id="startup_code">
