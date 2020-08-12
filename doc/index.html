@@ -63,16 +63,13 @@
   </ul>
 <p>
   Constrain is written in JavaScript (ECMAScript 6) and integrates into web
-  pages in most modern browsers.
-</p>
-<p>
-  This page is intended to be a reference manual for Constrain. Since it is written
-  using Constrain, it is also an example of how to use it. The reference manual
-  is a work in progress, so not all features are covered yet.
-</p>
-<p>
-  Constrain can be obtained at its
+  pages in most modern browsers. It can be obtained at its
   <a href="https://github.com/andrewcmyers/constrain">GitHub repository</a>.
+</p>
+<p>
+  This page is intended to be a reference manual for Constrain. It is written
+  using Constrain, so it is also an example of its use. The reference manual
+  is a work in progress, so not all features are covered yet.
 </p>
 <h2>Overview</h2>
 <p>
@@ -277,6 +274,28 @@ Creates a graphical object that is a box containing text. The text is automatica
 to fit within the box. Note that several other graphical objects, such as rectangles and circles,
 support adding text with similar formatting capability.
 </p>
+
+<pre id="textFrame_ex_code" class=code></pre>
+<div id="textFrame_ex">
+<canvas id=textFrame_ex_fig style="height: 260px">
+</canvas>
+<script>
+  with (new Constrain.Figure("textFrame_ex_fig")) {
+    let tf = textFrame("Constrained writing is a"
+      + " literary technique in which the writer is"
+      + " bound by some condition that forbids"
+      + " certain things or imposes a pattern.")
+    sameSize(rectangle().at(tf).setFillStyle(null),
+             tf.expand(5))
+    align("left right", "top bottom",
+           tf, canvasRect().inset(20))
+
+  }
+</script>
+</div>
+<script>
+    show_example("textFrame_ex_code", "textFrame_ex")
+</script>
 
 <h4>lineLabel(text, position, [offset], [fontSize], [fontName], [fillStyle])</h4>
 <p>

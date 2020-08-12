@@ -43,7 +43,8 @@ const Figure_defaults = {
     LINEWIDTH : 1,
     TRIANGLE_SIZE : 10,
     FRAMERATE : 60,
-    FONT_NAME : "sans-serif"
+    FONT_NAME : "sans-serif",
+    LINE_SPACING : 1.3
 }
 
 // A Figure is attached to a canvas and knows how to render itself. It has a
@@ -87,7 +88,7 @@ class Figure {
         this.setLineWidth(Figure_defaults.LINEWIDTH)
         this.setFontSize(Figure_defaults.FONT_SIZE)
         this.setFontName(Figure_defaults.FONT_NAME)
-        this.lineSpacing = 1.3
+        this.lineSpacing = Figure_defaults.LINE_SPACING
         this.repeat = false
         this.animatedSolving = false
         this.fadeColor = 'white'
@@ -620,6 +621,12 @@ class Figure {
     // Set default font name
     setFontName(f) {
         this.fontName = f
+        return this
+    }
+
+    // Set default line spacing
+    setLineSpacing(s) {
+        this.lineSpacing = s
         return this
     }
 
