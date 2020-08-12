@@ -292,10 +292,12 @@ currently supported for simple lines, although they ought to be.)
 <canvas id=linelabel_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("linelabel_ex_fig")) {
-    let c1 = square().setW(30).at(point(30, 100)),
+    let c1 = square().setW(30).setLineDash([4,4])
+                     .at(point(30, 100))
         c2 = square().setW(30).at(c1.toRight(100))
     connector(c1, c2)
-        .setEndArrow("arrow")
+        .setStartArrow("bullet")
+        .setEndArrow("bullet")
         .addLabel(lineLabel("label", 0.5, 10))
   }
 </script>
