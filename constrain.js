@@ -689,6 +689,17 @@ class Figure {
           this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
     }
 
+    // Add a hint that value v is a good initial guess for the solution to expression e.
+    hint(e, v) {
+        if (e.constructor == Variable) {
+            e.setHint(v)
+        } else {
+            const variable = new Variable(this, "hint", v)
+            this.equal(variable, e)
+        }
+        return e
+    }
+
     // Return a list of constraints that align a variable number of objects both
     // horizontal and vertically.
     // Allowed options for horizontal alignment:
@@ -3843,7 +3854,7 @@ class Graph {
         this.edges.push([g1, g2])
         return fig.connector(g1, g2)
     }
-    // Add an undirected edge between objects g1 and g2, adding the objects as nodes if necessary.
+    // Add an directed edge between objects g1 and g2, adding the objects as nodes if necessary.
     // Constraints are added to order them top-to-bottom or left-to-right, depending on the the figure's
     // horizontalLayout property.
     // Return the (straight) connector between the objects.

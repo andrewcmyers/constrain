@@ -310,12 +310,12 @@ you can draw the diamond-shaped handle to change the figure.
   with (new Constrain.Figure("handle_ex_fig")) {
     let c = circle("#def"), h1 = handle(),
         p2 = point(150, 150), p3 = point(50, 150)
-    h1.x().setHint(20); h1.y().setHint(20)
+    hint(h1.x(), 20); hint(h1.y(), 20)
     polygon([h1, p2, p3])
     equal(distance(c, h1), distance(c, p2),
           distance(c, p3))
-    geq(minus(p3.y(), h1.y()), 10)
     c.setW(times(2, distance(c, h1)))
+    geq(minus(p3.y(), h1.y()), 10) // ensure solvable!
   }
 </script>
 </div>
@@ -404,11 +404,6 @@ positioning objects relative to the canvas.
 <p>
 A box containing a set of objects. The box is just large enough to surround all the objects.
 </p>
-<h4>variable(name)</h4>
-<p>
-Creates a fresh variable that can be solved for. Its name is based on the <code>name</code>
-parameter.
-</p>
 
 <h3>User-defined graphical objects</h3>
 <p>
@@ -433,9 +428,10 @@ Figure objects offer some methods for controlling the figure as a whole:
 
 <p>Requests the figure to start rendering when it is ready.
 Figures do not automatically appear; for example, this document
-ends with a loop over the list of all figures (<code>Constrain.Figures</code),
-telling each one to start.
+ends with a loop over the list of all figures (<code>Constrain.Figures</code>),
+telling each one to start:
 </p>
+<pre class=code style="float:none" id="startup_code_ex"></pre>
 
 <h4>stop()</h4>
 
@@ -444,6 +440,18 @@ telling each one to start.
 <h4>destroy()</h4>
 
 <p>Destroys the figure and removes it from the list of figures (<code>Constrain.Figures</code>).</p>
+
+<h3>Other operations</h3>
+<h4>Constrain.fullWindowCanvas(canvas)</h4>
+<p>
+Makes the specified canvas automatically resize to fill the window.
+</p>
+
+<h4>Constrain.autoResize()</h4>
+<p>
+This function causes figures to automatically resize to their containing canvases.
+</p>
+
 
 <h3>Default styles</h3>
 
@@ -527,7 +535,17 @@ a straight line.
 </p>
 
 <h4>constraintGroup(...constraints)</h4>
-<p>Adds and returns a constraint that all of the supplied constraints are satisfied.</p>
+<p>Adds and returns a constraint that enforces all of the supplied constraints.</p>
+
+<h4>keepInside(obj1, obj2)</h4>
+<p>
+Constrain object <code>obj1</code> to remain inside the bounding box of <code>obj2</code>.
+</p>
+
+<h4>sameSize(obj1, obj2)</h4>
+<p>
+Constrain objects <code>obj1</code> and <code>obj2</code> to have the same width and height.
+</p>
 
 <h3>Costs</h3>
 <p>
@@ -545,10 +563,11 @@ the factor <code>c</code>
 <p>
 Some constraints are built out of expressions. The following expressions are
 supported by the constraint solver. Expressions may have a either a scalar
-value (a number) or an array value. For example, as an expressoin, a point
+value (a number) or an array value. For example, as an expression, a point
 evaluates to a two-element array, and any graphical objects evaluates similarly
 to its center position.  Many operations can be performed either on scalars or
-arrays.
+arrays. The function <code>Constrain.evaluate</code> may be used to obtain the
+current value of an expression, although usually this is not needed.
 
 <h4>plus(a, b)</h4>
 <p>The sum of <code>a</code> and <code>b</code>, which may be scalars or arrays.
@@ -591,19 +610,53 @@ scalar.
 </p>
 
 <h4>linear(frame, a, b)</h4>
-<p>An expression whose value is the value of expression <code>a</code> before the
+<p>An expression (class <code>Linear</code>) whose value is the value of expression <code>a</code> before the
 specified frame, and the value of <code>b</code> after that frame. During the
 frame, it linearly interpolates over time between <code>a</code> and
 <code>b</code>.
 </p>
 
 <h4>smooth(frame, a, b)</h4>
-<p>An expression whose value is the value of expression <code>a</code> before the
+<p>An expression (class <code>Smooth</code>) whose value is the value of expression <code>a</code> before the
 specified frame, and the value of <code>b</code> after that frame. During the
 frame, it uses a cubic spline to interpolate over time between <code>a</code> and
 <code>b</code>, so that the rate of change at the endpoints is zero.
 </p>
 
+<h4>variable(name)</h4>
+<p>
+Creates and returns a fresh variable that can be solved for. Its name is based on the <code>name</code>
+parameter. Normally this method does not need to be used directly.
+</p>
+
+<h4>hint(e, v)</h4>
+<p>
+Add a hint to the solver that the value <code>v</code>, which must be a number or array of
+numbers, is a good initial guess for the solved value of the expression <code>e</code>.
+Usually such hints are not necessary; the main use is in situations where there are multiple
+solutions and you want to bias the solver toward one of them. It returns the expression <code>e</code>.
+</p>
+
+<h3>Other expressions</h3>
+
+<h4>new Global(f)</h4>
+<p>
+The class <code>Global</code> represents an expression whose value may change but which is
+not affected by any variables that are solved for. Its value is provided by a function <code>f</code>
+passed to the constructor. It is useful for interfacing Constrain diagrams with external data
+sources.
+</p>
+
+<h4>new DebugExpr(e)</h4>
+<p>
+Wrapping an expression in a <code>DebugExpr</code> object causes the value of
+that expression to be logged to the console whenever it is evaluated or
+differentiated.  The class <code>Global</code> represents an expression whose
+value may change but which is not affected by any variables that are solved
+for. Its value is provided by a function <code>f</code> passed to the
+constructor. It is useful for interfacing Constrain diagrams with external
+data sources.
+</p>
 <h2>Positions</h2>
 <p>
 Graphical objects come with a set of methods that return expressions for scalars and
@@ -754,12 +807,12 @@ there is a next frame to go to.</p>
 <p>Rewinds this figure to the previous frame, if any.
 Returns true if there is a previous frame to go to.</p>
 
-<h4>setRepeat(f)</h4>
+<h4>setRepeat(b)</h4>
 <p>Set whether the figure resets to the first frame when it
 advances past the last frame.
 </p>
 
-<h4>setFadeColor(c)</h4>
+<h4>setFadeColor(color)</h4>
 <p>
 For repeating figures, there is a period in which the figure
 fades out to a color (by default, white). If the fade color is
@@ -767,7 +820,7 @@ set to the background color of the page, the fade effect will
 be effective.
 </p>
 
-<h4>setAnimatedSolving(t)</h4>
+<h4>setAnimatedSolving(b)</h4>
 <p>
 The constraint solver does not show its solving process by default.
 If this method is called with <code>true</code>, the steps the solver takes
@@ -783,14 +836,128 @@ or be visible only some of the time. Convenience methods in <code>Figure</code> 
 easy to use.
 </p>
 
+<h4>drawAfter(frame, ...objs)</h4>
+<p>
+Draw objects <code>objs</code> only starting from the specified frame.
+However, the objects still exist in the figure.
+</p>
+
+<h4>drawBefore(frame, ...objs)</h4>
+<p>
+Draw objects <code>objs</code> only before the specified frame.
+However, the objects still exist in the figure.
+</p>
+
+<h4>drawBetween(frame1, frame2, ...objs)</h4>
+<p>
+Draw objects <code>objs</code> only starting from frame <code>frame1</code> and
+before frame <code>frame2</code>. However, the objects still exist in the
+figure.
+</p>
+
+<h4>after(frame, ...objs_constraints)</h4>
+<p>
+Objects or constraints <code>objs_constraints</code> are only present in the figure
+starting from frame <code>frame1</code>. Note that introducing new constraints
+can cause objects to jump discontinuously at frame boundaries, so the method
+<code>drawAfter</code> may be a better choice.
+</p>
+
+<h4>before(frame, ...objs_constraints)</h4>
+<p>
+Objects or constraints <code>objs_constraints</code> are only present in the figure
+before frame <code>frame1</code>.
+</p>
+
+<h4>between(frame1, frame2, ...objs_constraints)</h4>
+<p>
+Objects and constraints <code>objs_constraints</code> are only present in the figure
+after frame <code>frame1</code> and before frame <code>frame2</code>.
+</p>
+
+<h3>Frame methods</h3>
+<p>
+Frame objects returned by <code>addFrame()</code> support methods for controlling
+animations.
+</p>
+
+<h4>setLength(ms)</h4>
+<p>
+By default, a frame has zero duration; it is simply rendered once. By giving the frame
+a duration in milliseconds, the frame renders repeatedly for the given duration, with
+the value of certain expressions (e.g., <code>Linear</code> and <code>Smooth</code>)
+varying continuously over the duration.
+</p>
+
+<h4>setAutoAdvance(b)</h4>
+<p>
+If invoked on a frame with <code>true</code>, the frame automatically advances
+to the following frame once its duration is over.
+</p>
+
 <h2>Graphs</h2>
+<p>
+Constrain also includes support for automatic graph layout. The class <code>Graph</code>
+represents a graph consisting of nodes and edges. It has various methods for building
+and controlling the automatic layout of the graph.
+</p>
+
+<h3>Graph methods</h3>
+
+<h4>addNode(obj)</h4>
+<p>
+Add the graphical object <code>obj</code> as a node in the graph.
+</p>
+
+<h4>edge(obj1, obj2)</h4>
+<p>
+Add an undirected edge from graph node <code>obj1</code> to graph node <code>obj2</code>.
+</p>
+
+<h4>dedge(obj1, obj2)</h4>
+<p>
+Add a directed edge from graph node <code>obj1</code> to graph node <code>obj2</code>.
+</p>
+
+<h3>Graph properties</h3>
+<p>
+  The layout of a graph is controlled by various graph properties whose default values can be overridden.
+</p>
+<h4>sparsity</h4>
+<p>
+This parameter controls how widely separated graph nodes are.
+</p>
+<h4>cost</h4>
+<p>
+Graphs are laid out using soft constraints whose importance is scaled relative to ordinary constraints
+by the <code>cost</code> property of the graph.
+</p>
+<h4>gravity</h4>
+<p>
+Nodes in a directed graph experience a force like gravity that tends to push edges to align with it.
+The strength of this force is controlled by the property <code>gravity</code>.
+</p>
+<h4>repulsion</h4>
+<p>
+Nodes in the graph exert a repulsive force on nearby nodes to discourage overlap. The
+property <code>repulsion</code> controls the strength of the repulsive force.
+</p>
+<h4>branchSpread</h4>
+<p>
+When a node is connected to multiple other nodes, a torque is introduced on the edges to
+those nodes, to try to equalize the angles between the edges. The strength of the torque
+is controlled by the <code>branchSpread</code> property.
+</p>
 
 </div>
 
+<div id="startup_code">
 <script>
-  for (f in Constrain.Figures) {
-    Constrain.Figures[f].start()
-  }
+  Constrain.Figures.forEach(f => f.start())
+</script>
+</div>
+<script>
+  show_example("startup_code_ex", "startup_code")
 </script>
 
 </body>
