@@ -349,9 +349,10 @@ A button that can be used to advance the current state of the animation.
   with (new Constrain.Figure("advance_ex_fig")) {
     const f0 = addFrame(), f1 = addFrame(),
           f2 = addFrame(), f3 = addFrame()
-    setRepeat(true); setFadeColor("#f8e8d8")
+    setRepeat(true); setFadeColor("#fed")
     setFillStyle("yellow")
-    group(drawAfter(f1, square().addText("1")),
+    group(square().addText("0"),
+          drawAfter(f1, square().addText("1")),
           drawAfter(f2, square().addText("2")),
           drawAfter(f3, square().addText("3")))
       .setH(30)
@@ -368,7 +369,7 @@ A button that can be used to advance the current state of the animation.
 <h3>Unrendered objects</h3>
 <p>
 Some figure elements act like graphical objects in most respects but do not result in 
-any rendering. These objects are useful for positioning other objects.
+any rendering. These elements are useful for positioning other objects.
 </p>
 
 <h4>point()</h4>
@@ -485,8 +486,10 @@ same arguments as the corresponding methods on graphical objects.
 <p>
 The appearance of a figure is governed by a set of constraints. Some graphical objects
 automatically add their own constraints to the set. Additional constraints can be added
-by methods on the figure object.
+by methods on the figure object, on graphical objects, and on other figure elements.
 </p>
+
+<h3>Figure constraint methods</h3>
 
 <h4>align(horizontal, vertical, ...objs)</h4>
 <p>
@@ -559,6 +562,27 @@ Constrain object <code>obj1</code> to remain inside the bounding box of <code>ob
 <p>
 Constrain objects <code>obj1</code> and <code>obj2</code> to have the same width and height.
 </p>
+
+<h3>Figure element constraint methods</h3>
+<p>The following methods of graphical objects and figure elements more generally
+can be used to constrain their positioning and size.</p>
+
+<h4>setX(x)</h4>
+<p>Constrain the x coordinate of this element to be <code>x</code> and
+return this element.</p>
+<h4>setY(y)</h4>
+<p>Constrain the x coordinate of this element to be <code>x</code> and
+return this element.</p>
+<h4>at(x,y), at(p), at(obj)</h4>
+<p>Constrain both the x and y coordinates of this element to be equal to 
+the provided coordinates or the provided point or object center.
+</p>
+<h4>setW(w)</h4>
+<p>Constrain the width of this element to be <code>w</code> and
+return this element.</p>
+<h4>setH(h)</h4>
+<p>Constrain the height of this element to be <code>w</code> and
+return this element.</p>
 
 <h3>Costs</h3>
 <p>
@@ -816,6 +840,12 @@ When applied to a graphical object, the starting position is respectively, the
 result of <code>uc()</code>, <code>lc()</code>, <code>cr()</code>, or
 <code>cl()</code>. It is possible for the nudge distance to be negative, which is useful
 for nudging a point into the interior of a graphical object.
+<h4>inset(d)</h4>
+<p>Returns a box element whose bounding box is the same as the bounding box of this
+object, except moved inward by distance <code>d</code>.
+<h4>expand(d)</h4>
+<p>Returns a box element whose bounding box is the same as the bounding box of this
+object, except moved outward by distance <code>d</code>.
 </p>
 
 <h2>Animation</h2>

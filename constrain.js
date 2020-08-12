@@ -2429,14 +2429,14 @@ class Box extends LayoutObject {
     }
 // convenience methods for positioning (by adding constraints)
 
-    // Builder to constrain the x coordinate of the object.
+    // Constrain the x coordinate of the object.
     setX(x) { this.figure.equal(this.x(), x); return this }
-    // Builder to constrain the y coordinate of the object.
+    // Constrain the y coordinate of the object.
     setY(y) { this.figure.equal(this.y(), y); return this }
 
-    // Builder to constrain the width of this object.
+    // Constrain the width of this object.
     setW(w) { this.figure.equal(this.w(), w); return this }
-    // Builder to constrain the height of this object.
+    // Constrain the height of this object.
     setH(h) { this.figure.equal(this.h(), h); return this }
 }
 
