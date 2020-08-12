@@ -15,7 +15,7 @@
     h3 { font-size: 150% }
     h4 { font-size: 95%; font-family: Menlo, Consolas, fixed }
     div.content { max-width: 100ex; margin: 4em auto }   
-    body  {background-color: fed }
+    body  {background-color: #fed }
     p, ul li { font-size: 12pt; font-family: Georgia, serif }       
     pre.code { padding: 1ex; font-size: 10pt; width: 60ex; float:right; border: 1px solid black; background-color: #ddd; font-family: Menlo, fixed }
     code { font-family: Menlo, fixed; font-size: 90% }
@@ -349,7 +349,7 @@ A button that can be used to advance the current state of the animation.
   with (new Constrain.Figure("advance_ex_fig")) {
     const f0 = addFrame(), f1 = addFrame(),
           f2 = addFrame(), f3 = addFrame()
-    setRepeat(true); setFadeColor("#fed")
+    setRepeat(true); setFadeColor("#f8e8d8")
     setFillStyle("yellow")
     group(drawAfter(f1, square().addText("1")),
           drawAfter(f2, square().addText("2")),
@@ -667,10 +667,12 @@ parameter. Normally this method does not need to be used directly.
 
 <h4>hint(e, v)</h4>
 <p>
-Add a hint to the solver that the value <code>v</code>, which must be a number or array of
-numbers, is a good initial guess for the solved value of the expression <code>e</code>.
-Usually such hints are not necessary; the main use is in situations where there are multiple
-solutions and you want to bias the solver toward one of them. It returns the expression <code>e</code>.
+Add a hint to the solver that the value <code>v</code> is a good initial guess
+for the solved value of the expression <code>e</code>.  The value must be a
+scalar computed at the time of figure construction. Usually such hints are
+not necessary; the main use is in situations where the solver needs to be
+biased toward one of multiple solutions, or away from local minima that are not
+solutions. The call returns the expression <code>e</code>.
 </p>
 
 <h3>Other expressions</h3>
