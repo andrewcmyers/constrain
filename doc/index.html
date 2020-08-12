@@ -632,10 +632,10 @@ frame, it linearly interpolates over time between <code>a</code> and
 <h4>smooth(frame, a, b)</h4>
 <p>An expression (class <code>Smooth</code>) whose value is the value of expression <code>a</code> before the
 specified frame, and the value of <code>b</code> after that frame. During the
-frame, ts value interpolates over time between <code>a</code> and
+frame, its value interpolates over time between <code>a</code> and
 <code>b</code>, using a cubic spline so that the rate of change at the
-endpoints is zero.
-</p>
+endpoints is zero. Expressions <code>a</code> and <code>b</code> may compute scalars
+or, as in the following example, arrays.</p>
 
 <pre class=code id="smooth_code_ex"></pre>
 <div id="smooth_ex" style="margin: 1em">
@@ -983,6 +983,11 @@ property <code>repulsion</code> controls the strength of the repulsive force.
 When a node is connected to multiple other nodes, a torque is introduced on the edges to
 those nodes, to try to equalize the angles between the edges. The strength of the torque
 is controlled by the <code>branchSpread</code> property.
+</p>
+<h4>horizontalLayout</h4>
+<p>
+This property controls the direction of gravity. By default, it is false, meaning downward gravity.
+If true, gravity pulls to the right.
 </p>
 
 </div>
