@@ -284,14 +284,13 @@ support adding text with similar formatting capability.
 </canvas>
 <script>
   with (new Constrain.Figure("textFrame_ex_fig")) {
-    let tf = textFrame("Constrained writing is a"
+    let r = rectangle(),
+        tf = textFrame("Constrained writing is a"
       + " literary technique in which the writer is"
       + " bound by some condition that forbids"
       + " certain things or imposes a pattern.")
-    sameSize(rectangle().at(tf).setFillStyle(null),
-             tf.expand(5))
     align("left right", "top bottom",
-           tf, canvasRect().inset(20))
+           tf.expand(15), r.expand(10), canvasRect())
 
   }
 </script>
@@ -512,7 +511,7 @@ from the figure. The following figure methods support defining the default style
 same arguments as the corresponding methods on graphical objects.
 </p>
 
-<h4>setFillStyle(style)
+<h4>setFillStyle(style)<br/>
     setStrokeStyle(style)<br/>
     setLineWidth(w)<br/>
     setFontSize(s)<br/>
