@@ -42,7 +42,9 @@
 </script>
 
 <div class=content>
-<h1>Constrain<br>
+<canvas id="title_canvas"
+        style="width: 100ex; height: 50ex; position: absolute; z-index: -1; margin: 0 auto"></canvas>
+<h1><a name="the_name"><span id=constrain_name>Constrain</span></a><br>
 <small>Constraint-Based Animated Figures for Web Pages</small></h1>
 
 <p>
@@ -421,11 +423,25 @@ Vertical space. It has height <code>h</code> but zero width.
 </p>
 
 <h4>DOMElement(id)</h4>
+<pre style="width: 55ex" class=code id="domelem_ex_code"></pre>
 <p>
 A box with position and the size of the DOM element with the specified id
 attribute (class <code>DOMElementBox</code>).  This feature helps overlay
-graphics onto regular web page content.
+graphics onto regular web page content, as demonstrated in
+<a href="#the_name">the title of this document</a>.
 </p>
+<div id="domelem_ex">
+<script>
+  with (new Constrain.Figure("title_canvas")) {
+    align("left right", "top bottom",
+        ellipse().setFillStyle("#ffd"),
+        DOMElement("constrain_name"))
+  }
+</script>
+</div>
+<script>
+  show_example("domelem_ex_code", "domelem_ex")
+</script>
 
 <h4>canvasRect()</h4>
 <p>
@@ -1040,10 +1056,10 @@ is controlled by the <code>branchSpread</code> property.
 This property controls the direction of gravity. By default, it is false, meaning downward gravity.
 If true, gravity pulls to the right.
 </p>
-
 </div>
 
 <div id="startup_code">
+
 <script>
   Constrain.Figures.forEach(f => f.start())
 </script>
