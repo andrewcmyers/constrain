@@ -1917,7 +1917,7 @@ class Linear extends Expression {
             case OBJECT_STR:
                 if (v1.constructor == Array) {
                     var result = new Array(v1.length)
-                    for (i = 0; i < v1.length; i++) {
+                    for (let i = 0; i < v1.length; i++) {
                         result[i] = numeric.add(numeric.mul(v1[i], a), numeric.mul(v2[i], b))
                     }
                     // return this.recordCache(valuation, doGrad, result)

@@ -628,6 +628,28 @@ frame, it uses a cubic spline to interpolate over time between <code>a</code> an
 <code>b</code>, so that the rate of change at the endpoints is zero.
 </p>
 
+<pre class=code id="smooth_code_ex"></pre>
+<div id="smooth_ex" style="margin: 1em">
+<canvas id=smooth_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("smooth_ex_fig")) {
+    let frame1 = addFrame(),
+        frame2 = addFrame().setLength(1000)
+    square().setW(20).setLineWidth(4)
+      .at(smooth(frame2,
+        canvasRect().toLeft(-20),
+        canvasRect().toRight(-20)))
+    align("right", "bottom",
+          advanceButton(), canvasRect().inset(2))
+  }
+</script>
+</div>
+<script>
+  show_example("smooth_code_ex", "smooth_ex")
+</script>
+
+
+
 <h4>variable(name)</h4>
 <p>
 Creates and returns a fresh variable that can be solved for. Its name is based on the <code>name</code>
