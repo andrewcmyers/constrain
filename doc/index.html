@@ -624,8 +624,9 @@ frame, it linearly interpolates over time between <code>a</code> and
 <h4>smooth(frame, a, b)</h4>
 <p>An expression (class <code>Smooth</code>) whose value is the value of expression <code>a</code> before the
 specified frame, and the value of <code>b</code> after that frame. During the
-frame, it uses a cubic spline to interpolate over time between <code>a</code> and
-<code>b</code>, so that the rate of change at the endpoints is zero.
+frame, ts value interpolates over time between <code>a</code> and
+<code>b</code>, using a cubic spline so that the rate of change at the
+endpoints is zero.
 </p>
 
 <pre class=code id="smooth_code_ex"></pre>
@@ -697,6 +698,9 @@ points relating to their position in the figure.
     function dot(p) {
         return circle().setFillStyle("#00c").setStrokeStyle(null).setW(10).at(p)
     }
+    function lb(n, p) {
+      return label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
+    }
     let c = circle().setLineWidth(3).setFillStyle("#def"),
         s = box(),
         h0 = horzLine().setLineDash([8,8]).setLineWidth(1),
@@ -715,14 +719,11 @@ points relating to their position in the figure.
     align("none", "bottom", h1, c)
     align("left", "none", v0, c)
     align("right", "none", v1, c)
-    equal(c.width(), times(0.6, canvasRect().width()))
+    equal(c.width(), times(0.7, canvasRect().width()))
     dot(s.ul());    dot(s.uc());      dot(s.ur())
     dot(s.cl());    dot(s.center());  dot(s.cr())
     dot(s.ll());    dot(s.lc());      dot(s.lr())
     setFillStyle("#00c")
-    function lb(n, p) {
-      return label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
-    }
     let off = 15
     lb("ul", s.ul().toLeft(off).toTop(off))
     lb("cl", s.cl().toLeft(off).toTop(off))
