@@ -43,6 +43,10 @@
         .replace(/^.*\n/, "")
         .replace(/<\/div>$/, "")
   }
+  var some_text = "Constrained writing is a"
+      + " literary technique in which the writer is"
+      + " bound by some condition that forbids"
+      + " certain things or imposes a pattern."
 </script>
 
 <div class=content>
@@ -184,9 +188,7 @@ by providing these parameters.
 <script>
   with (new Constrain.Figure("ellipse_ex_fig")) {
     let e = ellipse().setFillStyle("#fde")
-        .addText("An ellipse is a conic section"
-         + " with two foci. Distances"
-         + " to the foci sum to a constant.")
+        .addText(some_text)
     equal(e.width(), times(2, e.height()),
           canvasRect().inset(2).width())
   }
@@ -291,10 +293,7 @@ support adding text with similar formatting capability.
 <script>
   with (new Constrain.Figure("textFrame_ex_fig")) {
     let r = rectangle(),
-        tf = textFrame("Constrained writing is a"
-      + " literary technique in which the writer is"
-      + " bound by some condition that forbids"
-      + " certain things or imposes a pattern.")
+        tf = textFrame(some_text)
     align("left right", "top bottom",
            tf.expand(15), r.expand(10), canvasRect())
 
