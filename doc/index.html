@@ -13,7 +13,7 @@
     h1 { padding-top: 1ex }
     h1 > small { font-size: 50% }
     h3, h4 { font-family: Optima, sans-serif; color: #008 }
-    h1 { font-size: 400%; font-weight: 666; }
+    h1 { font-size: 400%; font-weight: bold }
     h2 { font-size: 300%; page-break-after: avoid }
     h3 { font-size: 150% }
     h4 { font-size: 95%; font-family: Menlo, Consolas, fixed }
@@ -52,7 +52,7 @@
 <div class=content>
 <canvas id="title_canvas"
         style="width: 100ex; height: 50ex; position: absolute; z-index: -1; margin: 0 auto"></canvas>
-<h1><a name="the_name"><span id=constrain_name>Constrain</span></a><br>
+<h1><a><span id=constrain_name>Constrain</span></a><br>
 <small>Constraint-Based Animated Figures for Web Pages</small></h1>
 
 <p>
@@ -407,7 +407,7 @@ location is solved for.
 <h4>point(x, y)</h4>
 <p>
 Creates a point (class <code>Point</code>) at the location (x,y). This is
-equivalent to <code>point().at(x,y)
+equivalent to <code>point().at(x,y)</code>
 </p>
 
 <h4>box()</h4>
@@ -433,7 +433,7 @@ Vertical space. It has height <code>h</code> but zero width.
 A box with position and the size of the DOM element with the specified id
 attribute (class <code>DOMElementBox</code>).  This feature helps overlay
 graphics onto regular web page content, as demonstrated in
-<a href="#the_name">the title of this document</a>.
+<a href="#constrain_name">the title of this document</a>.
 </p>
 <div id="domelem_ex">
 <script>
