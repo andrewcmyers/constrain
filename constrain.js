@@ -247,9 +247,15 @@ class Figure {
         return [val, grad]
     }
 
+    isActiveConstraint(con) {
+        if (!con.active()) return false
+        if (con.parent !== undefined) return this.isActiveConstraint(con.parent)
+        return true
+    }
+
     setupBackPropagation(task) {
         this.Constraints.forEach(con => {
-            if (con.parent !== undefined || !con.active()) return
+            if (!this.isActiveConstraint(con)) return
             con.addToTask(task)
         })
     }
@@ -259,9 +265,8 @@ class Figure {
     // symbolic differentiation.
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
-        function handleConstraint(con) {
-            if (con.parent !== undefined) return
-            if (!con.active()) return
+        this.Constraints.forEach(con => {
+            if (!this.isActiveConstraint(con)) return
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -272,8 +277,7 @@ class Figure {
                 c = result
             }
             cost += c
-        }
-        this.Constraints.forEach(handleConstraint)
+        })
         if (!doGrad) {
             return cost
         } else {
@@ -1357,7 +1361,7 @@ class Variable extends Expression {
         delete this.index
     }
     toString() {
-        return "Variable " + this.basename + "(#" + this.index + ")"
+        return this.basename
     }
     variables() { return [this] }
 }
@@ -1845,6 +1849,9 @@ class Abs extends UnaryExpression {
         if (a < 0) task.propagate(this.expr, -d)
         else task.propagate(this.expr, d)
     }
+    toString() {
+        return "Abs(" + this.expr + ")"
+    }
 }
 
 // The expression -x
@@ -1875,6 +1882,9 @@ class Sqrt extends UnaryExpression {
         }
         task.propagate(this.expr, d * 0.5/a)
     }
+    toString() {
+        return "Sqrt(" + this.expr + ")"
+    }
 }
 
 // The squaring operation
@@ -1888,6 +1898,9 @@ class Sqr extends UnaryExpression {
         const a = currentValue(this.expr),
               d = this.bpDiff
         task.propagate(this.expr, d*2*a)
+    }
+    toString() {
+        return "Sqr(" + this.expr + ")"
     }
 }
 
@@ -1920,6 +1933,9 @@ class Time extends Expression {
     }
     variables() { return [] }
     backprop(task) {}
+    toString() {
+        return "Time"
+    }
 }
 
 // A Linear can interpolate, as a function of time, between two numbers or
@@ -1983,6 +1999,9 @@ class Linear extends Expression {
             task.prepareBackProp(this.e2)
         task.addExpr(this)
     }
+    toString() {
+        return "Linear(" + this.e1 + "," + this.e2 + ")"
+    }
 }
 
 // A cubic spline interpolator with slow out
@@ -1992,6 +2011,9 @@ class Smooth extends Linear {
         super(figure, frame, e1, e2)
     }
     interp(t) { return cubicInterpWeight(t) }
+    toString() {
+        return "Smooth(" + this.e1 + "," + this.e2 + ")"
+    }
 }
 
 function cubicInterpWeight(t) {
@@ -2567,7 +2589,7 @@ class Point extends LayoutObject {
 }
 
 // A Group groups together a set of layout objects into a single object that
-// is rendered together and whose // whose location and bounds can be used to constrain
+// is rendered together and whose location and bounds can be used to constrain
 class Group extends GraphicalObject {
     constructor(figure, ...objects) {
         super(figure)
