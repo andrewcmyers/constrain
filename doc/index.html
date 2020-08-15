@@ -349,7 +349,7 @@ you can draw the diamond-shaped handle to change the figure.
   with (new Constrain.Figure("handle_ex_fig")) {
     let c = circle("#def"), h1 = handle(),
         p2 = point(150, 150), p3 = point(50, 150)
-    hint(h1.x(), 10); hint(h1.y(), 20)
+    hint(h1, [100, 20])
     polygon([h1, p2, p3])
     equal(distance(c, h1), distance(c, p2),
           distance(c, p3))
@@ -560,9 +560,10 @@ The vertical alignment specification is the same as the horizontal specification
 that <code>top</code> and <code>bottom</code> replace <code>left</code> and <code>right</code>.
 </p>
 
-<h4>equal(...e)</h4>
+<h4>equal(...exprs)</h4>
 <p>
-Adds and returns a constraint that the expressions in the list <code>e</code> are all equal to each other.
+Adds and returns a constraint that the scalar expressions in the list
+<code>exprs</code> are all equal to each other.
 </p>
 
 <h4>geq(...e)</h4>
@@ -586,7 +587,8 @@ Adds and returns a constraint that each expression in the list <code>e</code> is
 
 <h4>pin(...o)</h4>
 <p>
-Adds and returns a constraint that all the objects in the list <code>o</code> are located at the same position.
+Adds and returns a constraint that all the objects in the list <code>o</code> are located at the
+same position.
 </p>
 
 <h4>collinear(p0, p1, p2)</h4>

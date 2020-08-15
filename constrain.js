@@ -234,8 +234,8 @@ class Figure {
         }
         if (COMPARE_GRADIENTS) {
             let [cgVal, cgGrad] = this.costGrad(valuation, true)
-            for (let i = 0; i < val.length; i++) {
-                if (exceedsError(cgVal[i], val[i])) {
+            for (let i = 0; i < valuation.length; i++) {
+                if (exceedsError(cgVal, val)) {
                     console.error("Difference between computed values exceeds error")
                 }
                 if (exceedsError(cgGrad[i], grad[i])) {
@@ -248,11 +248,10 @@ class Figure {
     }
 
     setupBackPropagation(task) {
-        function handleConstraint(con) {
+        this.Constraints.forEach(con => {
             if (con.parent !== undefined || !con.active()) return
             con.addToTask(task)
-        }
-        this.Constraints.forEach(handleConstraint)
+        })
     }
 
     // Compute the total cost of the constraints, and the gradient of
@@ -266,9 +265,8 @@ class Figure {
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
+                if (CHECK_NAN && checkNaNs(result)) return
                 [c, dc] = result
-                if (isNaN(c))
-                    console.error("failed to evaluate cost")
                 dcost = numeric.add(dcost, dc)
             } else {
                 c = result
@@ -706,7 +704,7 @@ class Figure {
                 this.equal(variable, e)
             } else if (Array.isArray(v)) {
                 for (let i = 0; i < v.length; i++) {
-                    const variable = new Variable(this, "hint"+i+"_", v[i])
+                    const variable = new Variable(this, "hint_index_"+i, v[i])
                     this.equal(variable, new Projection(e, i, v.length))
                 }
             }
@@ -916,6 +914,9 @@ class Figure {
     }
     variable(name, hint) {
         return new Variable(this, name, hint)
+    }
+    projection(expr, i, n) {
+        return new Projection(expr, i, n)
     }
 
     // Create a point with variables for its coordinates
@@ -1364,6 +1365,7 @@ class Variable extends Expression {
 // This variable caches an array of zeros of the appropriate length
 var zeros
 
+// Return an array of zeros of length n. It may not be mutated. 
 function getZeros(n) {
     if (zeros && zeros.length == n) return zeros
     zeros = new Array(n).fill(0)
@@ -1426,6 +1428,25 @@ function evaluate(expr, valuation, doGrad) {
     }
 }
 
+function checkNaNs(r) {
+    if (Array.isArray(r)) {
+        const [c, dc] = r
+        if (isNaN(c)) {
+            console.error("Saw NaN in computed value (with grad)")
+            return true;
+        }
+        for (let i = 0; i < dc.length; i++) {
+            if (isNaN(dc[i])) {
+                console.error("Saw NaN in computed gradient")
+                return true;
+            }
+        }
+    } else if (isNaN(r)) {
+        console.error("Saw NaN in computed value")
+        return true;
+    }
+    return false;
+}
 
 // A back-propagation task. It computes the differential of a sum of functions
 // wrt each subexpression at the given valuation.  Only one such task can be
@@ -1485,7 +1506,11 @@ class BackPropagation {
                     console.error("expr does not belong to correct backprop")
 
                 if (typeof d === NUMBER) expr.bpDiff += d
-                else expr.bpDiff = numeric.add(expr.bpDiff, d)
+                else if (Array.isArray(d)) {
+                    expr.bpDiff = numeric.add(expr.bpDiff, d)
+                } else {
+                    console.error("attempt to backpropagate something of the wrong type")
+                }
                 if (CHECK_NAN && isNaN(expr.bpDiff) && isNaN(expr.bpDiff[0])) {
                     console.error("oops")
                 }
@@ -1494,7 +1519,6 @@ class BackPropagation {
     // Add this expression as something to minimize
     addTask(expr, cost) {
         this.prepareBackProp(expr)
-        this.addExpr(expr)
         if (isNaN(cost)) {
             console.error("cost is not a number!?")
         }
@@ -1548,9 +1572,9 @@ class BinaryExpression extends Expression {
 // An expression x - y
 class Minus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
-    operation(a, b) { return a - b }
+    operation(a, b) { return numeric.sub(a, b) }
     gradop(a, b, da, db) {
-        return [a - b, numeric.sub(da, db)]
+        return [numeric.sub(a, b), numeric.sub(da, db)]
     }
     backprop(task) {
         task.propagate(this.e1, this.bpDiff)
@@ -1562,8 +1586,8 @@ class Minus extends BinaryExpression {
 // An expression x + y
 class Plus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
-    operation(a, b) { return a + b }
-    gradop(a, b, da, db) { return [a + b, numeric.add(da, db)] }
+    operation(a, b) { return numeric.add(a, b) }
+    gradop(a, b, da, db) { return [numeric.add(a, b), numeric.add(da, db)] }
     backprop(task) {
         task.propagate(this.e1, this.bpDiff)
         task.propagate(this.e2, this.bpDiff)
@@ -1600,8 +1624,8 @@ class Times extends BinaryExpression {
         const a = currentValue(this.e1),
               b = currentValue(this.e2),
               d = this.bpDiff
-        task.propagate(this.e1, d*b)
-        task.propagate(this.e2, d*a)
+        task.propagate(this.e1, numeric.mul(d,b))
+        task.propagate(this.e2, numeric.mul(d,a))
     }
     opName() { return " * " }
 }
@@ -1880,7 +1904,7 @@ class Relu extends UnaryExpression {
         if (a > 0)
             task.propagate(this.expr, this.bpDiff)
     }
-    toString() { return "relu(" + this.expr + ")" }
+    toString() { return "Relu(" + this.expr + ")" }
 }
 
 // A fixed value between 0 and 1 representing the
@@ -2000,7 +2024,7 @@ class Projection extends Expression {
         }
     }
     backprop(task) {
-        const r = getZeros(this.num)
+        const r = new Array(this.num).fill(0)
         r[this.index] = this.bpDiff
         task.propagate(this.expr, r)
     }
@@ -2008,9 +2032,10 @@ class Projection extends Expression {
         task.prepareBackProp(this.expr)
         task.addExpr(this)
     }
+    toString() { return "Projection(" + this.expr + "," + this.index + ")" }
 }
 
-// A Temporal is an object that only exists in some frames. It can be
+// A Temporal is an object that might only exist in some frames. It can be
 // a GraphicalObject or a Constraint. By default an object exists and
 // is visible in every frame.
 //
@@ -2142,7 +2167,12 @@ class DrawBefore extends TemporalFilter {
 }
 
 // A Constraint has a cost that the system tries to minimize.
+// A Constraint is associated with a Figure but might not be in
+// its list Constraints, because of ConstraintGroups.
 class Constraint extends Temporal {
+
+    // Create a constraint associated with figure but do not
+    // install it in figure.Constraints.
     constructor(figure) {
         super(figure)
         if (!isFigure(figure)) {
@@ -2167,17 +2197,14 @@ class Constraint extends Temporal {
             return
         }
         child.parent = holder
-        figure.addConstraints(holder)
         for (let i = 0; i < figure.Constraints.length; i++) {
             if (figure.Constraints[i] === child) {
-                figure.Constraints[i] = holder
                 child.parent = holder
                 break
             }
         }
         if (child.parent !== holder) {
             console.error("Child constraint not at top level")
-            figure.Constraints.push(holder)
         }
     }
     changeCost(cost) {
@@ -2203,7 +2230,7 @@ class Loss extends Constraint {
         return v * this.cost
       } else {
         const [x, dx] = evaluate(this.expr, valuation, true)
-        return [x*this.cost, dx*this.cost]
+        return [x*this.cost, numeric.mul(dx, this.cost)]
       }
     }
     variables() {
@@ -2244,6 +2271,9 @@ class ConstraintGroup extends Constraint {
     constructor(figure, ...constraints) {
         super(figure)
         this.constraints = constraints.flat()
+        this.constraints.forEach(c =>
+            c.installHolder(figure, this, c)
+        )
     }
     getCost(valuation, doGrad) {
         return constraintsCost(this.constraints, valuation, doGrad)
@@ -3002,8 +3032,8 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
 class Line extends GraphicalObject {
     constructor(figure, strokeStyle, lineWidth, x0, y0, x1, y1) {
         if (x0 == null) x0 = 100
-        if (x1 == null) x1 = 100
-        if (y0 == null) y0 = 200
+        if (x1 == null) x1 = 200
+        if (y0 == null) y0 = 100
         if (y1 == null) y1 = 200
         super(figure, undefined, strokeStyle, lineWidth, (x0 + x1)/2, (y0 + y1)/2, x1-x0, y1-y0)
         this.startArrowStyle = undefined
@@ -3733,10 +3763,11 @@ class CanvasRect extends LayoutObject {
 }
 
 function exceedsError(x, y) {
+    if (isNaN(x) || isNaN(y)) return true
     if (x > y) {
         const t = x; x = y; y = t
     }
-    return (y/x > 1.0000001 && (y-x) > 0.0000001)
+    return (Math.abs(1.0 - y/x) > 0.00001 && Math.abs(y-x) > 0.00001)
 }
 
 function rgbStyle(r,g,b) {
@@ -3956,6 +3987,7 @@ function autoResize() {
     Average: Average,
     Min: Min,
     Max: Max,
+    Projection: Projection,
     Paths: Paths,
     autoResize: autoResize,
     rgbStyle: rgbStyle,
