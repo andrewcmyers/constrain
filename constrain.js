@@ -969,6 +969,7 @@ class Figure {
     min(...args) { return new Min(...args) }
     sqrt(x) { return new Sqrt(x) }
     sqr(x) { return new Sqr(x) }
+    sq(x) { return new Sqr(x) }
     average(x, y) { return new Average(x, y) }
     distance(p1, p2) { return new Distance(p1, p2) }
     nearZero(e, cost) { return new NearZero(this, e, cost) }
@@ -1773,7 +1774,7 @@ class Distance extends Expression {
             v = Math.sqrt(rad)
       if (v == 0) return [0, getZeros(dx1.length)]
       const drad = numeric.add(numeric.mul(xd, dxd), numeric.mul(yd, dyd))
-      return [v, numeric.mul(1.0/v, drad)]
+      return [v, numeric.mul(1/v, drad)] // factors of 2 cancel
     }
     // Dx1(d) where rad = sqrt((x1-x2)^2 + (y1-y2)^2) is (x1-x2)/rad * dx1
     //
@@ -2055,6 +2056,9 @@ class Projection extends Expression {
         task.addExpr(this)
     }
     toString() { return "Projection(" + this.expr + "," + this.index + ")" }
+    variables() {
+        return exprVariables(this.expr)
+    }
 }
 
 // A Temporal is an object that might only exist in some frames. It can be
@@ -2457,8 +2461,8 @@ class LayoutObject extends Expression {
                 this.figure.equal(this.x(), p[0])
                 this.figure.equal(this.y(), p[1])
             } else {
-                this.figure.equal(this.x(), p.x())
-                this.figure.equal(this.y(), p.y())
+                this.figure.equal(this.x(), new Projection(p, 0, 2))
+                this.figure.equal(this.y(), new Projection(p, 1, 2))
             }
         }
         return this
@@ -3101,11 +3105,11 @@ class Line extends GraphicalObject {
         return new Point(this.x1(), this.y1())
     }
     setStart(p) {
-        this.figure.pin(p1(), p)
+        this.figure.pin(this.p1(), p)
         return this
     }
     setEnd(p) {
-        this.figure.pin(p2(), p)
+        this.figure.pin(this.p2(), p)
         return this
     }
 }
@@ -4002,6 +4006,7 @@ function autoResize() {
     ConstraintGroup: ConstraintGroup,
     Corners: Corners,
     Graph: Graph,
+    Expression: Expression,
     Minus: Minus,
     Plus: Plus,
     Times: Times,
@@ -4020,6 +4025,9 @@ function autoResize() {
     isFigure: isFigure,
     statistics: statistics,
     currentValue: currentValue,
-    drawLineEndSeg: drawLineEndSeg
+    drawLineEndSeg: drawLineEndSeg,
+    evaluate: evaluate,
+    sqdist: sqdist,
+    exprVariables
   })
 }()
