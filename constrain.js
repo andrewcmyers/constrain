@@ -270,7 +270,7 @@ class Figure {
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
-                if (CHECK_NAN && checkNaNs(result)) return
+                if (CHECK_NAN && checkNaNResult(result)) return
                 [c, dc] = result
                 dcost = numeric.add(dcost, dc)
             } else {
@@ -399,17 +399,17 @@ class Figure {
         // console.log("starting figure")
         this.is_started = true
         if (!this.is_ready) {
-            console.log("figure is not ready to render yet.")
+            console.log("Figure is not ready to render yet.")
             return
         }
         if (this.Frames.length == 0)
             this.Frames[0] = new Frame(this, "default")
         this.currentFrame = this.Frames[0]
         if (document.readyState == "complete") {
-            console.log("document is ready, starting first frame")
+            console.log("Document is ready, starting first frame")
             this.startCurrentFrame()
         } else {
-            console.log("document is not ready, starting listener")
+            console.log("Document is not ready, starting listener")
             window.addEventListener('load', () => {
                 console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
@@ -673,11 +673,6 @@ class Figure {
     // constraints to pin all the objects at the same location
     pin(...objects) {
         objects = objects.flat()
-        let w, h
-        if (objects[0].w !== undefined) {
-            w = objects[0].w()
-            h = objects[0].h()
-        }
         const r = []
         for (let i = 1; i < objects.length; i++) {
             r.push(this.equal(objects[0].x(), objects[i].x()))
@@ -685,17 +680,6 @@ class Figure {
         }
         if (r.length == 1) return r[0]
         else return new ConstraintGroup(this, r)
-    }
-
-    distance(p1, p2) {
-        return new Distance(p1, p2)
-    }
-
-// dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
-    collinear(p0, p1, p2) {
-        return this.equal(
-          this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
-          this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
     }
 
     // Add a hint that value v is a good initial guess for the solution to expression e.
@@ -975,6 +959,31 @@ class Figure {
     nearZero(e, cost) { return new NearZero(this, e, cost) }
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
     group(...g) { return new Group(this, ...g) }
+    // constraint that (p1 -> p2) is perpendicular to (p3->p4)
+    perpendicular(p1, p2, p3, p4) {
+        let v1 = new Minus(p2, p1), v2 = new Minus(p4, p3)
+        return new NearZero(this,
+            new Plus(new Times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
+                     new Times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
+    }
+
+// dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
+    collinear(p0, p1, p2) {
+        return this.equal(
+          this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
+          this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+    }
+
+    between(p0, p1, p2) {
+        let a = this.variable("a", 0.5), b = this.minus(1, a)
+        return new ConstraintGroup(this,
+            this.geq(a, 0),
+            this.leq(a, 1),
+            this.equal(p0.x(), this.plus(this.times(a, p1.x()), this.times(b, p2.x()))),
+            this.equal(p0.y(), this.plus(this.times(a, p1.y()), this.times(b, p2.y())))
+        )
+    }
+
 }
 
 function figure(nm) {
@@ -1433,7 +1442,7 @@ function evaluate(expr, valuation, doGrad) {
     }
 }
 
-function checkNaNs(r) {
+function checkNaNResult(r) {
     if (Array.isArray(r)) {
         const [c, dc] = r
         if (isNaN(c)) {
@@ -1451,6 +1460,16 @@ function checkNaNs(r) {
         return true;
     }
     return false;
+}
+
+function checkDiffValid(d) {
+    if (typeof d === NUMBER && isNaN(d) ||
+        typeof d === OBJECT_STR && (isNaN(d[0]) || isNaN(d[1])))
+    {
+        console.error("Asked to propagate NaN")
+        return false
+    }
+    return true
 }
 
 // A back-propagation task. It computes the differential of a sum of functions
@@ -1472,11 +1491,7 @@ class BackPropagation {
         const es = this.exprs, n = valuation.length, vs = this.variables
         for (let i = 0; i < es.length; i++) {
             const e = es[i]
-            if (!e.bpRoot)
-                e.initDiff()
-        }
-        for (let i = 0; i < n; i++) {
-            vs[i].initDiff()
+            if (!e.bpRoot) e.initDiff()
         }
         for (let i = es.length - 1; i >= 0; i--) {
             const e = es[i]
@@ -1492,16 +1507,11 @@ class BackPropagation {
     // back-propagate the differential value d to expr
     propagate(expr, d) {
         // console.log("propagate: " + expr + " <- " + d)
-        if (CHECK_NAN) {
-            if (typeof d !== NUMBER && expr.bpDiff === undefined) {
-                console.error("bpDiff not defined")
-            }
-            if (typeof d === NUMBER && isNaN(d) ||
-                typeof d === OBJECT_STR && (isNaN(d[0]) || isNaN(d[1])))
-            {
-                console.error("Asked to propagate NaN")
-                return
-            }
+        if (typeof expr !== NUMBER && expr.bpDiff === undefined) {
+            console.error("bpDiff not defined")
+        }
+        if (CHECK_NAN && !checkDiffValid(d)) {
+            console.error("Asked to propagate invalid diff")
         }
         switch (typeof expr) {
             case NUMBER: return // nothing to do
@@ -1510,7 +1520,12 @@ class BackPropagation {
                 if (expr.bpTask !== this)
                     console.error("expr does not belong to correct backprop")
 
-                if (typeof d === NUMBER) expr.bpDiff += d
+                if (typeof d === NUMBER) {
+                    if (Array.isArray(expr.bpDiff)) {
+                        console.error("Can't update an array-valued expression with a scalar")
+                    }
+                    expr.bpDiff += d
+                }
                 else if (Array.isArray(d)) {
                     expr.bpDiff = numeric.add(expr.bpDiff, d)
                 } else {
@@ -1535,8 +1550,6 @@ class BackPropagation {
         if (expr.bpTask === this) return // already visited
         expr.bpTask = this
         expr.addDependencies(this)
-    }
-    addExpr(expr) {
         this.exprs.push(expr)
     }
 }
@@ -1567,7 +1580,6 @@ class BinaryExpression extends Expression {
     addDependencies(task) {
         task.prepareBackProp(this.e1)
         task.prepareBackProp(this.e2)
-        task.addExpr(this)
     }
     variables() {
         return exprVariables(this.e1).concat(exprVariables(this.e2))
@@ -1583,7 +1595,7 @@ class Minus extends BinaryExpression {
     }
     backprop(task) {
         task.propagate(this.e1, this.bpDiff)
-        task.propagate(this.e2, -this.bpDiff)
+        task.propagate(this.e2, numeric.neg(this.bpDiff))
     }
     opName() { return "-" }
 }
@@ -1680,7 +1692,6 @@ class NaryExpression extends Expression {
     }
     addDependencies(task) {
         this.args.forEach(e => task.prepareBackProp(e))
-        task.addExpr(this)
     }
 }
 
@@ -1764,17 +1775,24 @@ class Distance extends Expression {
             [p2, dp2] = evaluate(this.p2, valuation, true),
             [x1, y1] = p1,
             [x2, y2] = p2,
-            xd = x2 - x1,
-            yd = y2 - y1,
             [dx1, dy1] = dp1,
             [dx2, dy2] = dp2,
             dxd = numeric.sub(dx2, dx1),
             dyd = numeric.sub(dy2, dy1),
+            xd = x2 - x1,
+            yd = y2 - y1,
             rad = sqdist(xd, yd),
             v = Math.sqrt(rad)
-      if (v == 0) return [0, getZeros(dx1.length)]
-      const drad = numeric.add(numeric.mul(xd, dxd), numeric.mul(yd, dyd))
-      return [v, numeric.mul(1/v, drad)] // factors of 2 cancel
+      let xdn, ydn
+      if (v != 0) {
+        xdn = xd/v
+        ydn = yd/v
+      } else {
+        const ang = Math.random() * Math.PI * 2
+        xdn = Math.cos(ang)
+        ydn = Math.sin(ang)
+      }
+      return [v, numeric.add(numeric.mul(xdn, dxd), numeric.mul(ydn, dyd))]
     }
     // Dx1(d) where rad = sqrt((x1-x2)^2 + (y1-y2)^2) is (x1-x2)/rad * dx1
     //
@@ -1790,25 +1808,26 @@ class Distance extends Expression {
               yd = y2 - y1,
               sd = sqdist(xd, yd),
               d = this.bpDiff
-        if (sd >= 1e-7) {
-            const irad = 1/Math.sqrt(sd)
-            task.propagate(this.p1, [(x1 - x2) * irad * d, (y1-y2)*irad*d])
-            task.propagate(this.p2, [(x2 - x1) * irad * d, (y2-y1)*irad*d])
+        let xdn, ydn
+        if (sd != 0) {
+            const idist = 1/Math.sqrt(sd)
+            xdn = xd * idist * d
+            ydn = yd * idist * d
         } else {
             // positions of points are considered arbitrary, so generate a
             // differential in a random direction.
-            // console.log("Warning: zero distance between points, generating force at random angle")
+            console.log("Warning: zero distance between points, generating force at random angle")
 
-            const ang = Math.random() * Math.PI * 2, 
-                  dx = d * Math.cos(ang), dy = d * Math.sin(ang)
-            task.propagate(this.p1, [dx, dy])
-            task.propagate(this.p2, [-dx, -dy])
+            const ang = Math.random() * Math.PI * 2
+            xdn = d * Math.cos(ang)
+            ydn = d * Math.sin(ang)
         }
+        task.propagate(this.p1, [-xdn, -ydn])
+        task.propagate(this.p2, [xdn, ydn])
     }
     addDependencies(task) {
         task.prepareBackProp(this.p1)
         task.prepareBackProp(this.p2)
-        task.addExpr(this)
     }
     variables() {
         return exprVariables(this.p1).concat(exprVariables(this.p2))
@@ -1832,7 +1851,6 @@ class UnaryExpression extends Expression {
     }
     addDependencies(task) {
         task.prepareBackProp(this.expr)
-        task.addExpr(this)
     }
 }
 
@@ -1908,15 +1926,14 @@ class Sqr extends UnaryExpression {
 // max(0,x)
 class Relu extends UnaryExpression {
     constructor(e) { super(e) }
-    operation(a) { if (a < 0) return 0; else return a }
+    operation(a) { if (a <= 0) return 0; else return a }
     gradop(a, da) { 
-        if (a < 0) return [0, getZeros(da.length)]
+        if (a <= 0) return [0, getZeros(da.length)]
         return [a, da]
     }
     backprop(task) {
         const a = evaluate(this, task.valuation)
-        if (a > 0)
-            task.propagate(this.expr, this.bpDiff)
+        if (a > 0) task.propagate(this.expr, this.bpDiff)
     }
     toString() { return "Relu(" + this.expr + ")" }
 }
@@ -1998,7 +2015,6 @@ class Linear extends Expression {
             task.prepareBackProp(this.e1)
         if (figure.currentFrame.isAfter(this.frame)) 
             task.prepareBackProp(this.e2)
-        task.addExpr(this)
     }
     toString() {
         return "Linear(" + this.e1 + "," + this.e2 + ")"
@@ -2053,7 +2069,6 @@ class Projection extends Expression {
     }
     addDependencies(task) {
         task.prepareBackProp(this.expr)
-        task.addExpr(this)
     }
     toString() { return "Projection(" + this.expr + "," + this.index + ")" }
     variables() {
@@ -2271,6 +2286,7 @@ class NearZero extends Loss {
         super(figure, new Sqr(expr))
         this.cost = cost || 1
     }
+    toString() { return "0 ~ " + this.expr }
 }
 
 function constraintsCost(a, valuation, doGrad) {
@@ -2292,7 +2308,7 @@ function constraintsCost(a, valuation, doGrad) {
     }
 }
 
-// A group of constraints that will treated as a single constraint.
+// A group of constraints that is treated as a single constraint.
 class ConstraintGroup extends Constraint {
     constructor(figure, ...constraints) {
         super(figure)
@@ -2302,7 +2318,10 @@ class ConstraintGroup extends Constraint {
         )
     }
     getCost(valuation, doGrad) {
-        return constraintsCost(this.constraints, valuation, doGrad)
+        // constraint group doesn't have a cost of its own.
+        if (doGrad) return [0, getZeros(valuation.length)]
+        else return 0
+        // return constraintsCost(this.constraints, valuation, doGrad)
     }
     variables() {
         let r = []
@@ -2412,7 +2431,6 @@ class LayoutObject extends Expression {
     addDependencies(task) {
         task.prepareBackProp(this.x_)
         task.prepareBackProp(this.y_)
-        task.addExpr(this)
     }
     initDiff() {
         this.bpDiff = [0, 0]
@@ -3512,6 +3530,7 @@ class Handle extends InteractiveObject {
         this.isActive = true
         this.isVisible = true
         figure.positive(vx, 0)
+        figure.positive(vy, 0)
         figure.leq(vx, figure.canvasRect().x1())
         figure.leq(vy, figure.canvasRect().y1())
     }
@@ -3543,13 +3562,13 @@ class Handle extends InteractiveObject {
         const hx = evaluate(this.x(), this.figure.currentValuation),
               hy = evaluate(this.y(), this.figure.currentValuation)
         if (Math.abs(x - hx) + Math.abs(y - hy) <= this.size) {
-             console.log("Handle got focus")
+            // console.log("Handle got focus")
             this.figure.focused = this
         }
     }
     mouseup(x, y, e) {
         if (this.figure.focused == this) {
-             console.log("Handle lost focus")
+            // console.log("Handle lost focus")
             this.figure.focused = null;
             if (this.xcon) {
                 this.figure.removeConstraints(this.xcon, this.ycon)
@@ -3560,8 +3579,8 @@ class Handle extends InteractiveObject {
         if (this.xcon) {
             this.figure.removeConstraints(this.xcon, this.ycon)
         }
-        this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 0.1)
-        this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 0.1)
+        this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 10)
+        this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 10)
         if (!this.figure.renderNeeded) {
             this.figure.renderNeeded = true
             setTimeout(() => this.figure.renderIfDirty(true), 0) // collapse multiple renders
@@ -3688,7 +3707,6 @@ class Global extends Expression {
     backprop(task) {}
     addDependencies(task) {
         // despite lack of backpropagation, this is needed to force initialization
-        task.addExpr(this)
     }
 }
 
@@ -3711,7 +3729,6 @@ class DebugExpr extends Expression {
     }
     addDependencies(task) {
         task.prepareBackProp(this.expr)
-        task.addExpr(this)
     }
     variables() {
         return this.expr.variables()

@@ -1,0 +1,139 @@
+<html>
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        position: fixed; left:0; top: 0;
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+  </style>
+  
+</head>
+<body>
+<h1>Triangle demo (this should be hidden)</h1>
+
+<canvas></canvas>
+
+<button>Show solving</button>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+Constrain.fullWindowCanvas(canvas)
+
+const figure = new Constrain.Figure(canvas)
+
+canvas.style.backgroundColor = "#eee"
+
+const CIRCUMCENTER = true,
+      INCENTER = true,
+      ORTHOCENTER = false,
+      CENTROID = true
+
+with (figure) {
+    figure.animatedSolving = true
+    function dot() {
+        return circle().setW(8).setFillStyle("black")
+    }
+    let h1 = handle(),
+        p2 = point(variable("p2x", 0), variable("p2y", 400)),
+        p3 = point(variable("p3x", 400), variable("p3y", 400))
+    let circum = CIRCUMCENTER ? circle("#def", null, null, 200, 400, 400) : null
+    let triangle = polygon([h1, p2, p3]).setFillStyle("white").setLineWidth(2);
+    let inscribed = INCENTER ? circle("#ffe", null, null, 100, 100, 100) : null
+    let canvRect = canvasRect()
+
+    align("none", "center", p2, p3)
+    let b = box().at(canvRect)
+    equal(b.w(), times(canvRect.w(), 0.5))
+    equal(b.h(), times(canvRect.h(), 0.5))
+    pin(p2, b.ll())
+    pin(p3, b.lr())
+    
+    hint(h1, [200,0])
+    keepInside(h1, canvRect.inset(20))
+    leq(h1.y(), minus(p2.y(), 50))
+
+    let m1 = average(h1, p2),
+        m2 = average(h1, p3),
+        m3 = average(p2, p3)
+
+    if (CIRCUMCENTER) {
+        equal(distance(h1, circum), distance(p2, circum), distance(p3, circum),
+              times(0.5, circum.w()))
+
+        let l1 = line().setLineDash([4,4]).setStart(circum).setEnd(m1),
+            l2 = line().setLineDash([4,4]).setStart(circum).setEnd(m2),
+            l3 = line().setLineDash([4,4]).setStart(circum).setEnd(m3)
+        l1.setLineDash([4,4])
+        pin(l1.p1(), l2.p1(), l3.p1(), circum)
+        dot().at(circum)
+        align("abut", "center", circum.center(), hspace(7), label("circumcenter"))
+    }
+    if (CENTROID) {
+        line().setStart(h1).setEnd(m3).setLineDash([2,6]).setStrokeStyle("#080")
+        line().setStart(p2).setEnd(m2).setLineDash([2,6]).setStrokeStyle("#080")
+        line().setStart(p3).setEnd(m1).setLineDash([2,6]).setStrokeStyle("#080")
+        let centroid = point(plus(times(1/3, h1.x()), times(2/3, m3.x())),
+                        plus(times(1/3, h1.y()), times(2/3, m3.y())))
+        align("abut", "center", centroid, hspace(7), label("centroid"))
+        dot().at(centroid)
+    }
+
+    if (INCENTER) {
+        let incenter = inscribed.center()
+        hint(incenter, [200,10])
+        keepInside(inscribed, triangle)
+        new Array(h1, p2, p3).forEach(p => 
+            line().setStart(p).setEnd(incenter).setLineDash([2,6]).setStrokeStyle("#800")
+        )
+        dot().at(incenter)
+        align("abut", "center", incenter, hspace(7), label("incenter"))
+        const ip1 = point(), ip2 = point(), ip3 = point()
+        between(ip1, h1, p2)
+        between(ip2, p2, p3)
+        between(ip3, p3, h1)
+        perpendicular(incenter, ip1, h1, p2)
+        perpendicular(incenter, ip2, p2, p3)
+        perpendicular(incenter, ip3, p3, h1)
+        const di1 = distance(ip1, incenter),
+              di2 = distance(ip2, incenter),
+              di3 = distance(ip3, incenter)
+        equal(di1, di2, di3, times(0.5, inscribed.w()))
+    }
+
+    if (ORTHOCENTER) {
+        const op1 = point(), op2 = point(), op3 = point(), orthocenter = point()
+        collinear(op1, h1, p2)
+        collinear(op2, p2, p3)
+        collinear(op3, p3, h1)
+        collinear(p3, op1, orthocenter)
+        collinear(h1, op2, orthocenter)
+        collinear(p2, op3, orthocenter)
+        align("abut", "center", dot().at(orthocenter), hspace(7), label("orthocenter"))
+        perpendicular(h1, p2, p3, op1)
+        perpendicular(p2, p3, h1, op2)
+        perpendicular(p3, h1, p2, op3)
+        line().setStart(p3).setEnd(op1).setLineDash([2, 6, 4, 6])
+        line().setStart(h1).setEnd(op2).setLineDash([2, 6, 4, 6])
+        line().setStart(p2).setEnd(op3).setLineDash([2, 6, 4, 6])
+        if (CIRCUMCENTER && ORTHOCENTER) {
+            line().setLineWidth(1).setStart(circum).setEnd(orthocenter)
+        }
+    }
+
+    // figure.setAnimatedSolving = true
+
+    let temp1 = equal(h1.y(), 0),
+        temp2 = equal(h1.x(), 400)
+    updateValuation()
+         removeConstraints(temp1, temp2)
+
+    start()
+}
+Constrain.autoResize()
+
+</script>
+</body>
+</html>
