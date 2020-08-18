@@ -187,9 +187,10 @@ by providing these parameters.
 <canvas id=ellipse_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("ellipse_ex_fig")) {
-    let e = ellipse().setFillStyle("#fde")
-        .addText(text(some_text).atCenter())
-    equal(e.width(), times(2, e.height()),
+    let e = ellipse("pink", "gray", 3)
+             .addText(text(some_text).atCenter())
+    equal(e.width(),
+          times(2, e.height()),
           canvasRect().inset(2).width())
   }
 </script>
@@ -215,10 +216,11 @@ A closed polygon connecting the given array of points (class <code>Polygon</code
 <script>
   with (new Constrain.Figure("polygon_ex_fig")) {
     let p1 = point(), p2 = point(), p3 = point()
+    hint(p1, [100, 0])
     equal(100, distance(p1, p2),
           distance(p2, p3), distance(p1, p3))
     equal(p2.y(), p3.y())
-    polygon([p1, p2, p3], "#dfd")
+    polygon([p1, p2, p3], "#dfd").at(canvasRect())
   }
 </script>
 </div>
