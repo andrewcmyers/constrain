@@ -14,7 +14,7 @@ var Constrain = function() {
 const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
-      CHECK_NAN = true,
+      CHECK_NAN = false,
       COMPARE_GRADIENTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
