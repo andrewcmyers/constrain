@@ -1,5 +1,6 @@
-<html>
+<html lang=en>
 <head>
+  <meta charset="UTF-8">
   <script src="numeric-1.2.6.js"></script>
   <script src="constrain.js"></script>
   <style>
@@ -63,7 +64,7 @@ with (figure) {
 
 
     function rt(p1, p2, p3) {
-        return polygon([p1, p2, p3]).setFillStyle("#eea")
+        return figure.polygon([p1, p2, p3]).setFillStyle("#eea")
     }
     rt(s1.ll(), asq.ll(), bsq.ll())
     rt(bsq.ll(), asq.ll(), asq.lr())
