@@ -1,0 +1,124 @@
+<html>
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    body { font-family: sans-serif }
+    h1 { text-align: center }
+    #content { margin: 0 auto; max-width: 80ex }
+  </style>
+</head>
+<script type="text/javascript"
+        id="MathJax-script"
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+<body>
+<h1>Pythagorean Theorem</h1>
+
+<div id=content>
+
+<p>
+The Pythagorean Theorem says that for any right triangle
+with perpendicular sides \(a\) and \(b\), and long side (hypoteneuse) \(c\),
+the equation \(a^2 + b^2 = c^2\) holds. We can see that this is true by
+considering the following diagram. You can drag the diamond to change the size
+of the right triangles.
+</p>
+
+<canvas style="width: 700px; height: 400px"></canvas>
+
+<p>
+The big squares have the same size and they 4 right triangles that each
+contains have exactly the same size, so what is left over must have the same
+area. That means the areas of the pink square (\(a^2\)) and the green square
+(\(b^2\)) must add up to the area of the blue square (\(c^2\)).
+
+</p>
+
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+const figure = new Constrain.Figure(canvas)
+
+
+with (figure) {
+    const s1 = square().setLineWidth(3), s2 = square().setLineWidth(3)
+    align("abut", "top", s1, hspace(40), s2)
+    equal(s1.w(), 300, s2.w())
+    equal(s1.x1(), canvasRect().x())
+    align("left", "center", s1, canvasRect().inset(2))
+    const h1 = horzLine(), v1 = vertLine()
+    const a = minus(v1.x(), s1.x0()), b = minus(s1.x1(), v1.x())
+    equal(a, minus(h1.y(), s1.y0()))
+    align("left right", "none", h1, s1)
+    align("none", "top bottom", v1, s1)
+    equal(minus(h1.y(), s1.y0()), a)
+    // align("none", "center", h1, hand)
+
+    const asq = square().setFillStyle("#eaa").addText(text("a×a").atCenter())
+    const bsq = square().setFillStyle("#aea").addText(text("b×b").atCenter())
+    align("left", "top", asq, s1)
+    align("right", "none", asq, v1)
+    align("right", "bottom", bsq, s1)
+    align("left", "none", bsq, v1)
+
+
+    function rt(p1, p2, p3) {
+        return polygon([p1, p2, p3]).setFillStyle("#eea")
+    }
+    rt(s1.ll(), asq.ll(), bsq.ll())
+    rt(bsq.ll(), asq.ll(), asq.lr())
+    rt(asq.ur(), s1.ur(), bsq.ur())
+    rt(asq.ur(), asq.lr(), bsq.ur())
+
+    const p1 = s2.ll().toRight(a),
+          p2 = s2.ul().toBottom(a),
+          p3 = s2.ur().toLeft(a),
+          p4 = s2.lr().toTop(a)
+    polygon([p1, p2, p3, p4]).setFillStyle("#ccf").at(label("c×c"))
+    rt(p1, p2, s2.ll())
+    rt(p2, p3, s2.ul())
+    rt(p3, p4, s2.ur())
+    rt(p4, p1, s2.lr())
+
+    const hand = handle()
+    align("center", "none", v1, hand)
+
+    setStrokeStyle("#008")
+
+    const al1 = label("a").at(average(s1.ll(), bsq.ll()).toBottom(10))
+    connector(al1.toLeft(5), point(s1.x0(), al1.y())).setEndArrow("arrow")
+    connector(al1.toRight(5), point(bsq.x0(), al1.y())).setEndArrow("arrow")
+    const al2 = label("a").at(s2.ll().toRight(times(a, 0.5)).toBottom(10))
+    connector(al2.toLeft(5), point(s2.x0(), al2.y())).setEndArrow("arrow")
+    connector(al2.toRight(5), p1.toBottom(10)).setEndArrow("arrow")
+
+    const bl1 = label("b").at(average(s1.ll(), asq.ll()).toLeft(10))
+    connector(bl1.toTop(5), asq.ll().toLeft(10)).setEndArrow("arrow")
+    connector(bl1.toBottom(5), s1.ll().toLeft(10)).setEndArrow("arrow")
+
+    const bl2 = label("b").at(average(s2.ll(), p2).toLeft(10))
+    const bl2t = point(bl2.x(), p2.y()),
+          bl2b = point(bl2.x(), p1.y())
+    connector(bl2.toTop(5), bl2t).setEndArrow("arrow")
+    connector(bl2.toBottom(5), bl2b).setEndArrow("arrow")
+
+    let nx = variable("nx", 5), ny = variable("ny", 5)
+    equal(times(nx, b), times(ny, a))
+    equal(plus(sq(nx), sq(ny)), 100)
+
+    const cl1 = label("c").at(average(asq.ll(), bsq.ll()).toRight(ny).toTop(nx))
+    const cl2 = label("c")
+    equal(cl1.y(), cl2.y())
+    equal(minus(cl2.x(), s2.x0()), minus(cl1.x(), s1.x0()))
+    connector(cl1.center().toLeft(nx).toTop(ny), asq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl1.center().toRight(nx).toBottom(ny), bsq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl2.center().toLeft(nx).toTop(ny), p2.toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl2.center().toRight(nx).toBottom(ny), p1.toRight(ny).toTop(nx)).setEndArrow("arrow")
+
+    start()
+}
+
+</script>
+</div>
+</body>
+</html>
