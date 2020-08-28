@@ -29,9 +29,9 @@ of the right triangles.
 <canvas style="width: 700px; height: 400px"></canvas>
 
 <p>
-The big squares have the same size and the 4 right triangles that each
-contains also have exactly the same size, so what is left over must have the same
-area. That means the areas of the pink square (\(a^2\)) and the green square
+The big squares have the same size and the 4 right triangles that each big square
+contains also have exactly the same size, so the remaining space in each big square
+must have the same area. That means the areas of the pink square (\(a^2\)) and the green square
 (\(b^2\)) must add up to the area of the blue square (\(c^2\)).
 
 </p>
@@ -42,6 +42,9 @@ const figure = new Constrain.Figure(canvas)
 
 
 with (figure) {
+    setFontName("Times")
+    setFontSize(14)
+    setFontStyle("italic")
     const s1 = square().setLineWidth(3), s2 = square().setLineWidth(3)
     align("abut", "top", s1, hspace(40), s2)
     equal(s1.w(), 300, s2.w())
@@ -81,9 +84,6 @@ with (figure) {
     rt(p3, p4, s2.ur())
     rt(p4, p1, s2.lr())
 
-    const hand = handle()
-    align("center", "none", v1, hand)
-
     setStrokeStyle("#008")
 
     const al1 = label("a").at(average(s1.ll(), bsq.ll()).toBottom(10))
@@ -105,7 +105,7 @@ with (figure) {
 
     let nx = variable("nx", 5), ny = variable("ny", 5)
     equal(times(nx, b), times(ny, a))
-    equal(plus(sq(nx), sq(ny)), 100)
+    equal(plus(sq(nx), sq(ny)), 121)
 
     const cl1 = label("c").at(average(asq.ll(), bsq.ll()).toRight(ny).toTop(nx))
     const cl2 = label("c")
@@ -115,6 +115,12 @@ with (figure) {
     connector(cl1.center().toRight(nx).toBottom(ny), bsq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
     connector(cl2.center().toLeft(nx).toTop(ny), p2.toRight(ny).toTop(nx)).setEndArrow("arrow")
     connector(cl2.center().toRight(nx).toBottom(ny), p1.toRight(ny).toTop(nx)).setEndArrow("arrow")
+    
+    const hand = handle()
+    geq(hand.x(), s1.x0())
+    leq(hand.x(), s1.x1())
+    keepInside(hand, s1.inset(10)).changeCost(10)
+    align("center", "none", v1, hand)
 
     start()
 }

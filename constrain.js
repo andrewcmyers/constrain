@@ -1,4 +1,4 @@
-"use strict";
+"use strict"
 
 // Constrain: A package for creating animated figures in JavaScript canvases,
 // similar to the sort of animated figure you would put into a slide
@@ -44,6 +44,7 @@ const Figure_defaults = {
     TRIANGLE_SIZE : 10,
     FRAMERATE : 60,
     FONT_NAME : "sans-serif",
+    FONT_STYLE : "",
     LINE_SPACING : 1.3
 }
 
@@ -86,8 +87,7 @@ class Figure {
         this.setFillStyle("white")
         this.setStrokeStyle("black")
         this.setLineWidth(Figure_defaults.LINEWIDTH)
-        this.setFontSize(Figure_defaults.FONT_SIZE)
-        this.setFontName(Figure_defaults.FONT_NAME)
+        this.font = new Font()
         this.lineSpacing = Figure_defaults.LINE_SPACING
         this.repeat = false
         this.animatedSolving = false
@@ -102,8 +102,8 @@ class Figure {
         this.width = _width
         this.height = _height
 //       console.log("Width, height are " + _width + "," + _height)
-        this.canvas.width = _width * this.scale;
-        this.canvas.height = _height * this.scale;
+        this.canvas.width = _width * this.scale
+        this.canvas.height = _height * this.scale
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
     }
     setupListeners() {
@@ -616,14 +616,22 @@ class Figure {
 
     // Set default font size
     setFontSize(s) {
-        this.fontSize = s
+        this.font.setSize(s)
         return this
     }
 
     // Set default font name
-    setFontName(f) {
-        this.fontName = f
+    setFontName(n) {
+        this.font.setName(n)
         return this
+    }
+
+    setFontStyle(sty) {
+        this.font.setStyle(sty)
+    }
+
+    getFont() {
+        return this.font
     }
 
     // Set default line spacing
@@ -753,7 +761,7 @@ class Figure {
                 break
         }
         switch (vertical) {
-            case "none": break;
+            case "none": break
             case "center": 
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i].y(), objlist[0].y()))
@@ -1267,12 +1275,12 @@ class Frame {
 }
 
 function eventInElement(event, element) {
-    const rect = element.getBoundingClientRect();
-    const x = event.clientX;
-    if (x < rect.left || x >= rect.right) return false;
-    const y = event.clientY;
-    if (y < rect.top || y >= rect.bottom) return false;
-    return true;
+    const rect = element.getBoundingClientRect()
+    const x = event.clientX
+    if (x < rect.left || x >= rect.right) return false
+    const y = event.clientY
+    if (y < rect.top || y >= rect.bottom) return false
+    return true
 }
 
 // An Expression is used to build constraints or and to express useful
@@ -1426,7 +1434,7 @@ function evaluate(expr, valuation, doGrad) {
         case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
             console.error("Tried to evaluate a function ${expr}. Did you forget to invoke a property using ()?")
-            return 0;
+            return 0
         default:
             if (Array.isArray(expr)) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
@@ -1447,19 +1455,19 @@ function checkNaNResult(r) {
         const [c, dc] = r
         if (isNaN(c)) {
             console.error("Saw NaN in computed value (with grad)")
-            return true;
+            return true
         }
         for (let i = 0; i < dc.length; i++) {
             if (isNaN(dc[i])) {
                 console.error("Saw NaN in computed gradient")
-                return true;
+                return true
             }
         }
     } else if (isNaN(r)) {
         console.error("Saw NaN in computed value")
-        return true;
+        return true
     }
-    return false;
+    return false
 }
 
 function checkDiffValid(d) {
@@ -1499,7 +1507,7 @@ class BackPropagation {
                 console.error("Has an undefined value: " + e)
                 console.log("trying again: ", evaluate(e, valuation))
             }
-            if (e.bpDiff == 0) continue;
+            if (e.bpDiff == 0) continue
             e.backprop(this)
         }
     }
@@ -1947,7 +1955,7 @@ class Time extends Expression {
     }
     evaluate(valuation, doGrad) {
         const t = this.figure.animationTime
-        return doGrad ? [t, getZeros(valuation.length)] : t ;
+        return doGrad ? [t, getZeros(valuation.length)] : t
     }
     variables() { return [] }
     backprop(task) {}
@@ -2034,7 +2042,7 @@ class Smooth extends Linear {
 }
 
 function cubicInterpWeight(t) {
-    return t*t*(3 - 2*t);
+    return t*t*(3 - 2*t)
 }
 
 // A Projection can be used on an expression that returns an array. It
@@ -2250,7 +2258,7 @@ class Constraint extends Temporal {
     }
     changeCost(cost) {
         this.cost *= cost
-        return this;
+        return this
     }
 }
 
@@ -2749,11 +2757,11 @@ const Paths = {
         var x1 = x-rx, x2 = x-rxk, x3 = x+rxk, x4 = x+rx,
             y1 = y-ry, y2 = y-ryk, y3 = y+ryk, y4 = y+ry
         ctx.beginPath()
-        ctx.moveTo(x4, y);
-        ctx.bezierCurveTo(x4, y3,  x3, y4,  x, y4);
-        ctx.bezierCurveTo(x2, y4,  x1, y3,  x1, y);
-        ctx.bezierCurveTo(x1, y2,  x2, y1,  x, y1);
-        ctx.bezierCurveTo(x3, y1,  x4, y2,  x4, y);
+        ctx.moveTo(x4, y)
+        ctx.bezierCurveTo(x4, y3,  x3, y4,  x, y4)
+        ctx.bezierCurveTo(x2, y4,  x1, y3,  x1, y)
+        ctx.bezierCurveTo(x1, y2,  x2, y1,  x, y1)
+        ctx.bezierCurveTo(x3, y1,  x4, y2,  x4, y)
         ctx.closePath()
     },
     circle: function(ctx, x, y, r) {
@@ -2761,11 +2769,11 @@ const Paths = {
                              y1 = y-r, y2 = y-rk, y3 = y+rk, y4 = y+r
     
         ctx.beginPath()
-        ctx.moveTo(x4, y);
-        ctx.bezierCurveTo(x4, y3,  x3, y4,  x, y4);
-        ctx.bezierCurveTo(x2, y4,  x1, y3,  x1, y);
-        ctx.bezierCurveTo(x1, y2,  x2, y1,  x, y1);
-        ctx.bezierCurveTo(x3, y1,  x4, y2,  x4, y);
+        ctx.moveTo(x4, y)
+        ctx.bezierCurveTo(x4, y3,  x3, y4,  x, y4)
+        ctx.bezierCurveTo(x2, y4,  x1, y3,  x1, y)
+        ctx.bezierCurveTo(x1, y2,  x2, y1,  x, y1)
+        ctx.bezierCurveTo(x3, y1,  x4, y2,  x4, y)
         ctx.closePath()
     },
     // Using ctx and the current line style, create a path of cubic splines
@@ -2936,7 +2944,7 @@ class Polygon extends GraphicalObject {
         let result = GraphicalObject.prototype.variables.call(this)
         this.points.forEach(p => {
             result = result.concat(p.variables())
-        });
+        })
         return result
     }
 }
@@ -3094,7 +3102,7 @@ class Line extends GraphicalObject {
                 d = norm2d(xd, yd),
                 cosa = xd/d, sina = yd/d
         if (this.fillstyle) ctx.fillStyle = this.fillStyle
-        else ctx.fillStyle = this.strokeStyle;
+        else ctx.fillStyle = this.strokeStyle
         ctx.setLineDash(this.lineDash || [])
         let [x2, y2] = drawLineEndDir(ctx, this.startArrowStyle, this.arrowSize, x0, y0, -cosa, -sina),
             [x3, y3] = drawLineEndDir(ctx, this.endArrowStyle, this.arrowSize, x1, y1, cosa, sina)
@@ -3256,27 +3264,81 @@ class VSpace extends GraphicalObject {
     renderIfVisible() {}
 }
 
+class Font {
+    constructor(figure) {
+        if (!figure) {
+            this.fontStyle = Figure_defaults.FONT_STYLE
+            this.fontSize = Figure_defaults.FONT_SIZE
+            this.fontName = Figure_defaults.FONT_NAME
+        } else {
+            this.copyFrom(figure.getFont())
+        }
+    }
+    copyFrom(font) {
+        if (font.fontName) this.fontName = font.fontName
+        if (font.fontStyle) this.fontStyle = font.fontStyle
+        if (font.fontObj) this.fontObj - font.fontObj
+        this.fontSize = font.fontSize
+    }
+    setFontObject(font, size) {
+        this.fontObj = font
+        this.fontSize = size
+        return this
+    }
+    setName(name) {
+        this.fontName = name
+        this.fontObj = null
+        return this
+    }
+    setSize(s) {
+        this.fontSize = s
+        this.fontObj = null
+        return this
+    }
+    getSize() {
+        return this.fontSize
+    }
+    setStyle(style) {
+        this.fontStyle = style
+        this.fontObj = null
+        return this
+    }
+    setContextFont(context) {
+        if (this.fontObj) {
+            context.font = this.fontObj
+        } else {
+            const f = (this.fontStyle ? this.fontStyle + " " : "")
+                        + this.fontSize + "pt " + this.fontName
+            context.font = f
+        }
+    }
+}
+
 // A label.
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
         if (fillStyle != undefined) this.fillStyle = fillStyle
             else this.fillStyle = figure.strokeStyle
-        if (fontSize != undefined) this.fontSize = fontSize
-          else this.fontSize = figure.fontSize
-        if (fontName !== undefined) this.fontName = fontName
-          else this.fontName = figure.fontName
         this.text = text
-        this.computeWidth(figure.ctx)
+        this.font = new Font(figure)
         this.setStrokeStyle(undefined)
+        if (fontSize) this.font.setSize(fontSize)
+        if (fontName) this.font.setName(fontName)
+        this.computeWidth(figure.ctx)
 
         // Have to override GraphicalObject in the object itself
         this.w = function() { return this.width }
-        this.h = function() { return this.fontSize }
+        this.h = function() { return this.font.getSize() }
         this.variables = function() { return [this.x(), this.y()] }
     }
+    setFont(font) {
+        this.font = font
+        this.computeWidth(this.figure.ctx)
+        return this
+    }
     installFont() {
-        this.figure.ctx.font = this.fontSize + "pt " + this.fontName
+        this.font.setContextFont(this.figure.ctx)
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -3304,14 +3366,14 @@ class Label extends GraphicalObject {
 
     // Set font size
     setFontSize(s) {
-        this.fontSize = s
+        this.font.setSize(s)
         this.computeWidth(this.figure.ctx)
         return this
     }
 
     // Set font name
-    setFontName(f) {
-        this.fontName = f
+    setFontName(n) {
+        this.font.setName(n)
         return this
     }
 }
@@ -3327,24 +3389,23 @@ class LineLabel {
     constructor(figure, text, position, offset) {
         this.text = text
         this.position = position
-        this.offset = offset || figure.fontSize
+        this.offset = offset || figure.font.getSize()
         this.strokeStyle = figure.strokeStyle
         this.fillStyle = "#000000"
-        this.fontSize = figure.fontSize
-        this.fontName = figure.fontName
+        this.font = new Font(figure)
     }
     drawAt(ctx, x, y) {
-        ctx.font = this.fontSize + "pt " + this.fontName
+        this.font.setContextFont(ctx)
         ctx.strokeStyle = undefined
         ctx.fillStyle = this.fillStyle
         x -= ctx.measureText(this.text).width / 2
-        y += this.fontSize/2
+        y += this.font.getSize()/2
         ctx.fillText(this.text, x, y)
     }
     setFillStyle(s) { this.fillStyle = s; return this }
     setStrokeStyle(s) { this.strokeStyle = s; return this }
-    setFontName(n) { this.fontName = s; return this }
-    setFontSize(s) { this.fontSize = s; return this }
+    setFontName(n) { this.font.setName(n); return this }
+    setFontSize(s) { this.font.setSize(s); return this }
 }
 
 // A FormattedText is some text that can be formatted inside
@@ -3355,12 +3416,11 @@ class LineLabel {
 class FormattedText {
     constructor(figure, ...text) {
         this.words = []
-        this.fontSize = figure.fontSize
-        this.fontName = figure.fontName
+        this.font = new Font(figure)
         this.lineSpacing = figure.lineSpacing
         this.inset = 3
         text.forEach(t => {
-            t = t.toString();
+            t = t.toString()
             t.split(/  */).forEach(w => {
                 if (w) this.words.push(w)
             })
@@ -3397,14 +3457,14 @@ class FormattedText {
     renderIn(figure, container) {
         const ctx = figure.ctx, valuation = figure.currentValuation,
               inset = this.inset, txt = this
-        const ls = evaluate(this.lineSpacing, valuation) * this.fontSize,
+        const ls = evaluate(this.lineSpacing, valuation) * this.font.getSize(),
               space = ctx.measureText(" ").width
-        ctx.font = this.fontSize + "pt " + this.fontName
+        this.font.setContextFont(ctx)
         ctx.fillStyle = this.fillStyle
         const total_w = ctx.measureText(this.words.join(" ")).width,
               max_w = evaluate(container.w(), valuation)
         if (max_w <= 0) return
-        let y0 = evaluate(container.y0(), valuation) + this.fontSize + inset,
+        let y0 = evaluate(container.y0(), valuation) + this.font.getSize() + inset,
             y1 = evaluate(container.y1(), valuation) - inset,
             yc = evaluate(container.y(), valuation),
             wds = "",
@@ -3470,13 +3530,13 @@ class FormattedText {
     }
     // Set font size
     setFontSize(s) {
-        this.fontSize = s
+        this.font.setSize(s)
         return this
     }
 
     // Set font name
     setFontName(f) {
-        this.fontName = f
+        this.font.setName(f)
         return this
     }
 
@@ -3569,7 +3629,7 @@ class Handle extends InteractiveObject {
     mouseup(x, y, e) {
         if (this.figure.focused == this) {
             // console.log("Handle lost focus")
-            this.figure.focused = null;
+            this.figure.focused = null
             if (this.xcon) {
                 this.figure.removeConstraints(this.xcon, this.ycon)
             }
@@ -3886,10 +3946,11 @@ class Graph {
         const cr = fig.canvasRect().inset(2),
               sz = fig.min(cr.w(), cr.h())
         for (let i = 0; i < this.nodes.length; i++) {
-            let g2 = this.nodes[i];
-            let dist = fig.distance(g2, g), cr = new CanvasRect(this.figure)
-            let bdist = new Min(new Max(dist, 1), new Times(1.0, cr.w()), new Times(1.0, cr.h())) // repulsion cuts off below 1 pixel and at canvas size
-            let potential = fig.divide(this.repulsion * this.sparsity, bdist)
+            let g2 = this.nodes[i],
+                dist = fig.distance(g2, g), cr = new CanvasRect(this.figure),
+                bdist = new Min(new Max(dist, 1), new Times(1.0, cr.w()), new Times(1.0, cr.h())),
+                   // repulsion cuts off below 1 pixel and at canvas size
+                potential = fig.divide(this.repulsion * this.sparsity, bdist)
             // potential = new DebugExpr("potential between " + g + " and " + g2, potential)
             fig.costEqual(this.cost, potential, 0)
         }
@@ -4021,6 +4082,7 @@ function autoResize() {
     LineLabel: LineLabel,
     Group: Group,
     ConstraintGroup: ConstraintGroup,
+    Font: Font,
     Corners: Corners,
     Graph: Graph,
     Expression: Expression,
