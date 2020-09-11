@@ -3,6 +3,7 @@
   <meta charset="UTF-8">
   <script src="numeric-1.2.6.js"></script>
   <script src="constrain.js"></script>
+  <script src="constrain-ps.js"></script>
   <style>
     body { font-family: sans-serif }
     h1 { text-align: center }
@@ -40,7 +41,6 @@ must have the same area. That means the areas of the pink square (\(a^2\)) and t
 <script>
 const canvas = document.getElementsByTagName("canvas")[0]
 const figure = new Constrain.Figure(canvas)
-
 
 with (figure) {
     setFontName("Times")
@@ -122,6 +122,9 @@ with (figure) {
     leq(hand.x(), s1.x1())
     keepInside(hand, s1.inset(10)).changeCost(10)
     align("center", "none", v1, hand)
+
+    let pb = new Constrain.PS.PrintButton(figure)
+    align("right", "bottom", pb, canvasRect().inset(2))
 
     start()
 }

@@ -3020,7 +3020,7 @@ function drawArrowhead(ctx, x0, y0, x1, y1, s) {
     ctx.moveTo(0,0)
     ctx.lineTo(-s, -0.4 * s)
     ctx.lineTo(-s, 0.4 * s)
-    ctx.lineTo(0, 0)
+    ctx.closePath()
     ctx.fill()
 
     ctx.restore()
@@ -3603,6 +3603,7 @@ class Handle extends InteractiveObject {
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        if (ctx.constructor == Constrain.PS.PrintContext) return
         ctx.beginPath()
         const x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation)
@@ -3650,11 +3651,9 @@ class Handle extends InteractiveObject {
     visible() { return true }
 }
 
-// A button that advances the animation.
-class AdvanceButton extends InteractiveObject {
-    constructor(figure, x, y) {
+class Button extends InteractiveObject {
+    constructor(figure) {
         super(figure)
-
         const vx = new Variable(figure, "x"),
               vy = new Variable(figure, "y")
         this.x_ = vx
@@ -3672,36 +3671,9 @@ class AdvanceButton extends InteractiveObject {
     }
     x() { return this.x_ }
     y() { return this.y_ }
-    w() { return this.size * 1.1}
-    h() { return this.size * 0.7 }
-
-    render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
-        const s = this.size
-        ctx.beginPath()
-        const x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
-        ctx.save()
-        ctx.translate(x - s * 0.5, y - s*0.3)
-        Paths.roundedRect(ctx, 0, s, 0, s*0.6, s*0.3)
-        if (this.pressed)
-            ctx.fillStyle = "#888"
-        else
-            ctx.fillStyle = this.fillStyle
-        ctx.fill()
-        ctx.strokeStyle = this.strokeStyle
-        ctx.lineWidth = s/10
-        ctx.setLineDash([])
-        ctx.stroke()
-        ctx.fillStyle = ctx.strokeStyle
-        ctx.beginPath()
-        ctx.moveTo(s*0.3, s*0.1)
-        ctx.lineTo(s*0.8, s*0.3)
-        ctx.lineTo(s*0.3, s*0.5)
-        ctx.closePath()
-        ctx.fill()
-        ctx.restore()
-    }
+    w() { return this.size }
+    h() { return this.size }
+    
     inbounds(mx, my, x, y) {
         if (mx < x - this.size * 0.5) return false
         if (mx > x + this.size * 0.5) return false
@@ -3732,7 +3704,7 @@ class AdvanceButton extends InteractiveObject {
         this.pressed = false
         this.figure.focused = null
         this.render(this.figure)
-        this.figure.advance()
+        this.activate()
         return false
     }
     mousemove(mx, my, e) {
@@ -3747,6 +3719,46 @@ class AdvanceButton extends InteractiveObject {
         }
     }
     active() { return true }
+}
+
+// A button that advances the animation.
+class AdvanceButton extends Button {
+    constructor(figure) {
+        super(figure)
+    }
+    w() { return this.size * 1.1}
+    h() { return this.size * 0.7 }
+
+    render() {
+        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const s = this.size
+        ctx.beginPath()
+        const x = evaluate(this.x(), valuation),
+              y = evaluate(this.y(), valuation)
+        ctx.save()
+        ctx.translate(x - s * 0.5, y - s*0.3)
+        Paths.roundedRect(ctx, 0, s, 0, s*0.6, s*0.3)
+        if (this.pressed)
+            ctx.fillStyle = "#888"
+        else
+            ctx.fillStyle = this.fillStyle
+        ctx.fill()
+        ctx.strokeStyle = this.strokeStyle
+        ctx.lineWidth = s/10
+        ctx.setLineDash([])
+        ctx.stroke()
+        ctx.fillStyle = ctx.strokeStyle
+        ctx.beginPath()
+        ctx.moveTo(s*0.3, s*0.1)
+        ctx.lineTo(s*0.8, s*0.3)
+        ctx.lineTo(s*0.3, s*0.5)
+        ctx.closePath()
+        ctx.fill()
+        ctx.restore()
+    }
+    activate() {
+        this.figure.advance()
+    }
 }
 AdvanceButton.prototype.installHolder = GraphicalObject.prototype.installHolder
 
@@ -4079,6 +4091,8 @@ function autoResize() {
     Ellipse: Ellipse,
     Polygon: Polygon,
     FormattedText: FormattedText,
+    InteractiveObject: InteractiveObject,
+    Button: Button,
     LineLabel: LineLabel,
     Group: Group,
     ConstraintGroup: ConstraintGroup,
