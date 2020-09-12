@@ -146,7 +146,7 @@ var colorTable = {
     "yellowgreen": "#9acd32"
 }
 
-var PSFonts = {
+var PSFontStyles = {
     "Apple Chancery" : [],
     "Arial" : ["Regular", "Italic", "Bold", "Bold Italic"],
     "Bodoni" : ["Roman", "Italic", "Bold", "Bold Italic", "Poster", "Poster Compressed"],
@@ -175,9 +175,11 @@ var PSFonts = {
     "New York" : [],
     "Optima" : ["Roman", "Italic", "Bold", "Bold Italic"],
     "Oxford" : [],
+    "Palatino" : ["Roman", "Italic", "Bold", "Bold Italic"],
     "Stempel Garamond" : ["Roman", "Italic", "Bold", "Bold Italic"],
     "Tekton" : ["Regular"],
     "Times New Roman" : ["Regular", "Italic", "Bold", "Bold Italic"],
+    "Times" : ["Roman", "Italic", "Bold", "Bold Italic"],
     "Wingdings" : [],
 }
 
@@ -252,6 +254,17 @@ function mround(x) {
 
 let PX_TO_PT = 96/72
 
+function mapStyle(fontname, style) {
+    if (!style) {
+        const styles = PSFontStyles[fontname]
+        if (!styles) return undefined;
+        if (styles.length > 0) {
+            return styles[0]
+        }
+    }
+    return style[0].toUpperCase() + style.substr(1)
+}
+
 class PrintContext {
     constructor(figure, ctx2d) {
         this.figure = figure
@@ -307,20 +320,23 @@ class PrintContext {
             this.append(`${mround(r/255)} ${mround(g/255)} ${mround(b/255)} setrgbcolor`)
         }
     }
+    parseFont() {
+        let fontname = this.font, style = null, ignore, size
+        let nostyle = fontname.match("^([1-9][0-9]*)px ([A-Za-z-]+)$")
+        if (nostyle) {
+            [ignore, size, fontname] = nostyle
+        } else {
+            let with_style = fontname.match("^([A-Za-z]+) ([1-9][0-9]*)px ([A-Z][A-Za-z- ]*)$")
+            if (!with_style) return;
+            [ignore, style, size, fontname] = with_style
+        }
+        style = mapStyle(fontname, style)
+        return [fontname, size, style]
+    }
     updateFont() {
         if (this.font && this.font != this.activeFont) {
             this.activeFont = this.font
-            let ignore, style, size
-            let fontname = this.font
-            let nostyle = fontname.match("^([1-9][0-9]*)px ([A-Za-z-]+)$")
-            if (nostyle) {
-                [ignore, size, fontname] = nostyle
-            } else {
-               let with_style = fontname.match("^([A-Za-z]+) ([1-9][0-9]*)px ([A-Z][A-Za-z- ]*)$")
-               if (!with_style) return;
-               [ignore, style, size, fontname] = with_style
-               style = style[0].toUpperCase() + style.substr(1)
-            }
+            let [fontname, size, style] = this.parseFont()
             fontname = fontname.replace(" ", "")
             if (style) {
                 fontname += "-" + style
@@ -385,9 +401,33 @@ class PrintContext {
         return this.ctx2d.measureText(s)
     }
     fillText(s, x, y) {
-        this.updateFont()
+        function isASCII(c) {
+            return (c >= 32 && c < 127);
+        }
         this.append(`${this.pt(x,y)} moveto`)
-        this.append(`${PSquote(s)} show`)
+        let i = 0, j = i
+        while (i < s.length) {
+            for (j = i; j < s.length; j++) {
+                if (!isASCII(s.charCodeAt(j))) break
+            }
+            if (j > i) {
+                this.updateFont()
+                this.append(`${PSquote(s.substring(i,j))} show`)
+            }
+            i = j
+            const save_font = this.font
+            for (j = i; j < s.length; j++) {
+                if (isASCII(s.charCodeAt(j))) break
+                let [fontname, size, style] = this.parseFont()
+                this.font = `${size}px Symbol`
+                this.updateFont()
+                this.append(`<00${UnicodeToSymbol[s.charCodeAt(j)].toString(16)}> show`)
+            }
+            if (j > i) {
+                this.font = save_font
+                i = j
+            }
+        }
     }
     rotate(r) { 
         if (r != 0) {
