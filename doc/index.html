@@ -1118,16 +1118,15 @@ to the following frame once its duration is over.
 
 <h2>Generating printable diagrams</h2>
 <p>
-Constrain can be used to generate figures in a non-HTML format. Currently it
+The <code>Constrain.PS</code> subpackage (in <kbd>constrain-ps.js</kbd>)
+enables Constrain to generate figures in a non-HTML format. Currently it
 supports generating PostScript output, which can be converted to PDF and other
 formats using tools such as <code>epstopdf</code>. If the figure contains an
 interactive object of type <code>Constrain.PS.PrintButton</code>, clicking on the
-figure will cause PostScript output to be generated for the figure as it
+button will cause PostScript output to be generated for the figure as it
 currently appears. Interactive objects such as handles and the
-<code>PrintButton</code> itself will not be rendered. Note that
-<code>PrintButton</code> is not available by default; it can be found in the
-file <kbd>constrain-ps.js</kbd>. The example figure below is printable using the
-gray button.
+<code>PrintButton</code> itself will not be rendered.
+The example figure below is printable using the gray button.
 </p>
 
 <canvas id=print_ex>
