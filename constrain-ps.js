@@ -250,6 +250,8 @@ function mround(x) {
     return Math.round(x * 1000)/1000;
 }
 
+let PX_TO_PT = 96/72
+
 class PrintContext {
     constructor(figure, ctx2d) {
         this.figure = figure
@@ -310,11 +312,11 @@ class PrintContext {
             this.activeFont = this.font
             let ignore, style, size
             let fontname = this.font
-            let nostyle = fontname.match("^([0-9]+pt) ([A-Za-z-]+)$")
+            let nostyle = fontname.match("^([1-9][0-9]*)px ([A-Za-z-]+)$")
             if (nostyle) {
-                [ignore, size, name] = nostyle
+                [ignore, size, fontname] = nostyle
             } else {
-               let with_style = fontname.match("^([A-Za-z]+) ([0-9]+)pt ([A-Z][A-Za-z- ]*)$")
+               let with_style = fontname.match("^([A-Za-z]+) ([1-9][0-9]*)px ([A-Z][A-Za-z- ]*)$")
                if (!with_style) return;
                [ignore, style, size, fontname] = with_style
                style = style[0].toUpperCase() + style.substr(1)
@@ -335,7 +337,7 @@ class PrintContext {
     }
     clearRect(x, y, w, h) {
         this.append("1 setgray")
-        this.append(`${this.pt(x,y-h)} ${w} ${h} rectfill`)
+        this.append(`${this.pt(x,y+h)} ${w} ${h} rectfill`)
         this.append("0 setgray")
     }
     save() {

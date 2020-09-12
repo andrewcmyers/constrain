@@ -3308,7 +3308,7 @@ class Font {
             context.font = this.fontObj
         } else {
             const f = (this.fontStyle ? this.fontStyle + " " : "")
-                        + this.fontSize + "pt " + this.fontName
+                        + this.fontSize + "px " + this.fontName
             context.font = f
         }
     }
@@ -3344,7 +3344,7 @@ class Label extends GraphicalObject {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         this.installFont()
         const x = evaluate(this.x0(), valuation),
-              y = evaluate(this.y1(), valuation)
+              y = evaluate(figure.average(this.y(), this.y1()), valuation)
         // console.log("rendering " + this.text + " at " + x + "," + y)
         if (this.fillStyle) {
             ctx.fillStyle = this.fillStyle
@@ -3603,7 +3603,7 @@ class Handle extends InteractiveObject {
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
-        if (ctx.constructor == Constrain.PS.PrintContext) return
+        if (Constrain.PS && ctx.constructor == Constrain.PS.PrintContext) return
         ctx.beginPath()
         const x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation)
