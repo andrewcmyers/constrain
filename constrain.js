@@ -2662,7 +2662,7 @@ class Group extends GraphicalObject {
     }
 }
 
-// A Frame is a graphical object that doesn't have any rendering but does
+// A TextFrame is a graphical object that doesn't have any rendering but does
 // format contained text into a rectangular shape.
 class TextFrame extends GraphicalObject {
     constructor(figure, text, fillStyle) {
