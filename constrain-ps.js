@@ -346,7 +346,7 @@ class PrintContext {
     }
 
     pt(x, y) {
-        return `${mround(x)} ${mround(figure.height - y)}`
+        return `${mround(x)} ${mround(this.figure.height - y)}`
     }
 
     setTransform() {
