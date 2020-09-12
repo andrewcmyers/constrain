@@ -3,6 +3,7 @@
 <head>
   <script src="../numeric-1.2.6.js"></script>
   <script src="../constrain.js"></script>
+  <script src="../constrain-ps.js"></script>
   <title>Constrain Reference Manual</title>
   <style>
     canvas {
@@ -1114,6 +1115,33 @@ varying continuously over the duration.
 If invoked on a frame with <code>true</code>, the frame automatically advances
 to the following frame once its duration is over.
 </p>
+
+<h2>Generating printable diagrams</h2>
+<p>
+Constrain can be used to generate figures in a non-HTML format. Currently it
+supports generating PostScript output, which can be converted to PDF and other
+formats using tools such as <code>epstopdf</code>. If the figure contains an
+interactive object of type <code>Constrain.PS.PrintButton</code>, clicking on the
+figure will cause PostScript output to be generated for the figure as it
+currently appears. Interactive objects such as handles and the
+<code>PrintButton</code> itself will not be rendered. Note that
+<code>PrintButton</code> is not available by default; it can be found in the
+file <kbd>constrain-ps.js</kbd>. The example figure below is printable using the
+gray button.
+</p>
+
+<canvas id=print_ex>
+</canvas>
+<script>
+    let print_ex_fig = new Constrain.Figure("print_ex")
+    with (print_ex_fig) {
+        square()
+            .setFillStyle("aquamarine")
+            .setLineDash([4,4])
+            .addText(text("Square").setFontName("Palatino"))
+        align("right", "bottom", new Constrain.PS.PrintButton(print_ex_fig), canvasRect().inset(2))
+    }
+</script>
 
 <h2>Graphs</h2>
 <p>
