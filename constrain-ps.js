@@ -374,7 +374,7 @@ class PrintContext {
     setLineDash(s) {
         this.append("[")
         for (let i = 0; i < s.length; i++) {
-            this.append(" ${s[i]}")
+            this.append(` ${s[i]}`)
         }
         this.append(" ] 0 setdash")
     }
