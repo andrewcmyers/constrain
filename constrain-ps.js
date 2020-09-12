@@ -421,8 +421,9 @@ class PrintContext {
                 let [fontname, size, style] = this.parseFont()
                 this.font = `${size}px Symbol`
                 this.updateFont()
-                const mapped = UnicodeToSymbol[s.charCodeAt(j)]
-                if (mapped) this.append(`<00${mapped.toString(16)}> show`)
+                let mapped = UnicodeToSymbol[s.charCodeAt(j)]
+                if (!mapped) mapped = 32;
+                this.append(`<00${mapped.toString(16)}> show`)
             }
             if (j > i) {
                 this.font = save_font
