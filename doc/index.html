@@ -62,15 +62,16 @@
   alternative ways to generate diagrams:
   <ul>
     <li>Constrain draws figures onto HTML canvases, so diagrams are
-        resolution-independent and as crisp as possible on all displays.
+        resolution-independent and as crisp as possible on all displays.</li>
     <li>Constrain supports animated figures in which displayed objects move and change
         their appearance smoothly or discontinuously. To make animations smooth,
-        it uses a fast solver based on backpropagation.
+        it uses a fast solver based on backpropagation, with each animation frame's
+        solution used as a starting point for solving the next one.</li>
     <li>Constrain is based on declaring constraints that are automatically
         solved. This makes it easy to produce very precise diagrams,
-        and easier to build and modify complex diagrams.
+        and easier to build and modify complex diagrams.</li>
     <li>Constrain includes an integration for the Reveal.js web-based presentation
-        framework, so you can use it for presentations too.
+        framework, so you can use it for presentations too.</li>
   </ul>
 <p>
   Constrain is written in JavaScript (ECMAScript 6) and integrates into web
@@ -1119,14 +1120,19 @@ to the following frame once its duration is over.
 <h2>Generating printable diagrams</h2>
 <p>
 The <code>Constrain.PS</code> subpackage (in <kbd>constrain-ps.js</kbd>)
-enables Constrain to generate figures in a non-HTML format. Currently it
-supports generating PostScript output, which can be converted to PDF and other
-formats using tools such as <code>epstopdf</code>. If the figure contains an
-interactive object of type <code>Constrain.PS.PrintButton</code>, clicking on the
-button will cause PostScript output to be generated for the figure as it
-currently appears. Interactive objects such as handles and the
-<code>PrintButton</code> itself will not be rendered.
-The example figure below is printable using the gray button.
+enables Constrain to generate figures in a non-HTML format. This is useful
+for generating figures for papers, and it also allows you to use the same
+code to generate the HTML version of the figure and the PDF version.
+</p>
+<p>
+Currently Constrain only supports generating PostScript output, which can be
+converted to PDF and other formats using tools such as <code>epstopdf</code>.
+If the figure contains an interactive object of type
+<code>Constrain.PS.PrintButton</code>, clicking on the button will cause
+PostScript output to be generated for the figure as it currently appears.
+Interactive objects such as handles and the <code>PrintButton</code> itself
+will not be rendered.  The example figure below is printable using the gray
+button.
 </p>
 
 <canvas id=print_ex>
