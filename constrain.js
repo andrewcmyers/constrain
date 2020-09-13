@@ -89,6 +89,7 @@ class Figure {
         this.setLineWidth(Figure_defaults.LINEWIDTH)
         this.font = new Font()
         this.lineSpacing = Figure_defaults.LINE_SPACING
+        this.arrowSize = Figure_defaults.ARROW_SIZE
         this.repeat = false
         this.animatedSolving = false
         this.fadeColor = 'white'
@@ -613,6 +614,11 @@ class Figure {
     // Set the default line width
     setLineWidth(w) {
         this.lineWidth = w
+    }
+
+    // Set the default arrow size
+    setArrowSize(s) {
+        this.arrowSize = s
     }
 
     // Set default font size
@@ -3184,7 +3190,7 @@ class Connector extends GraphicalObject {
         this.fillStyle = this.strokeStyle
         this.objects = objects.flat()
         this.labels = []
-        this.arrowSize = Figure_defaults.ARROW_SIZE
+        this.arrowSize = figure.arrowSize
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -3375,6 +3381,12 @@ class Label extends GraphicalObject {
     // Set font name
     setFontName(n) {
         this.font.setName(n)
+        return this
+    }
+
+    // Set font name
+    setFontStyle(n) {
+        this.font.setStyle(n)
         return this
     }
 }
