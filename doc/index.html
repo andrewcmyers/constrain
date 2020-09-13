@@ -129,6 +129,11 @@ the circle introduces constraints to position the circle at the lower right corn
 Note that graphical objects support cascaded method calls; the result of <code>setFillStyle</code>
 is simply the circle itself.
 </p>
+<p>
+All dimensions are specified in Constrain using CSS pixels, which are nominally
+1/96 of an inch, though their exact size may depend on the display device.  Even font
+sizes are specified in pixels rather than, say, points (1/72 inch).
+</p>
 
 <h2>Graphical objects</h2>
 
@@ -1120,9 +1125,10 @@ to the following frame once its duration is over.
 <h2>Generating printable diagrams</h2>
 <p>
 The <code>Constrain.PS</code> subpackage (in <kbd>constrain-ps.js</kbd>)
-enables Constrain to generate figures in a non-HTML format. This is useful
-for generating figures for papers, and it also allows you to use the same
-code to generate the HTML version of the figure and the PDF version.
+enables Constrain to generate figures in PostScript, a printable non-HTML
+format. This is useful for generating figures for papers, and it also allows
+you to use the same code to generate the HTML version of the figure and the PDF
+version.
 </p>
 <p>
 Currently Constrain only supports generating PostScript output, which can be
@@ -1133,6 +1139,12 @@ PostScript output to be generated for the figure as it currently appears.
 Interactive objects such as handles and the <code>PrintButton</code> itself
 will not be rendered.  The example figure below is printable using the gray
 button.
+</p>
+<p>
+In the PostScript rendering, all dimensions are expanded by 33% so that all pixel
+dimensions become point dimensions. The figure therefore becomes
+correspondingly larger, although since PostScript is a resolution-independent
+page description language, the generated figures are easily rescaled.
 </p>
 
 <canvas id=print_ex>

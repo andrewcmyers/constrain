@@ -129,13 +129,14 @@ class Figure {
             return this.focused.mousemove(x, y, e)
         })
         this.canvas.addEventListener('dblclick', e => {
-            console.log("Saw double-click, trying to stop it")
+            console.log("Saw double-click, trying to stop it " + e)
             e.stopPropagation()// XXX why doesn't this work?
             return false
         })
         this.canvas.addEventListener('click', e => {
+            console.log("saw click, trying to stop it " + e)
             e.stopPropagation() 
-            return false
+            return true
         })
     }
     initObjects() {
