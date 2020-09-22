@@ -3495,8 +3495,8 @@ class FormattedText {
             top_aligned = (!this.verticalAlign || this.verticalAlign == "top")
         const starting_y = () => {
             switch (this.verticalAlign) {
-                case "center": return yc - (guessed_lines - 2) * ls * 0.5; break
-                case "bottom": return y1 - (guessed_lines - 1) * ls; break
+                case "center": return yc - (guessed_lines - 1.5) * ls * 0.5; break
+                case "bottom": return y1 - (guessed_lines - 0.75) * ls; break
                 case "top":
                 default: return y0
             }
@@ -3558,6 +3558,11 @@ class FormattedText {
         return this
     }
 
+    // Set font style
+    setFontStyle(s) {
+        this.font.setStyle(s)
+        return this
+    }
 }
 
 // A GraphicalObject intended to be overridden by users with arbitrary
