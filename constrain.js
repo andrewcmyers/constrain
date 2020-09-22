@@ -635,6 +635,7 @@ class Figure {
 
     setFontStyle(sty) {
         this.font.setStyle(sty)
+        return this
     }
 
     getFont() {
