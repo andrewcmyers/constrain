@@ -1134,12 +1134,17 @@ version.
 <p>
 Currently Constrain only supports generating PostScript output, which can be
 converted to PDF and other formats using tools such as <code>epstopdf</code>.
-If the figure contains an interactive object of type
-<code>Constrain.PS.PrintButton</code>, clicking on the button will cause
-PostScript output to be generated for the figure as it currently appears.
-Interactive objects such as handles and the <code>PrintButton</code> itself
-will not be rendered.  The example figure below is printable using the gray
-button.
+</p>
+<p>
+<code>Constrain.PS</code> extends the class <code>Figure</code> with a method
+<code>print</code> that can be used to generate PostScript output.  Interactive
+objects in the figure, such as handles, are not rendered.
+</p>
+<p>
+To make it easier to generate printable output on demand, the class
+<code>Constrain.PS.PrintButton</code> defines a button (an interactive object)
+that causes PostScript output to be generated for the figure in which it
+appears.  Thus, the example figure below is printable using the gray button.
 </p>
 <p>
 In the PostScript rendering, all dimensions are expanded by 33% so that all pixel
@@ -1153,10 +1158,12 @@ page description language, the generated figures are easily rescaled.
 <script>
     let print_ex_fig = new Constrain.Figure("print_ex")
     with (print_ex_fig) {
-        square()
+        const s = square()
             .setFillStyle("aquamarine")
             .setLineDash([4,4])
             .addText(text("Square").setFontName("Palatino"))
+        handle().at(s.lr())
+        align("left", "top", s, canvasRect().inset(2))
         align("right", "bottom", new Constrain.PS.PrintButton(print_ex_fig), canvasRect().inset(2))
     }
 </script>
