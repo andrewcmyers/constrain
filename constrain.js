@@ -107,6 +107,9 @@ class Figure {
         this.canvas.height = _height * this.scale
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
     }
+    toString() {
+        return "Figure"
+    }
     setupListeners() {
         const canvas = this.canvas
         this.canvas.addEventListener('mousedown', e => {
@@ -120,7 +123,7 @@ class Figure {
         this.canvas.addEventListener('mouseup', e => {
             const x = e.offsetX, y = e.offsetY
             this.interactives.forEach(i => {
-                if (!i.mouseup(x, y, e)) return false
+                if (!i.mouseup(e)) return false
             })
             return true
         })
@@ -356,8 +359,6 @@ class Figure {
         this.renderFromValuation()
         if (!solved) {
             setTimeout(() => this.render(animating), 10) // XXX might be nice to use Promise
-        } else {
-            if (this.animatedSolving) console.log("solved")
         }
     }
 
@@ -1012,6 +1013,69 @@ function figure(nm) {
 
 function isFigure(figure) {
     return (figure.connector !== undefined)
+}
+
+// Return which Figure is associated with element e, or null if
+// none (for example, if e is not a canvas or (somehow) inside a canvas).
+function canvasToFigure(e) {
+    while (e != null) {
+        if (e.nodeName == "CANVAS") break
+        e = e.parentElement
+    }
+    if (e == null) return null
+    for (let i = 0; i < Figures.length; i++) {
+        if (Figures[i].canvas == e) return Figures[i]
+    }
+    return null
+}
+
+// add event listeners for touch events in canvases
+function setupTouchListeners() {
+    window.addEventListener('touchstart',
+        e => {
+            const figure = canvasToFigure(e.target)
+
+            if (!figure || figure.interactives.length == 0) return true
+            const t = e.targetTouches,
+                  r = figure.canvas.getClientRects()[0],
+                  touch = t.item(0),
+                  x = touch.clientX - r.left,
+                  y = touch.clientY - r.top
+            for (let i = 0; i < figure.interactives.length; i++) {
+                const h = figure.interactives[i]
+                if (!h.mousedown(x, y, e)) {
+                    e.preventDefault()
+                    e.stopImmediatePropagation()
+                    return false
+                }
+            }
+            return true
+        }, {passive: false})
+
+    window.addEventListener('touchmove',
+        e => {
+            const figure = canvasToFigure(e.target)
+            if (!figure || figure.interactives.length == 0) return true
+            const t = e.targetTouches,
+                  r = figure.canvas.getClientRects()[0],
+                  touch = t.item(0),
+                  x = touch.clientX - r.left,
+                  y = touch.clientY - r.top
+            if (!figure.focused) return true
+            e.preventDefault()
+            e.stopImmediatePropagation()
+            return figure.focused.mousemove(x, y, e)
+        }, {passive: false})
+
+    window.addEventListener('touchend',
+        e => {
+            const figure = canvasToFigure(e.target)
+            if (!figure || figure.interactives.length == 0) return true
+            if (!figure.focused) return true
+            e.preventDefault()
+            e.stopImmediatePropagation()
+            return figure.focused.mouseup(e)
+        }, {passive: false})
 }
 
 const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4
@@ -3644,13 +3708,20 @@ class Handle extends InteractiveObject {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return }
         const hx = evaluate(this.x(), this.figure.currentValuation),
-              hy = evaluate(this.y(), this.figure.currentValuation)
-        if (Math.abs(x - hx) + Math.abs(y - hy) <= this.size) {
-            // console.log("Handle got focus")
+              hy = evaluate(this.y(), this.figure.currentValuation),
+              expand = e.type == "touchstart" ? 20 : 0,
+              // XXX should use radiusX/radiusX property when available;
+              // XXX may want to switch the whole interaction interface to
+              // XXX be touch-based first.
+              r = this.size + expand
+        if (sqdist(x - hx, y - hy) <= r * r) {
             this.figure.focused = this
+            return false
+        } else {
+            return true
         }
     }
-    mouseup(x, y, e) {
+    mouseup(e) {
         if (this.figure.focused == this) {
             // console.log("Handle lost focus")
             this.figure.focused = null
@@ -3672,6 +3743,7 @@ class Handle extends InteractiveObject {
     }
     active() { return true }
     visible() { return true }
+    toString() { return "Handle" }
 }
 
 class Button extends InteractiveObject {
@@ -3716,13 +3788,12 @@ class Button extends InteractiveObject {
         this.render(this.figure)
         return false
     }
-    mouseup(mx, my, e) {
+    mouseup(e) {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return true }
         const valuation = this.figure.currentValuation,
               x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation)
-        if (!this.inbounds(mx, my, x, y)) return true
         if (!this.pressed) return true
         this.pressed = false
         this.figure.focused = null
@@ -3997,6 +4068,7 @@ function autoResize() {
     UserDefined: UserDefined,
     evaluate: evaluate,
     fullWindowCanvas: fullWindowCanvas,
+    setupTouchListeners: setupTouchListeners,
     isFigure: isFigure,
     statistics: statistics,
     currentValue: currentValue,

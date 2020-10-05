@@ -41,6 +41,7 @@ must have the same area. That means the areas of the pink square (\(a^2\)) and t
 <script>
 const canvas = document.getElementsByTagName("canvas")[0]
 const figure = new Constrain.Figure(canvas)
+Constrain.setupTouchListeners()
 
 with (figure) {
     setFontName("Times")

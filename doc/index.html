@@ -520,6 +520,14 @@ Makes the specified canvas automatically resize to fill the window.
 This function causes figures to automatically resize to their containing canvases.
 </p>
 
+<h4>Constrain.setupTouchListeners()</h4>
+<p>
+By default, touch events are not tracked by figures, which means that handles will
+not work correctly on tablets and phones. Calling this method will enable touch events.
+They are not turned on by default because handling touch events seems to require interposing
+on touch events at the level of the entire window.
+</p>
+
 
 <h3>Default styles</h3>
 
