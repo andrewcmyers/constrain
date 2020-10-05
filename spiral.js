@@ -80,4 +80,5 @@ align("none", "top", t, figure.canvasRect())
 figure.removeConstraints(c)
 }
 Constrain.autoResize()
+Constrain.setupTouchListeners()
 figure.start()
