@@ -2946,13 +2946,8 @@ class Ellipse extends GraphicalObject {
         let xr = evaluate(this.w(), valuation)/2,
             yr = evaluate(this.h(), valuation)/2
         if (xr == 0 || yr == 0) return [x,y]
-        xr = xr * xr
-        yr = yr * yr
-        let s = pdy/pdx,
-              dx = Math.sqrt(xr*yr / (xr*s*s + yr^2)),
-              dy = s * dx
-        if (pdx < 0) { dx = -dx; dy = -dy }
-        return [x + dx, y + dy]
+        const d = Math.sqrt(pdy*pdy*xr*xr + pdx*pdx*yr*yr)
+        return [x + pdx*xr*yr/d, y + pdy*xr*yr/d]
     }
     xSpan(y0, y1, valuation) {
         const [x,y,w,h] = evaluate([this.x(), this.y(), this.w(), this.h()], valuation)
