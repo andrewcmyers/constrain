@@ -1,0 +1,39 @@
+<html lang=en>
+<head>
+  <meta charset="UTF-8">
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <script src="constrain-ps.js"></script>
+  <style>
+    body { font-family: sans-serif }
+    h1 { text-align: center }
+    #content { margin: 0 auto; max-width: 80ex }
+  </style>
+</head>
+<body>
+
+<h1>Print Test</h2>
+<canvas style="width: 500px; height: 300px"></canvas>
+<p style="font-size: 14px; font-family: Times; border: 1px solid black; padding: 0; margin: 0">Label</p>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+const figure = new Constrain.Figure(canvas)
+
+with (figure) {
+    let r = rectangle().setH(14)
+    circle().setLineDash([8,4]).setLineWidth(2).setFillStyle("red")
+    let pb = new Constrain.PS.PrintButton(figure)
+    align("right", "bottom", pb, canvasRect().inset(2))
+
+    setFontName("Times")
+    setFontSize(14)
+    let l = label("Label×⇒⊔fooα")
+    align("left", "bottom", r, l, canvasRect().inset(2))
+    align("right", "none", r, l)
+
+    start()
+}
+</script>
+</div>
+</body>
+</html>
