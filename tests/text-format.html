@@ -17,6 +17,11 @@
 <h1>Text Layout Algorithms in <a href="https://github.com/andrewcmyers/constrain">Constrain</a>
 (drag the red diamond!)
 </h1>
+<p style="position: absolute; z-index: 1; right: 1ex; bottom: 1ex; max-width: 40ex;background-color: #fee;border: 1px solid black; padding: 1ex;">
+<b>Explanation</b>: TeX uses dynamic programming to minimize the sum of cubes
+of unused space on each line. Constrain does this minimization in real time 
+inside an HTML canvas.
+</p>
 <canvas></canvas>
 <script>
 const canvas = document.getElementsByTagName("canvas")[0]
