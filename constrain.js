@@ -45,7 +45,10 @@ const Figure_defaults = {
     FRAMERATE : 60,
     FONT_NAME : "sans-serif",
     FONT_STYLE : "",
-    LINE_SPACING : 1.3
+    LINE_SPACING : 1.3,
+    SUPERSCRIPT_OFFSET : 0.44,
+    SUBSCRIPT_OFFSET : -0.16,
+    SCRIPTSIZE : 0.60
 }
 
 // A Figure is attached to a canvas and knows how to render itself. It has a
@@ -888,9 +891,15 @@ class Figure {
         return r
     }
     box() { return new Box(this) }
-    text(...t) { return new FormattedText(this, ...t) }
+    text(...t) { return new ContainedText(this, ...t) }
+    superscript(t) {
+        return new SuperscriptText(t)
+    }
+    subscript(t) {
+        return new SubscriptText(t)
+    }
     textFrame(txt, fillStyle) {
-        if (typeof txt == "string") txt = new FormattedText(this, txt)
+        if (typeof txt == "string") txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
     label(string, fontSize, fontName, fillStyle) {
@@ -2642,9 +2651,9 @@ class GraphicalObject extends Box {
         this.lineDash = d
         return this
     }
-    addText(t) {
-        if (typeof t == "string") t = this.figure.text(t)
-        this.text = t
+    addText(...t) {
+        t = t.flat()
+        this.text = this.figure.text(...t)
         return this
     }
 // rendering control
@@ -3010,6 +3019,9 @@ class Polygon extends GraphicalObject {
             ctx.stroke()
         }
         ctx.restore()
+        if (this.text) {
+            this.text.renderIn(this.figure, this)
+        }
     }
     variables() {
         let result = GraphicalObject.prototype.variables.call(this)
@@ -3342,7 +3354,7 @@ class Font {
             this.fontSize = Figure_defaults.FONT_SIZE
             this.fontName = Figure_defaults.FONT_NAME
         } else {
-            this.copyFrom(figure.getFont())
+            this.copyFrom(figure.font)
         }
     }
     copyFrom(font) {
@@ -3485,27 +3497,29 @@ class LineLabel {
     setFontSize(s) { this.font.setSize(s); return this }
 }
 
-// A FormattedText is some text that can be formatted inside
+// A ContainedText is some text that can be formatted inside
 // a graphical object. It is not a graphical object itself.
+// It knows how to format itself and render into a containing
+// shape. It has methods to control its style (e.g., inset and
+// centering) and the default style of the text it contains.
 // 
 // TODO measure cost of formatting?
 // TODO markdown support?
-class FormattedText {
+class ContainedText {
     constructor(figure, ...text) {
-        this.words = []
-        this.font = new Font(figure)
+        this.figure = figure
+        this.justification = "center"
+        this.verticalAlign = "center"
         this.lineSpacing = figure.lineSpacing
-        this.inset = 3
-        text.forEach(t => {
-            t = t.toString()
-            t.split(/  */).forEach(w => {
-                if (w) this.words.push(w)
-            })
-        })
-    }
-    setFillStyle(s) {
-        this.fillStyle = s
-        return this
+        this.font = figure.font
+        this.fillStyle = figure.fillStyle
+        this.strokeStyle = null
+        this.inset = this.font.getSize() / 3
+        if (text.length == 1) {
+            this.text = text
+        } else {
+            this.text = new ConcatText(...text)
+        }
     }
     setLineSpacing(s) {
         this.lineSpacing = s
@@ -3515,12 +3529,12 @@ class FormattedText {
         this.inset = ins
         return this
     }
-    // justification can be "left" (default) or "center"
+    // justification can be "left", "center" (default), or "full"
     setJustification(j) {
         this.justification = j
         return this
     }
-    // can be "top" (default), "center", or "bottom"
+    // can be "top", "center" (default), or "bottom"
     setVerticalAlign(va) {
         this.verticalAlign = va
         return this
@@ -3530,8 +3544,96 @@ class FormattedText {
         this.setVerticalAlign("center")
         return this
     } 
-    // Draw this text inside a graphical object
+    setFont(f) {
+        this.font = f
+        return this
+    }
+    // Set font size
+    setFontSize(s) {
+        this.font.setSize(s)
+        return this
+    }
+    // Set font name
+    setFontName(f) {
+        this.font.setName(f)
+        return this
+    }
+    // Set font style
+    setFontStyle(s) {
+        this.font.setStyle(s)
+        return this
+    }
+    setFillStyle(s) {
+        this.fillStyle = s
+        return this
+    }
+    // Draw this text inside a graphical object (container)
     renderIn(figure, container) {
+        const ctx = figure.ctx, valuation = figure.currentValuation
+        const ls = evaluate(this.lineSpacing, valuation) * this.font.getSize(),
+              maxy = evaluate(container.h(), valuation),
+              inset = this.inset, justification = this.justification,
+              verticalAlign = this.verticalAlign
+        const tc = new TextContext(null, figure)
+        const y0 = evaluate(container.y0(), valuation) + this.font.getSize() + inset,
+              y1 = evaluate(container.y1(), valuation) - inset,
+              yc = evaluate(container.y(), valuation)
+        tc.set("font", this.font)
+        tc.set("baseline", 0)
+        tc.set("verticalAlign", verticalAlign)
+        tc.set("justification", justification)
+        tc.set("fillStyle", this.fillStyle)
+        tc.set("strokeStyle", this.strokeStyle)
+        tc.set("lineSpacing", ls)
+        for (let guessed_lines = 1; guessed_lines * ls < maxy; guessed_lines++) {
+            let y = y0
+            switch (this.verticalAlign) {
+                case "center": y = yc - (guessed_lines - 1.5) * ls * 0.5; break
+                case "bottom": y = y1 - (guessed_lines - 0.75) * ls; break
+                default: break
+            }
+            const [x0, x1] = container.xSpan(y, y - ls, valuation),
+                  layout = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, y1, [])
+            if (layout) {
+                // position all the items according to the current
+                // justification policy and draw them.
+                let currentFont = null, stretch = (justification == "full")
+                layout.forEach(line => {
+                    const {x0, x1, y, items} = line
+                    let lw = 0, stretchers = 0
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i]
+                        lw += item.width
+                        stretchers += item.stretch
+                    }
+                    let extra = x1 - x0 - lw
+                    let x
+                    switch (justification) {
+                        case "left":
+                        case "full": x = x0; break
+                        case "center": x = x0 + extra/2; break
+                        case "right": x = x0 + extra; break
+                    }
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i]
+                        const font = item.font
+                        if (font != currentFont) {
+                            font.setContextFont(ctx)
+                            currentFont = font
+                        }
+                        item.item.render(ctx, x, item.y)
+                        if (stretch && item.stretch > 0 && stretchers > 0) {
+                            x += (extra * item.stretch)/stretchers
+                        }
+                        x += item.width
+                    }
+                })
+                return
+            }
+        }
+        console.error("Could not fit text into containing object")
+    }
+/*
         const ctx = figure.ctx, valuation = figure.currentValuation,
               inset = this.inset, txt = this
         const ls = evaluate(this.lineSpacing, valuation) * this.font.getSize(),
@@ -3605,22 +3707,197 @@ class FormattedText {
             y += ls
         })
     }
-    // Set font size
-    setFontSize(s) {
-        this.font.setSize(s)
-        return this
+*/
+}
+
+// A component of formatted text. It does not know what figure or container it belongs to.
+class TextItem {
+    constructor() {
     }
 
-    // Set font name
-    setFontName(f) {
-        this.font.setName(f)
-        return this
+    // Tries to format this text item and a sequence of
+    // following items into the container
+    // starting from baseline position (x,y)
+    // without extending below y position ymax, and with x1 as the
+    // right margin of the current line. Returns
+    // false if this can't be done (this is the default behavior)
+    // If it can be done, layoutIn returns a render list,
+    // which is an array each of whose elements describe
+    // one formatted line. An array element is an object with
+    // the following properties:
+    // { x0:    the left margin of the line
+    //   x1:    the right margin of the line
+    //   y:     the vertical position of the baseline
+    //   items: an array of items:
+    //     { item: the actual item to render, or null for whitespace
+    //       width: the minimum width
+    //       y position?
+    //       font?
+    //       stretch: the amount of stretchiness (typically 0 for non-whitespace)
+    //     }
+    // }
+    layoutIn(figure, textContext, container, x, y, x0, x1, ymax, followingItems) {
+        return false
     }
+    setBaseline(b) {
+        this.baseline = b
+    }
+    getBaseline(b) {
+        return this.baseline || 0;
+    }
+    // Render this text item at (x,y) in graphics context ctx.  The font, fill
+    // style, and stroke style are assumed already to be set correctly.
+    // Default: do nothing
+    render(ctx, x, y) {}
+}
 
-    // Set font style
-    setFontStyle(s) {
-        this.font.setStyle(s)
-        return this
+//  A context for rendering and laying out text items, to be provided at the point
+//  of rendering.
+class TextContext {
+    constructor(parent, figure) {
+        this.properties = {}
+        this.figure = figure
+        this.parent = parent
+    }
+    key(name) {
+        return "*" + name
+    }
+    set(name, value) {
+        this.properties[this.key(name)] = value
+    }
+    get(name) {
+        const val = this.properties[this.key(name)]
+        if (val !== undefined) return val
+        if (this.parent) return this.parent.get(name)
+        console.error("Requested undefined text context attribute " + name)
+        return undefined
+    }
+}
+
+// A text item that consists of a simple string that should not be broken.
+class WordText extends TextItem {
+    constructor(t) {
+        super()
+        this.text = t
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const ctx = figure.ctx,
+              font = tc.get("font")
+        font.setContextFont(ctx)
+        const width = ctx.measureText(this.text).width
+        x += width
+        if (x > x1) return false
+        let layout = []
+        let item = {
+            item: this,
+            width: width,
+            y: y - tc.get("baseline"),
+            font: font,
+            stretch: 0
+        }
+        if (following.length > 0) {
+            layout = following[0].layoutIn(figure, tc, container, x, y, x0, x1, ymax, following.slice(1))
+            if (!layout) return false
+            layout[0].items.unshift(item)
+            return layout
+        }
+        return [{
+            x0: x0,
+            x1: x1,
+            y: y,
+            items: [ item ]
+        }]
+    }
+    render(ctx, x, y) {
+        ctx.fillText(this.text, x, y)
+    }
+}
+
+class Whitespace extends TextItem {
+    constructor(figure) {
+        super(figure)
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const space = figure.ctx.measureText(" ").width
+        if (following.length == 0) {
+            return [{ x0: x0, x1: x1, y: y, items: []}]
+        }
+        let layout = (x + space <= x1) &&
+            following[0].layoutIn(figure, tc, container, x + space, y, x0, x1, ymax, following.slice(1)) 
+        if (layout) return layout // be greedy for now
+        const ls = tc.get("lineSpacing"),
+              [nx0, nx1] = container.xSpan(y, y + ls, valuation)
+        layout = following[0].layoutIn(figure, tc, container, x + space, y + ls, nx0, nx1, ymax,
+                following.slice(1))
+        layout.unshift({x0: x0, x1: x1, y: y, items: []})
+        return layout
+    }
+}
+
+class ConcatText extends TextItem {
+    // The arguments (other than the figure) can be either other ContainedText
+    // objects or strings. Strings are automatically split into words
+    // around whitespace
+    constructor(...text) {
+        super()
+        this.items = []
+        text.forEach(t => {
+            if (t.constructor == String) { 
+                let wds = 0;
+                t.split(/  */).forEach(w => {
+                    if (w) {
+                        if (wds++) {
+                            this.items.push(new Whitespace())
+                        }
+                        this.items.push(new WordText(w))
+                    }
+                })
+            } else {
+                if (!t.layoutIn) console.error("Can't concatenate non-text item")
+                else this.items.push(t)
+            }
+        })
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        return this.items[0].layoutIn(figure, tc, container, x, y, x0, x1, ymax,
+            this.items.slice(1).concat(following))
+    }
+}
+
+class SuperscriptText extends TextItem {
+    constructor(text) {
+        super()
+        this.text = (text.constructor == String) ? new WordText(text) : text
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const baseline = tc.get("baseline"), font = tc.get("font"),
+              fontSize = font.getSize()
+        tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
+        const scriptFont = new Font(figure)
+        scriptFont.copyFrom(font)
+        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        tc.set("font", scriptFont)
+        const result = this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
+        tc.set("font", font)
+        tc.set("baseline", baseline)
+        return result
+    }
+}
+
+class SubscriptText extends TextItem {
+    constructor(text) {
+        super()
+        this.text = (text.constructor == String) ? new WordText(text) : text
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const baseline = tc.get("baseline"), font = tc.get("font"),
+              fontSize = font.getSize()
+        tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
+        font.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        const result = this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
+        font.setSize(fontSize)
+        tc.set("baseline", baseline)
+        return result
     }
 }
 
@@ -4035,7 +4312,7 @@ function autoResize() {
     Circle: Circle,
     Ellipse: Ellipse,
     Polygon: Polygon,
-    FormattedText: FormattedText,
+    ContainedText: ContainedText,
     InteractiveObject: InteractiveObject,
     CanvasRect: CanvasRect,
     Button: Button,
@@ -4064,6 +4341,7 @@ function autoResize() {
     evaluate: evaluate,
     fullWindowCanvas: fullWindowCanvas,
     setupTouchListeners: setupTouchListeners,
+    Figure_defaults : Figure_defaults,
     isFigure: isFigure,
     statistics: statistics,
     currentValue: currentValue,
