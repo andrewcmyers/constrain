@@ -1,0 +1,61 @@
+<html>
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+</style>
+  
+</head>
+<body>
+<h1>Text Layout in Constrain</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+Constrain.fullWindowCanvas(canvas)
+var figure = new Constrain.Figure(canvas)
+
+with (figure) {
+
+    let r1 = rectangle(), r2 = rectangle(), h = handle(),
+        l1 = label("Greedy").setFontSize(24), l2 = label("TeX").setFontSize(24)
+
+    equal(r1.w(), r2.w())
+    equal(r1.y1(), r2.y1(), canvasRect().y1())
+    equal(l1.y0(), l2.y0(), canvasRect().y0())
+    equal(r1.x1(), h.x())
+    equal(r1.x0(), canvasRect().x0())
+
+    geq(r1.w(), 100)
+
+    align("left", "abut", l1, r1)
+    align("left", "abut", l2, r2)
+    align("none", "top", l1, l2)
+    align("abut", "top", r1, hspace(20), r2)
+
+    let dickens = "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair."
+
+    let content = () => text(dickens).setFillStyle("black")
+                                     .setFontName("Times")
+                                     .setJustification("full")
+                                     .setVerticalAlign("top")
+                                     .setFontSize(18)
+
+    let c1 = content(), c2 = content()
+    c1.setLayoutAlgorithm("greedy")
+
+    r1.addText(c1)
+    r2.addText(c2)
+}
+
+</script>
+</body>
+<script>
+    Constrain.autoResize()
+    figure.start()
+</script>
+</html>

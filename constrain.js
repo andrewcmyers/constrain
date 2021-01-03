@@ -3571,6 +3571,10 @@ class ContainedText {
         this.fillStyle = s
         return this
     }
+    setLayoutAlgorithm(a) {
+        this.layoutAlgorithm = a
+    }
+
     // Draw this text inside a graphical object (container)
     renderIn(figure, container) {
         const ctx = figure.ctx,
@@ -3892,7 +3896,9 @@ class Whitespace extends TextItem {
                 stretch: 1
             })
             this.cache[key] = copyLayout(layout)
-            if (!TeXFormat) return layout
+            if (!TeXFormat) {
+                return layout
+            }
         }
         const ls = tc.get("lineSpacing"), inset = tc.get("inset")
         let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
@@ -3903,7 +3909,11 @@ class Whitespace extends TextItem {
         if (layout2) layout2.unshift({x0: x0, x1: x1, y: y, items: []})
         if (layout) {
             const cost1 = layoutCost(layout), cost2 = layoutCost(layout2)
-            if (cost1 <= cost2) return layout
+            if (cost1 <= cost2) {
+                return layout
+            } else {
+                console.log("Early line break was better")
+            }
         }
         this.cache[key] = copyLayout(layout2)
         return layout2
