@@ -2653,7 +2653,11 @@ class GraphicalObject extends Box {
     }
     addText(...t) {
         t = t.flat()
-        this.text = this.figure.text(...t)
+        if (t.length == 1 && t[0].constructor == ContainedText) {
+            this.text = t[0]
+        } else {
+            this.text = this.figure.text(...t)
+        }
         return this
     }
 // rendering control
@@ -3515,10 +3519,10 @@ class ContainedText {
         this.fillStyle = figure.fillStyle
         this.strokeStyle = null
         this.inset = this.font.getSize() / 3
-        if (text.length == 1) {
-            this.text = text
-        } else {
+        if (text.length > 1 || text[0].constructor == String) {
             this.text = new ConcatText(...text)
+        } else {
+            this.text = text
         }
     }
     setLineSpacing(s) {
@@ -3569,37 +3573,42 @@ class ContainedText {
     }
     // Draw this text inside a graphical object (container)
     renderIn(figure, container) {
-        const ctx = figure.ctx, valuation = figure.currentValuation
-        const ls = evaluate(this.lineSpacing, valuation) * this.font.getSize(),
+        const ctx = figure.ctx,
+              valuation = figure.currentValuation,
+              font = this.font,
+              lineSpacing = evaluate(this.lineSpacing, valuation) * font.getSize(),
+              layoutAlgorithm = this.layoutAlgorithm || "TeX",
+              baseline = 0,
+              strokeStyle = this.strokeStyle || undefined,
               maxy = evaluate(container.h(), valuation),
-              inset = this.inset, justification = this.justification,
-              verticalAlign = this.verticalAlign
-        const tc = new TextContext(null, figure)
-        const y0 = evaluate(container.y0(), valuation) + this.font.getSize() + inset,
+              inset = this.inset,
+              justification = this.justification,
+              verticalAlign = this.verticalAlign,
+              fillStyle = this.fillStyle,
+              tc = new TextContext(null, figure),
+              y0 = evaluate(container.y0(), valuation) + font.getSize() + inset,
               y1 = evaluate(container.y1(), valuation) - inset,
               yc = evaluate(container.y(), valuation)
-        tc.set("font", this.font)
-        tc.set("baseline", 0)
-        tc.set("verticalAlign", verticalAlign)
-        tc.set("justification", justification)
-        tc.set("fillStyle", this.fillStyle)
-        tc.set("strokeStyle", this.strokeStyle)
-        tc.set("lineSpacing", ls)
-        for (let guessed_lines = 1; guessed_lines * ls < maxy; guessed_lines++) {
+        tc.setAll({ font, verticalAlign, justification, fillStyle, lineSpacing,
+                    inset, layoutAlgorithm, strokeStyle, baseline })
+        for (let guessed_lines = 1; guessed_lines * lineSpacing < maxy; guessed_lines++) {
             let y = y0
             switch (this.verticalAlign) {
-                case "center": y = yc - (guessed_lines - 1.5) * ls * 0.5; break
-                case "bottom": y = y1 - (guessed_lines - 0.75) * ls; break
+                case "center": y = yc - (guessed_lines - 1.5) * lineSpacing * 0.5; break
+                case "bottom": y = y1 - (guessed_lines - 0.75) * lineSpacing; break
                 default: break
             }
-            const [x0, x1] = container.xSpan(y, y - ls, valuation),
-                  layout = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, y1, [])
+            let [x0, x1] = container.xSpan(y, y - lineSpacing, valuation)
+            x0 += inset
+            x1 -= inset
+            const layout = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, y1, [])
             if (layout) {
                 // position all the items according to the current
                 // justification policy and draw them.
                 let currentFont = null, stretch = (justification == "full")
-                layout.forEach(line => {
-                    const {x0, x1, y, items} = line
+                for (let j = 0; j < layout.length; j++) {
+                    const line = layout[j]
+                    const {x0_, x1, y, items} = line
                     let lw = 0, stretchers = 0
                     for (let i = 0; i < items.length; i++) {
                         const item = items[i]
@@ -3607,27 +3616,30 @@ class ContainedText {
                         stretchers += item.stretch
                     }
                     let extra = x1 - x0 - lw
-                    let x
+                    let x = x0
                     switch (justification) {
                         case "left":
                         case "full": x = x0; break
                         case "center": x = x0 + extra/2; break
                         case "right": x = x0 + extra; break
                     }
+                    if (items.length >= 2 && items[0].item == items[1].item) {
+                        console.error("dup item??")
+                    }
                     for (let i = 0; i < items.length; i++) {
-                        const item = items[i]
-                        const font = item.font
-                        if (font != currentFont) {
+                        const item = items[i],
+                              font = item.font
+                        if (font && font != currentFont) {
                             font.setContextFont(ctx)
                             currentFont = font
                         }
                         item.item.render(ctx, x, item.y)
-                        if (stretch && item.stretch > 0 && stretchers > 0) {
+                        if (stretch && stretchers > 0 && j != layout.length - 1) {
                             x += (extra * item.stretch)/stretchers
                         }
                         x += item.width
                     }
-                })
+                }
                 return
             }
         }
@@ -3731,8 +3743,8 @@ class TextItem {
     //   items: an array of items:
     //     { item: the actual item to render, or null for whitespace
     //       width: the minimum width
-    //       y position?
-    //       font?
+    //       baseline: y offset from baseline (negative)
+    //       font: the font
     //       stretch: the amount of stretchiness (typically 0 for non-whitespace)
     //     }
     // }
@@ -3764,6 +3776,11 @@ class TextContext {
     }
     set(name, value) {
         this.properties[this.key(name)] = value
+    }
+    setAll(dict) {
+        for (let key in dict) {
+            this.properties[this.key(key)] = dict[key]
+        }
     }
     get(name) {
         const val = this.properties[this.key(name)]
@@ -3813,24 +3830,83 @@ class WordText extends TextItem {
     }
 }
 
+var ws_counter = 0
+
 class Whitespace extends TextItem {
     constructor(figure) {
         super(figure)
+        this.index = ws_counter++
     }
     layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        function copyLayout(ly) {
+            if (!ly) return false
+            return ly.map(line => ({
+                x0: line.x0,
+                x1: line.x1,
+                y: line.y,
+                items: line.items.map(item => ({
+                    item: item.item,
+                    width: item.width,
+                    y: item.y,
+                    baseline: item.baseline,
+                    stretch: item.stretch
+                }))
+            }))
+        }
+        // Measure the 'cost' of a layout that starts from position x on the first line.
+        // Note that the last line is ignored.
+        function layoutCost(ly) {
+            let cost = 0
+            for (let i = 0; i < ly.length - 1; i++) {
+                const line = ly[i], items = line.items
+                let span = (i == 0)
+                    ? line.x1 - x
+                    : line.x1 - line.x0
+                for (let j = 0; j < items.length; j++) {
+                    span -= items[j].width
+                }
+                cost += span * span * span
+            }
+            return cost
+        }
+        if (this.ymax != ymax) {
+            this.ymax = ymax
+            this.cache = {}
+        }
+        const key = `${x},${y}`
+        const TeXFormat = tc.get("layoutAlgorithm") == "TeX"
+        if (this.cache.hasOwnProperty(key)) {
+            return copyLayout(this.cache[key])
+        }
+        // console.log("Trying to lay out ws " + this.index + " at (" + x  + ","  + y + ")")
         const space = figure.ctx.measureText(" ").width
         if (following.length == 0) {
             return [{ x0: x0, x1: x1, y: y, items: []}]
         }
-        let layout = (x + space <= x1) &&
-            following[0].layoutIn(figure, tc, container, x + space, y, x0, x1, ymax, following.slice(1)) 
-        if (layout) return layout // be greedy for now
-        const ls = tc.get("lineSpacing"),
-              [nx0, nx1] = container.xSpan(y, y + ls, valuation)
-        layout = following[0].layoutIn(figure, tc, container, x + space, y + ls, nx0, nx1, ymax,
+        const layout = (x + space <= x1) &&
+          following[0].layoutIn(figure, tc, container, x + space, y, x0, x1, ymax, following.slice(1)) 
+        if (layout) {
+            layout[0].items.unshift({
+                item: this,
+                width: space,
+                stretch: 1
+            })
+            this.cache[key] = copyLayout(layout)
+            if (!TeXFormat) return layout
+        }
+        const ls = tc.get("lineSpacing"), inset = tc.get("inset")
+        let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
+        nx0 += inset
+        nx1 -= inset
+        const layout2 = following[0].layoutIn(figure, tc, container, nx0, y + ls, nx0, nx1, ymax,
                 following.slice(1))
-        layout.unshift({x0: x0, x1: x1, y: y, items: []})
-        return layout
+        if (layout2) layout2.unshift({x0: x0, x1: x1, y: y, items: []})
+        if (layout) {
+            const cost1 = layoutCost(layout), cost2 = layoutCost(layout2)
+            if (cost1 <= cost2) return layout
+        }
+        this.cache[key] = copyLayout(layout2)
+        return layout2
     }
 }
 

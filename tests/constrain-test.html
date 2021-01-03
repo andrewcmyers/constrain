@@ -1,7 +1,7 @@
 <html>
 <head>
-  <script src="numeric-1.2.6.js"></script>
-  <script src="constrain.js"></script>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
   <style>
     canvas {
         background-color: transparent;
@@ -78,8 +78,8 @@ let s3 = square (grd, "black", 3),
     drawAfter(frame1, new Constrain.Corners(figure))
 
     let txt = rectangle(),
-        content = text("It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair")
-            .setFillStyle("black").setJustification("right").setVerticalAlign("top")
+        content = text("It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair.") 
+            .setFillStyle("black").setJustification("full").setVerticalAlign("top")
 
      txt.addText(content).setFillStyle('transparent')
 
@@ -96,8 +96,7 @@ let s3 = square (grd, "black", 3),
            .addText(text("Hello there, this is a test of the system that formats text inside random shapes as long as there is room for the text.", "goodbye")
                     .setJustification("center")
                     .setVerticalAlign("bottom")
-                    .setInset(1)
-    )
+                    .setInset(1))
 }
 
 </script>
