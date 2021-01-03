@@ -3911,8 +3911,6 @@ class Whitespace extends TextItem {
             const cost1 = layoutCost(layout), cost2 = layoutCost(layout2)
             if (cost1 <= cost2) {
                 return layout
-            } else {
-                console.log("Early line break was better")
             }
         }
         this.cache[key] = copyLayout(layout2)
@@ -4061,6 +4059,9 @@ class Handle extends InteractiveObject {
         ctx.strokeStyle = this.strokeStyle
         ctx.setLineDash([])
         ctx.stroke()
+    }
+    setStrokeStyle(style) {
+        this.strokeStyle = style
     }
     mousedown(x, y, e) {
         if (this.figure.currentValuation === undefined)
