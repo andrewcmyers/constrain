@@ -3916,6 +3916,10 @@ class Whitespace extends TextItem {
         this.cache[key] = copyLayout(layout2)
         return layout2
     }
+    render(ctx, x, y) {
+        delete this.ymax
+        delete this.cache
+    }
 }
 
 class ConcatText extends TextItem {
