@@ -48,7 +48,8 @@ const Figure_defaults = {
     LINE_SPACING : 1.3,
     SUPERSCRIPT_OFFSET : 0.44,
     SUBSCRIPT_OFFSET : -0.16,
-    SCRIPTSIZE : 0.60
+    SCRIPTSIZE : 0.60,
+    LARGE_SPAN : 10000.0
 }
 
 // A Figure is attached to a canvas and knows how to render itself. It has a
@@ -902,8 +903,8 @@ class Figure {
         if (typeof txt == "string") txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
-    label(string, fontSize, fontName, fillStyle) {
-        return new Label(this, string, fontSize, fontName, fillStyle)
+    label(text, fontSize, fontName, fillStyle) {
+        return new Label(this, text, fontSize, fontName, fillStyle)
     }
     lineLabel(string, position, offset) {
         return new LineLabel(this, string, position, offset)
@@ -3377,6 +3378,9 @@ class Font {
         this.fontObj = null
         return this
     }
+    getName() {
+        return this.fontName
+    }
     setSize(s) {
         this.fontSize = s
         this.fontObj = null
@@ -3405,17 +3409,27 @@ class Font {
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
-        if (fillStyle != undefined) this.fillStyle = fillStyle
+        this.text = text // either a String or a TextItem
+        if (text.constructor == ContainedText) {
+            this.font = text.font
+            if (fillStyle != undefined) {
+                this.fillStyle = this.text.fillStyle = fillStyle
+            } else {
+                this.fillStyle = figure.strokeStyle
+            }
+        } else {
+            this.font = new Font(figure)
+            if (fillStyle != undefined) this.fillStyle = fillStyle
             else this.fillStyle = figure.strokeStyle
-        this.text = text
-        this.font = new Font(figure)
-        this.setStrokeStyle(undefined)
+        }
         if (fontSize) this.font.setSize(fontSize)
         if (fontName) this.font.setName(fontName)
+
+        this.setStrokeStyle(undefined)
         this.computeWidth(figure.ctx)
 
         // Have to override GraphicalObject in the object itself
-        this.w = function() { return this.width }
+        this.w = function() { return this.computedWidth }
         this.h = function() { return this.font.getSize() }
         this.variables = function() { return [this.x(), this.y()] }
     }
@@ -3433,22 +3447,59 @@ class Label extends GraphicalObject {
         const x = evaluate(this.x0(), valuation),
               y = evaluate(figure.average(this.y(), this.y1()), valuation)
         // console.log("rendering " + this.text + " at " + x + "," + y)
-        if (this.fillStyle) {
-            ctx.fillStyle = this.fillStyle
-            ctx.fillText(this.text, x, y)
-        }
-        if (this.strokeStyle) {
-            ctx.strokeStyle = this.strokeStyle
-            if (this.lineWidth) {
-                ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        if (this.text.constructor == String) {
+            if (this.fillStyle) {
+                ctx.fillStyle = this.fillStyle
+                ctx.fillText(this.text, x, y)
             }
-            ctx.strokeText(this.text, x, y)
+            if (this.strokeStyle) {
+                ctx.strokeStyle = this.strokeStyle
+                if (this.lineWidth) {
+                    ctx.lineWidth = evaluate(this.lineWidth, valuation)
+                }
+                ctx.strokeText(this.text, x, y)
+            }
+        } else {
+            const tc = new TextContext(null, figure)
+            tc.setAll({font: this.font, verticalAlign: "center",
+              justification: "center", lineSpacing: 0, inset: 0,
+              layoutAlgorithm: "greedy", strokeStyle: null, baseline: 0
+            })
+            const layout = this.text.text.layoutIn(this.figure, tc, this, x, y, x,
+                                                   Figure_defaults.LARGE_SPAN, y, [])
+            let w = 0, items = layout[0].items
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                item.font.setContextFont(ctx)
+                item.item.render(ctx, x + w, item.y)
+                w += item.width
+            }
         }
-
+    }
+    // A label will stretch as far as necessary to fit its text
+    xSpan(y0, y1, valuation) {
+        return [0, Figure_defaults.LARGE_SPAN]
     }
     computeWidth(ctx) {
         this.installFont()
-        this.width = ctx.measureText(this.text).width
+        if (this.text.constructor == String) {
+            this.computedWidth = ctx.measureText(this.text).width
+        } else {
+            const tc = new TextContext(null, figure)
+            tc.setAll({font: this.font, verticalAlign: "center",
+              justification: "center", lineSpacing: 0, inset: 0,
+              layoutAlgorithm: "greedy", strokeStyle: null, baseline: 0
+            })
+            const layout = this.text.text.layoutIn(this.figure, tc, this, 0, 0, 0,
+                                                   Figure_defaults.LARGE_SPAN, 0, [])
+            if (!layout) {
+                console.error("Could not lay out a label")
+                return 0
+            }
+            let w = 0, items = layout[0].items
+            for (let i = 0; i < items.length; i++) w += items[i].width
+            this.computedWidth = w
+        }
     }
 
     // Set font size
@@ -3516,7 +3567,7 @@ class ContainedText {
         this.verticalAlign = "center"
         this.lineSpacing = figure.lineSpacing
         this.font = figure.font
-        this.fillStyle = figure.fillStyle
+        this.fillStyle = figure.strokeStyle
         this.strokeStyle = null
         this.inset = this.font.getSize() / 3
         if (text.length > 1 || text[0].constructor == String) {
@@ -3960,14 +4011,13 @@ class SuperscriptText extends TextItem {
     layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
-        tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
+        tc = new TextContext(tc, figure)
         const scriptFont = new Font(figure)
         scriptFont.copyFrom(font)
         scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
         tc.set("font", scriptFont)
+        tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
         const result = this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
-        tc.set("font", font)
-        tc.set("baseline", baseline)
         return result
     }
 }
@@ -3980,11 +4030,13 @@ class SubscriptText extends TextItem {
     layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
+        tc = new TextContext(tc, figure)
+        const scriptFont = new Font(figure)
+        scriptFont.copyFrom(font)
+        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        tc.set("font", scriptFont)
         tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
-        font.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
         const result = this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
-        font.setSize(fontSize)
-        tc.set("baseline", baseline)
         return result
     }
 }
