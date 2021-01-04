@@ -3558,8 +3558,6 @@ class LineLabel {
 // shape. It has methods to control its style (e.g., inset and
 // centering) and the default style of the text it contains.
 // 
-// TODO measure cost of formatting?
-// TODO markdown support?
 class ContainedText {
     constructor(figure, ...text) {
         this.figure = figure
@@ -3700,81 +3698,6 @@ class ContainedText {
         }
         console.error("Could not fit text into containing object")
     }
-/*
-        const ctx = figure.ctx, valuation = figure.currentValuation,
-              inset = this.inset, txt = this
-        const ls = evaluate(this.lineSpacing, valuation) * this.font.getSize(),
-              space = ctx.measureText(" ").width
-        this.font.setContextFont(ctx)
-        ctx.fillStyle = this.fillStyle
-        const total_w = ctx.measureText(this.words.join(" ")).width,
-              max_w = evaluate(container.w(), valuation)
-        if (max_w <= 0) return
-        let y0 = evaluate(container.y0(), valuation) + this.font.getSize() + inset,
-            y1 = evaluate(container.y1(), valuation) - inset,
-            yc = evaluate(container.y(), valuation),
-            wds = "",
-            i, x, y, x0, x1, tw, render_list,
-            n = this.words.length,
-            have_word = false, have_span = false,
-            guessed_lines = this.linesUsed || Math.ceil(total_w / max_w),
-            linesUsed = 0,
-            success = false,
-            top_aligned = (!this.verticalAlign || this.verticalAlign == "top")
-        const starting_y = () => {
-            switch (this.verticalAlign) {
-                case "center": return yc - (guessed_lines - 1.5) * ls * 0.5; break
-                case "bottom": return y1 - (guessed_lines - 0.75) * ls; break
-                case "top":
-                default: return y0
-            }
-        }
-        for (;;) {
-            // console.log("Trying with " + guessed_lines + " lines")
-            y = starting_y()
-            linesUsed = 0
-            i = 0
-            render_list = []
-            for (; y <= y1 && i < n; y += ls) {
-                [x0, x1] = container.xSpan(y, y - ls, valuation)
-                x0 = x0 + inset
-                x1 = x1 - inset
-                let w = x1 - x0, j
-                let wds = ""
-                for (j = i; j < n; j++) {
-                    const wds2 = wds ? wds + " " + this.words[j] : this.words[j],
-                        tw2 = ctx.measureText(wds2).width
-                    if (tw2 > w) break
-                    wds = wds2
-                    tw = tw2
-                }
-                render_list.push([wds, x0, x1, tw])
-                linesUsed++
-                i = j
-                if (i == n) break // success?
-                if (!top_aligned && linesUsed >= guessed_lines && i != n) break
-            }
-            if (linesUsed <= guessed_lines && i == n) break // did it in budget
-            if (i == n && top_aligned) break // overshot, but it doesn't matter
-            guessed_lines++
-            if (guessed_lines * ls > y1 - y0) break // can't fit
-        }
-        y = starting_y()
-        render_list.forEach(item => {
-            let [txt, x0, x1, tw] = item,
-                x
-            if (txt) {
-                switch (this.justification) {
-                    case "center": x = (x0 + x1 - tw)/2; break
-                    case "right": x = x1 - tw; break
-                    default: x = x0 // left
-                }
-                ctx.fillText(txt, x, y)
-            }
-            y += ls
-        })
-    }
-*/
 }
 
 // A component of formatted text. It does not know what figure or container it belongs to.
