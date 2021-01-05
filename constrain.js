@@ -3814,7 +3814,9 @@ class WordText extends TextItem {
     layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
         const ctx = figure.ctx,
               font = tc.get("font")
-        font.setContextFont(ctx)
+        let width = this.width
+        if (!width) {
+            font.setContextFont(ctx)
 
     /*
         ctx.strokeStyle = "blue"
@@ -3825,7 +3827,8 @@ class WordText extends TextItem {
         ctx.moveTo(x, y-2); ctx.lineTo(x1, y-2); ctx.stroke()
     */
 
-        const width = ctx.measureText(this.text).width
+            this.width = width = ctx.measureText(this.text).width
+        }
         x += width
         if (x > x1) {
             return {
@@ -3858,6 +3861,7 @@ class WordText extends TextItem {
     }
     render(ctx, x, y) {
         ctx.fillText(this.text, x, y)
+        delete this.width 
     }
 }
 
