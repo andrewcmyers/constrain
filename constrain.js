@@ -3663,15 +3663,21 @@ class ContainedText {
         if (this.verticalAlign == "top") guessed_lines = Math.floor(maxh/lineSpacing)
 
         for (; guessed_lines * lineSpacing <= maxh; guessed_lines++) {
+            let ymax = y1
             switch (this.verticalAlign) {
-                case "center": y = yc - (guessed_lines - 1.5) * lineSpacing * 0.5; break
-                case "bottom": y = y1 - (guessed_lines - 0.75) * lineSpacing; break
+                case "center":
+                    y = yc - (guessed_lines - 1.5) * lineSpacing * 0.5
+                    ymax = y + guessed_lines * lineSpacing
+                    break
+                case "bottom":
+                    y = y1 - (guessed_lines - 0.75) * lineSpacing
+                    break
                 default: break
             }
             let [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
             x0 += inset
             x1 -= inset
-            const ly = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, y1, [])
+            const ly = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, ymax, [])
             if (ly.success) {
                 layout = ly
                 break
@@ -3758,12 +3764,6 @@ class TextItem {
     // }
     layoutIn(figure, textContext, container, x, y, x0, x1, ymax, followingItems) {
         return {success: false, lines: [ {x0, x1, y, items: []} ] }
-    }
-    setBaseline(b) {
-        this.baseline = b
-    }
-    getBaseline(b) {
-        return this.baseline || 0;
     }
     // Render this text item at (x,y) in graphics context ctx.  The font, fill
     // style, and stroke style are assumed already to be set correctly.
