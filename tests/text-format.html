@@ -32,11 +32,11 @@ var figure = new Constrain.Figure(canvas)
 
 with (figure) {
 
-    let r1 = rectangle(), r2 = rectangle(), h = handle(),
+    let r1 = rectangle(), r2 = rectangle(), e = ellipse(), h = handle(),
         l1 = label("Greedy").setFontSize(24), l2 = label("TeX (default)").setFontSize(24)
 
-    equal(r1.w(), r2.w())
-    equal(r1.y1(), r2.y1(), canvasRect().y1())
+    equal(r1.w(), r2.w(), e.w())
+    equal(r1.y1(), r2.y1(), e.y1(), canvasRect().y1())
     equal(l1.y0(), l2.y0(), canvasRect().y0())
     equal(r1.x1(), h.x())
     equal(r1.x0(), canvasRect().x0())
@@ -46,15 +46,15 @@ with (figure) {
     align("left", "abut", l1, r1)
     align("left", "abut", l2, r2)
     align("none", "top", l1, l2)
-    align("abut", "top", r1, hspace(20), r2)
+    align("abut", "top", r1, hspace(20), r2, hspace(20), e)
 
     let dickens = "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair."
 
-    let content = () => text(dickens).setFillStyle("black")
-                                     .setFontName("Times")
-                                     .setJustification("full")
+    setFontName("Times")
+    setFontSize(18)
+
+    let content = () => text(dickens).setJustification("full")
                                      .setVerticalAlign("top")
-                                     .setFontSize(18)
 
     let c1 = content(), c2 = content()
     c1.setLayoutAlgorithm("greedy")
@@ -62,6 +62,7 @@ with (figure) {
 
     r1.addText(c1)
     r2.addText(c2)
+    e.addText(dickens)
 }
 
 </script>

@@ -3717,7 +3717,7 @@ class ContainedText {
                     font.setContextFont(ctx)
                     currentFont = font
                 }
-                if (item.item.text) console.log("rendering " + item.item.text + " font " + font)
+                // if (item.item.text) console.log("rendering " + item.item.text + " font " + font)
                 if (item.fillStyle) ctx.fillStyle = item.fillStyle
                 if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
                 item.item.render(ctx, x, item.y)
