@@ -195,9 +195,7 @@ by providing these parameters.
 <script>
   with (new Constrain.Figure("ellipse_ex_fig")) {
     let e = ellipse("pink", "gray", 3)
-             .addText(text(some_text.substr(0, 140))
-                        .setLayoutAlgorithm("greedy")
-                        .setVerticalAlign("center"))
+             .addText(some_text)
     equal(e.width(),
           times(2, e.height()),
           canvasRect().inset(2).width())
