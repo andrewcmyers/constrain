@@ -3463,12 +3463,11 @@ class Label extends GraphicalObject {
             const tc = new TextContext(null, figure)
             tc.setAll({font: this.font, verticalAlign: "center",
               justification: "center", lineSpacing: 0, inset: 0,
-              layoutAlgorithm: "greedy", strokeStyle: null, baseline: 0,
-              forceLayout: false
+              layoutAlgorithm: "greedy", fillStyle: this.fillStyle, strokeStyle: null, baseline: 0
             })
             const layout = this.text.text.layoutIn(this.figure, tc, this, x, y, x,
                                                    Figure_defaults.LARGE_SPAN, y, [])
-            let w = 0, items = layout[0].items
+            let w = 0, items = layout.lines[0].items
             for (let i = 0; i < items.length; i++) {
                 const item = items[i]
                 item.font.setContextFont(ctx)
@@ -3489,16 +3488,18 @@ class Label extends GraphicalObject {
             const tc = new TextContext(null, figure)
             tc.setAll({font: this.font, verticalAlign: "center",
               justification: "center", lineSpacing: 0, inset: 0,
-              layoutAlgorithm: "greedy", strokeStyle: null, baseline: 0,
+              layoutAlgorithm: "greedy",
+              fillStyle: this.fillStyle,
+              strokeStyle: null, baseline: 0,
               forceLayout: false
             })
             const layout = this.text.text.layoutIn(this.figure, tc, this, 0, 0, 0,
                                                    Figure_defaults.LARGE_SPAN, 0, [])
-            if (!layout) {
+            if (!layout.success) {
                 console.error("Could not lay out a label")
                 return 0
             }
-            let w = 0, items = layout[0].items
+            let w = 0, items = layout.lines[0].items
             for (let i = 0; i < items.length; i++) w += items[i].width
             this.computedWidth = w
         }
