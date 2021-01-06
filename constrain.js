@@ -3923,8 +3923,12 @@ class Whitespace extends TextItem {
                 lines: [{ x0, x1, y, items: []}]
             }
         }
-        const TeXFormat = tc.get("layoutAlgorithm") == "TeX",
+        const TeXFormat = tc.get("layoutAlgorithm") == "TeX"
+        let space = this.width
+        if (!space) {
               space = figure.ctx.measureText(" ").width
+              this.width = space
+        }
         let layout1
         if (x + space <= x1) {
             layout1 = following[0].layoutIn(figure, tc, container, x + space, y, x0, x1, ymax,
@@ -3970,6 +3974,7 @@ class Whitespace extends TextItem {
     render(ctx, x, y) {
         delete this.ymax
         delete this.cache
+        delete this.width
     }
 }
 
