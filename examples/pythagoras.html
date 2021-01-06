@@ -1,12 +1,13 @@
 <html lang=en>
 <head>
   <meta charset="UTF-8">
-  <script src="numeric-1.2.6.js"></script>
-  <script src="constrain.js"></script>
-  <script src="constrain-ps.js"></script>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <script src="../constrain-ps.js"></script>
   <style>
     body { font-family: sans-serif }
     h1 { text-align: center }
+    p { text-justify: interword; text-align: justify; line-height: 1.5em }
     #content { margin: 0 auto; max-width: 80ex }
   </style>
 </head>
@@ -23,8 +24,8 @@
 The Pythagorean Theorem says that for any right triangle
 with perpendicular sides \(a\) and \(b\), and long side (hypoteneuse) \(c\),
 the equation \(a^2 + b^2 = c^2\) holds. We can see that this is true by
-considering the following diagram. You can drag the diamond to change the size
-of the right triangles.
+considering the following diagram. You can drag the diamond to change the shape
+of the right triangles shown in yellow.
 </p>
 
 <canvas style="width: 700px; height: 400px"></canvas>
@@ -60,8 +61,8 @@ with (figure) {
     equal(minus(h1.y(), s1.y0()), a)
     // align("none", "center", h1, hand)
 
-    const asq = square().setFillStyle("#eaa").addText(text("a×a").atCenter())
-    const bsq = square().setFillStyle("#aea").addText(text("b×b").atCenter())
+    const asq = square().setFillStyle("#eaa").addText("a", superscript("2"))
+    const bsq = square().setFillStyle("#aea").addText("b", superscript("2"))
     align("left", "top", asq, s1)
     align("right", "none", asq, v1)
     align("right", "bottom", bsq, s1)
@@ -80,7 +81,7 @@ with (figure) {
           p2 = s2.ul().toBottom(a),
           p3 = s2.ur().toLeft(a),
           p4 = s2.lr().toTop(a)
-    polygon([p1, p2, p3, p4]).setFillStyle("#ccf").at(label("c×c"))
+    polygon([p1, p2, p3, p4]).setFillStyle("#ccf").addText("c", superscript("2"))
     rt(p1, p2, s2.ll())
     rt(p2, p3, s2.ul())
     rt(p3, p4, s2.ur())

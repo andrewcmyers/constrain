@@ -8,18 +8,18 @@
 
 ## Demos
 
-[Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/spiral.html) (Drag the diamond!)
+[Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
 [Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/reveal-demo.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
 [CS 4120](https://www.cs.cornell.edu/courses/cs4120/2020sp/notes.html?id=bottomup)
 
-[Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/pythagoras.html)
+[Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
-[Animated solving of triangle constraints](https://andrewcmyers.github.io/constrain/triangles.html)
+[Animated solving of triangle constraints](https://andrewcmyers.github.io/constrain/examples/triangles.html)
 
-[Simple template page for using Constrain](https://andrewcmyers.github.io/constrain/template.html)
+[Simple template page for using Constrain](https://andrewcmyers.github.io/constrain/examples/template.html)
 
 ## Requirements
 

@@ -1,0 +1,37 @@
+<html>
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+    h1 {
+        font-family: sans-serif
+    }
+</style>
+  
+</head>
+<body>
+<h1>Label formatting test</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+Constrain.fullWindowCanvas(canvas)
+var figure = new Constrain.Figure(canvas)
+
+with (figure) {
+    align("left", "abut",
+        label("simple", 18, "Times-Italic"),
+        label(text("a", subscript("2"))))
+}
+
+</script>
+</body>
+<script>
+    Constrain.autoResize()
+    figure.start()
+</script>
+</html>

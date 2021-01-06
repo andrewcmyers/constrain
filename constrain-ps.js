@@ -365,11 +365,11 @@ class PrintContext {
     }
     parseFont() {
         let fontname = this.font, style = null, ignore, size
-        let nostyle = fontname.match("^([1-9][0-9]*)px ([A-Za-z-]+)$")
+        let nostyle = fontname.match("^([1-9][.0-9]*)px ([A-Za-z-]+)$")
         if (nostyle) {
             [ignore, size, fontname] = nostyle
         } else {
-            let with_style = fontname.match("^([A-Za-z]+) ([1-9][0-9]*)px ([A-Z][A-Za-z- ]*)$")
+            let with_style = fontname.match("^([A-Za-z]+) ([1-9][.0-9]*)px ([A-Z][A-Za-z- ]*)$")
             if (!with_style) return;
             [ignore, style, size, fontname] = with_style
         }

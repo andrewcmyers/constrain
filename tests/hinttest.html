@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 200px; height: 200px;
+    }
+  </style>
+</head>
+<body>
+<canvas id=handle_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("handle_ex_fig")) {
+    let
+       l = line()
+       // ,
+       // h1 = handle()
+    //  hint(h1.x(), 10); hint(h1.y(), 20)
+        // equal(l.p2().x(), variable("hx_hint", 150))
+        // equal(l.p2().y(), variable("hy_hint", 150))
+          equal(projection(l.p2(),0,2), variable("hx_hint", 150))
+          equal(projection(l.p2(),1,2), variable("hy_hint", 150))
+
+      // equal(l.x0(), l.y0(), 0)
+    // equal(l.x1(), h1.x1())
+    // equal(l.y1(), h1.y1())
+     // equal(l.p1(), point(0,0))
+     // equal(l.p2(), point(100,100))
+    // polygon([h1, p2, p3])
+    start()
+  }
+</script>
+
+</body>
+</html>

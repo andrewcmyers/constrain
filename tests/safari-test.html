@@ -1,0 +1,42 @@
+<html>
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+</style>
+  
+</head>
+<body>
+<h1>Graph Layout Test Page</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+Constrain.fullWindowCanvas(canvas)
+canvas.style.backgroundColor = "#eee"
+
+with (new Constrain.Figure(canvas)) {
+    let s = square().setW(300).setFillStyle("cyan")
+    align("center", "center", s, canvasRect())
+    let h = horzLine().setStartArrow("arrow").setEndArrow("arrow")
+    let v = vertLine().setStartArrow("arrow").setEndArrow("arrow")
+    pin(h.cl(), canvasRect().cl())
+    pin(h.cr(), s.cl())
+    pin(v.uc(), canvasRect().uc())
+    pin(v.lc(), s.uc())
+    let l = line().setStartArrow("arrow").setEndArrow("arrow")
+    pin(l.ul(), canvasRect().ul())
+    pin(l.lr(), s.ul())
+    start()
+}
+
+</script>
+</body>
+<script>
+    Constrain.autoResize()
+</script>
+</html>

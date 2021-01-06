@@ -45,7 +45,11 @@ const Figure_defaults = {
     FRAMERATE : 60,
     FONT_NAME : "sans-serif",
     FONT_STYLE : "",
-    LINE_SPACING : 1.3
+    LINE_SPACING : 1.3,
+    SUPERSCRIPT_OFFSET : 0.44,
+    SUBSCRIPT_OFFSET : -0.16,
+    SCRIPTSIZE : 0.60,
+    LARGE_SPAN : 10000.0
 }
 
 // A Figure is attached to a canvas and knows how to render itself. It has a
@@ -888,13 +892,19 @@ class Figure {
         return r
     }
     box() { return new Box(this) }
-    text(...t) { return new FormattedText(this, ...t) }
+    text(...t) { return new ContainedText(this, ...t) }
+    superscript(t) {
+        return new SuperscriptText(t)
+    }
+    subscript(t) {
+        return new SubscriptText(t)
+    }
     textFrame(txt, fillStyle) {
-        if (typeof txt == "string") txt = new FormattedText(this, txt)
+        if (typeof txt == "string") txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
-    label(string, fontSize, fontName, fillStyle) {
-        return new Label(this, string, fontSize, fontName, fillStyle)
+    label(text, fontSize, fontName, fillStyle) {
+        return new Label(this, text, fontSize, fontName, fillStyle)
     }
     lineLabel(string, position, offset) {
         return new LineLabel(this, string, position, offset)
@@ -2642,9 +2652,13 @@ class GraphicalObject extends Box {
         this.lineDash = d
         return this
     }
-    addText(t) {
-        if (typeof t == "string") t = this.figure.text(t)
-        this.text = t
+    addText(...t) {
+        t = t.flat()
+        if (t.length == 1 && t[0].constructor == ContainedText) {
+            this.text = t[0]
+        } else {
+            this.text = this.figure.text(...t)
+        }
         return this
     }
 // rendering control
@@ -3010,6 +3024,9 @@ class Polygon extends GraphicalObject {
             ctx.stroke()
         }
         ctx.restore()
+        if (this.text) {
+            this.text.renderIn(this.figure, this)
+        }
     }
     variables() {
         let result = GraphicalObject.prototype.variables.call(this)
@@ -3342,7 +3359,7 @@ class Font {
             this.fontSize = Figure_defaults.FONT_SIZE
             this.fontName = Figure_defaults.FONT_NAME
         } else {
-            this.copyFrom(figure.getFont())
+            this.copyFrom(figure.font)
         }
     }
     copyFrom(font) {
@@ -3360,6 +3377,9 @@ class Font {
         this.fontName = name
         this.fontObj = null
         return this
+    }
+    getName() {
+        return this.fontName
     }
     setSize(s) {
         this.fontSize = s
@@ -3389,17 +3409,27 @@ class Font {
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
-        if (fillStyle != undefined) this.fillStyle = fillStyle
+        this.text = text // either a String or a TextItem
+        if (text.constructor == ContainedText) {
+            this.font = text.font
+            if (fillStyle != undefined) {
+                this.fillStyle = this.text.fillStyle = fillStyle
+            } else {
+                this.fillStyle = figure.strokeStyle
+            }
+        } else {
+            this.font = new Font(figure)
+            if (fillStyle != undefined) this.fillStyle = fillStyle
             else this.fillStyle = figure.strokeStyle
-        this.text = text
-        this.font = new Font(figure)
-        this.setStrokeStyle(undefined)
+        }
         if (fontSize) this.font.setSize(fontSize)
         if (fontName) this.font.setName(fontName)
+
+        this.setStrokeStyle(undefined)
         this.computeWidth(figure.ctx)
 
         // Have to override GraphicalObject in the object itself
-        this.w = function() { return this.width }
+        this.w = function() { return this.computedWidth }
         this.h = function() { return this.font.getSize() }
         this.variables = function() { return [this.x(), this.y()] }
     }
@@ -3417,22 +3447,62 @@ class Label extends GraphicalObject {
         const x = evaluate(this.x0(), valuation),
               y = evaluate(figure.average(this.y(), this.y1()), valuation)
         // console.log("rendering " + this.text + " at " + x + "," + y)
-        if (this.fillStyle) {
-            ctx.fillStyle = this.fillStyle
-            ctx.fillText(this.text, x, y)
-        }
-        if (this.strokeStyle) {
-            ctx.strokeStyle = this.strokeStyle
-            if (this.lineWidth) {
-                ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        if (this.text.constructor == String) {
+            if (this.fillStyle) {
+                ctx.fillStyle = this.fillStyle
+                ctx.fillText(this.text, x, y)
             }
-            ctx.strokeText(this.text, x, y)
+            if (this.strokeStyle) {
+                ctx.strokeStyle = this.strokeStyle
+                if (this.lineWidth) {
+                    ctx.lineWidth = evaluate(this.lineWidth, valuation)
+                }
+                ctx.strokeText(this.text, x, y)
+            }
+        } else {
+            const tc = new TextContext(null, figure)
+            tc.setAll({font: this.font, verticalAlign: "center",
+              justification: "center", lineSpacing: 0, inset: 0,
+              layoutAlgorithm: "greedy", fillStyle: this.fillStyle, strokeStyle: null, baseline: 0
+            })
+            const layout = this.text.text.layoutIn(this.figure, tc, this, x, y, x,
+                                                   Figure_defaults.LARGE_SPAN, y, [])
+            let w = 0, items = layout.lines[0].items
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                item.font.setContextFont(ctx)
+                item.item.render(ctx, x + w, item.y)
+                w += item.width
+            }
         }
-
+    }
+    // A label will stretch as far as necessary to fit its text
+    xSpan(y0, y1, valuation) {
+        return [0, Figure_defaults.LARGE_SPAN]
     }
     computeWidth(ctx) {
         this.installFont()
-        this.width = ctx.measureText(this.text).width
+        if (this.text.constructor == String) {
+            this.computedWidth = ctx.measureText(this.text).width
+        } else {
+            const tc = new TextContext(null, figure)
+            tc.setAll({font: this.font, verticalAlign: "center",
+              justification: "center", lineSpacing: 0, inset: 0,
+              layoutAlgorithm: "greedy",
+              fillStyle: this.fillStyle,
+              strokeStyle: null, baseline: 0,
+              forceLayout: false
+            })
+            const layout = this.text.text.layoutIn(this.figure, tc, this, 0, 0, 0,
+                                                   Figure_defaults.LARGE_SPAN, 0, [])
+            if (!layout.success) {
+                console.error("Could not lay out a label")
+                return 0
+            }
+            let w = 0, items = layout.lines[0].items
+            for (let i = 0; i < items.length; i++) w += items[i].width
+            this.computedWidth = w
+        }
     }
 
     // Set font size
@@ -3485,27 +3555,38 @@ class LineLabel {
     setFontSize(s) { this.font.setSize(s); return this }
 }
 
-// A FormattedText is some text that can be formatted inside
-// a graphical object. It is not a graphical object itself.
-// 
-// TODO measure cost of formatting?
-// TODO markdown support?
-class FormattedText {
-    constructor(figure, ...text) {
-        this.words = []
-        this.font = new Font(figure)
-        this.lineSpacing = figure.lineSpacing
-        this.inset = 3
-        text.forEach(t => {
-            t = t.toString()
-            t.split(/  */).forEach(w => {
-                if (w) this.words.push(w)
-            })
-        })
+function countItems(ly) {
+    // if (ly.itemCount) return ly.itemCount
+    let c = 0
+    const lines = ly.lines, nlines = lines.length
+    for (let i = 0; i < nlines; i++) {
+        c += lines[i].items.length
     }
-    setFillStyle(s) {
-        this.fillStyle = s
-        return this
+    // ly.itemCount = c
+    return c
+}
+
+// A ContainedText is some text that can be formatted inside
+// a graphical object. It is not a graphical object itself.
+// It knows how to format itself and render into a containing
+// shape. It has methods to control its style (e.g., inset and
+// centering) and the default style of the text it contains.
+// 
+class ContainedText {
+    constructor(figure, ...text) {
+        this.figure = figure
+        this.justification = "center"
+        this.verticalAlign = "center"
+        this.lineSpacing = figure.lineSpacing
+        this.font = figure.font
+        this.fillStyle = figure.strokeStyle
+        this.strokeStyle = null
+        this.inset = this.font.getSize() / 3
+        if (text.length > 1 || text[0].constructor == String) {
+            this.text = new ConcatText(...text)
+        } else {
+            this.text = text
+        }
     }
     setLineSpacing(s) {
         this.lineSpacing = s
@@ -3515,12 +3596,12 @@ class FormattedText {
         this.inset = ins
         return this
     }
-    // justification can be "left" (default) or "center"
+    // justification can be "left", "center" (default), or "full"
     setJustification(j) {
         this.justification = j
         return this
     }
-    // can be "top" (default), "center", or "bottom"
+    // can be "top", "center" (default), or "bottom"
     setVerticalAlign(va) {
         this.verticalAlign = va
         return this
@@ -3530,97 +3611,431 @@ class FormattedText {
         this.setVerticalAlign("center")
         return this
     } 
-    // Draw this text inside a graphical object
-    renderIn(figure, container) {
-        const ctx = figure.ctx, valuation = figure.currentValuation,
-              inset = this.inset, txt = this
-        const ls = evaluate(this.lineSpacing, valuation) * this.font.getSize(),
-              space = ctx.measureText(" ").width
-        this.font.setContextFont(ctx)
-        ctx.fillStyle = this.fillStyle
-        const total_w = ctx.measureText(this.words.join(" ")).width,
-              max_w = evaluate(container.w(), valuation)
-        if (max_w <= 0) return
-        let y0 = evaluate(container.y0(), valuation) + this.font.getSize() + inset,
-            y1 = evaluate(container.y1(), valuation) - inset,
-            yc = evaluate(container.y(), valuation),
-            wds = "",
-            i, x, y, x0, x1, tw, render_list,
-            n = this.words.length,
-            have_word = false, have_span = false,
-            guessed_lines = this.linesUsed || Math.ceil(total_w / max_w),
-            linesUsed = 0,
-            success = false,
-            top_aligned = (!this.verticalAlign || this.verticalAlign == "top")
-        const starting_y = () => {
-            switch (this.verticalAlign) {
-                case "center": return yc - (guessed_lines - 1.5) * ls * 0.5; break
-                case "bottom": return y1 - (guessed_lines - 0.75) * ls; break
-                case "top":
-                default: return y0
-            }
-        }
-        for (;;) {
-            // console.log("Trying with " + guessed_lines + " lines")
-            y = starting_y()
-            linesUsed = 0
-            i = 0
-            render_list = []
-            for (; y <= y1 && i < n; y += ls) {
-                [x0, x1] = container.xSpan(y, y - ls, valuation)
-                x0 = x0 + inset
-                x1 = x1 - inset
-                let w = x1 - x0, j
-                let wds = ""
-                for (j = i; j < n; j++) {
-                    const wds2 = wds ? wds + " " + this.words[j] : this.words[j],
-                        tw2 = ctx.measureText(wds2).width
-                    if (tw2 > w) break
-                    wds = wds2
-                    tw = tw2
-                }
-                render_list.push([wds, x0, x1, tw])
-                linesUsed++
-                i = j
-                if (i == n) break // success?
-                if (!top_aligned && linesUsed >= guessed_lines && i != n) break
-            }
-            if (linesUsed <= guessed_lines && i == n) break // did it in budget
-            if (i == n && top_aligned) break // overshot, but it doesn't matter
-            guessed_lines++
-            if (guessed_lines * ls > y1 - y0) break // can't fit
-        }
-        y = starting_y()
-        render_list.forEach(item => {
-            let [txt, x0, x1, tw] = item,
-                x
-            if (txt) {
-                switch (this.justification) {
-                    case "center": x = (x0 + x1 - tw)/2; break
-                    case "right": x = x1 - tw; break
-                    default: x = x0 // left
-                }
-                ctx.fillText(txt, x, y)
-            }
-            y += ls
-        })
+    setFont(f) {
+        this.font = f
+        return this
     }
     // Set font size
     setFontSize(s) {
         this.font.setSize(s)
         return this
     }
-
     // Set font name
     setFontName(f) {
         this.font.setName(f)
         return this
     }
-
     // Set font style
     setFontStyle(s) {
         this.font.setStyle(s)
         return this
+    }
+    setFillStyle(s) {
+        this.fillStyle = s
+        return this
+    }
+    setLayoutAlgorithm(a) {
+        this.layoutAlgorithm = a
+        return this
+    }
+
+    // Draw this text inside a graphical object (container)
+    renderIn(figure, container) {
+        const ctx = figure.ctx,
+              valuation = figure.currentValuation,
+              font = this.font,
+              lineSpacing = evaluate(this.lineSpacing, valuation) * font.getSize(),
+              layoutAlgorithm = this.layoutAlgorithm || "TeX",
+              baseline = 0,
+              strokeStyle = this.strokeStyle || null,
+              maxh = evaluate(container.h(), valuation),
+              inset = this.inset,
+              justification = this.justification,
+              verticalAlign = this.verticalAlign,
+              fillStyle = this.fillStyle,
+              tc = new TextContext(null, figure),
+              y0 = evaluate(container.y0(), valuation) + font.getSize() + inset,
+              y1 = evaluate(container.y1(), valuation) - inset,
+              yc = evaluate(container.y(), valuation)
+        let layout = {success: false, lines: []}
+        tc.setAll({ font, verticalAlign, justification, fillStyle, lineSpacing, inset,
+                    layoutAlgorithm, strokeStyle, baseline })
+        let guessed_lines = 1, y = y0
+        if (this.verticalAlign == "top") guessed_lines = Math.floor(maxh/lineSpacing)
+
+        for (; guessed_lines * lineSpacing <= maxh; guessed_lines++) {
+            let ymax = y1
+            switch (this.verticalAlign) {
+                case "center":
+                    y = yc - (guessed_lines - 1.5) * lineSpacing * 0.5
+                    ymax = y + guessed_lines * lineSpacing
+                    break
+                case "bottom":
+                    y = y1 - (guessed_lines - 0.75) * lineSpacing
+                    break
+                default: break
+            }
+            let [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
+            x0 += inset
+            x1 -= inset
+            const ly = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, ymax, [])
+            if (ly.success) {
+                layout = ly
+                break
+            }
+            if (countItems(ly) > countItems(layout)) layout = ly
+        }
+
+        if (!layout.success) {
+            console.log("Could not lay out text items in container " + container)
+        }
+
+        // position all the items according to the current
+        // justification policy and draw them.
+        let currentFont = null, stretch = (justification == "full")
+        const lines = layout.lines, last = lines.length - 1
+        for (let j = 0; j < lines.length; j++) {
+            const line = lines[j]
+            const {x0, x1, y, items} = line
+            let lw = 0, stretchers = 0
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                lw += item.width
+                stretchers += item.stretch
+            }
+            let extra = x1 - x0 - lw
+            let x = x0
+            switch (justification) {
+                case "left":
+                case "full": x = x0; break
+                case "center": x = x0 + extra/2; break
+                case "right": x = x0 + extra; break
+            }
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i],
+                        font = item.font
+                if (font && font != currentFont) {
+                    font.setContextFont(ctx)
+                    currentFont = font
+                }
+                // if (item.item.text) console.log("rendering " + item.item.text + " font " + font)
+                if (item.fillStyle) ctx.fillStyle = item.fillStyle
+                if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
+                item.item.render(ctx, x, item.y)
+                if (stretch && stretchers > 0 && j != last) {
+                    x += (extra * item.stretch)/stretchers
+                }
+                x += item.width
+            }
+        }
+    }
+}
+
+// A component of formatted text. It does not know what figure or container it belongs to.
+class TextItem {
+    constructor() {
+    }
+
+    // Tries to format this text item and a sequence of
+    // following items into the container
+    // starting from baseline position (x,y)
+    // without extending below y position ymax, and with x1 as the
+    // right margin of the current line.
+    // The result is an object with two fields:
+    //  {
+    //     success: a boolean indicating whether layout was completed
+    //     lines: an array each of whose elements describe one formatted line.
+    //            in the case where success is false, lines contains an incomplete
+    //            layout.
+    //  }
+    // A lines array element is an object with
+    // the following properties:
+    // { x0:    the left margin of the line
+    //   x1:    the right margin of the line
+    //   y:     the vertical position of the baseline
+    //   items: an array of items of the following form:
+    //     { item: the actual item to render, or null for whitespace
+    //       width: the minimum width
+    //       baseline: y offset from baseline (negative)
+    //       font: the font
+    //       fillStyle: the fill style
+    //       strokeStyle: the stroke style (if any)
+    //       stretch: the amount of stretchiness (typically 0 for non-whitespace)
+    //     }
+    // }
+    layoutIn(figure, textContext, container, x, y, x0, x1, ymax, followingItems) {
+        return {success: false, lines: [ {x0, x1, y, items: []} ] }
+    }
+    // Render this text item at (x,y) in graphics context ctx.  The font, fill
+    // style, and stroke style are assumed already to be set correctly.
+    // Default: do nothing
+    render(ctx, x, y) {}
+}
+
+//  A context for rendering and laying out text items, to be provided at the point
+//  of rendering.
+class TextContext {
+    constructor(parent, figure) {
+        this.properties = {}
+        this.figure = figure
+        this.parent = parent
+    }
+    key(name) {
+        return "*" + name
+    }
+    set(name, value) {
+        this.properties[this.key(name)] = value
+    }
+    setAll(dict) {
+        for (let key in dict) {
+            this.properties[this.key(key)] = dict[key]
+        }
+    }
+    get(name) {
+        const key = this.key(name),
+              val = this.properties[key]
+        if (val !== undefined) return val
+        if (this.parent) {
+            const v2 = this.parent.get(name)
+            this.properties[key] = v2
+            return v2
+        }
+        console.error("Requested undefined text context attribute " + name)
+        return undefined
+    }
+}
+
+// A text item that consists of a simple string that should not be broken.
+class WordText extends TextItem {
+    constructor(t) {
+        super()
+        this.text = t
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const ctx = figure.ctx,
+              font = tc.get("font")
+        let width = this.width
+        if (!width) {
+            font.setContextFont(ctx)
+
+    /*
+        ctx.strokeStyle = "blue"
+        ctx.beginPath()
+        ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke()
+        ctx.strokeStyle = "red"
+        ctx.beginPath()
+        ctx.moveTo(x, y-2); ctx.lineTo(x1, y-2); ctx.stroke()
+    */
+
+            this.width = width = ctx.measureText(this.text).width
+        }
+        x += width
+        if (x > x1) {
+            return {
+                success: false,
+                lines: [{x0, x1, y, items: []}]
+            }
+        }
+        let lines = []
+        let item = {
+            item: this,
+            width: width,
+            y: y - tc.get("baseline"),
+            font: font,
+            fillStyle: tc.get("fillStyle"),
+            // strokeStyle: tc.get("strokeStyle"),
+            stretch: 0
+        }
+        if (following.length > 0) {
+            const layout = following[0].layoutIn(figure, tc, container, x, y,
+                                                 x0, x1, ymax, following.slice(1))
+            layout.lines[0].items.unshift(item)
+            return layout
+        }
+        return {
+            success: true,
+            lines: [{
+                x0, x1, y, items: [ item ]
+            }]
+        }
+    }
+    render(ctx, x, y) {
+        ctx.fillText(this.text, x, y)
+        delete this.width 
+    }
+}
+
+var ws_counter = 0
+
+class Whitespace extends TextItem {
+    constructor(figure) {
+        super(figure)
+        this.index = ws_counter++
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        function copyLayout(ly) {
+            if (!ly) return false
+            return {
+                success: ly.success,
+                lines: ly.lines.map(line => ({
+                    x0: line.x0,
+                    x1: line.x1,
+                    y: line.y,
+                    items: line.items.map(item => ({
+                        item: item.item,
+                        width: item.width,
+                        y: item.y,
+                        baseline: item.baseline,
+                        stretch: item.stretch
+                    }))
+                }))
+            }
+        }
+        // Measure the 'cost' of a layout that starts from position x on the first line.
+        // Note that the last line is ignored.
+        function layoutCost(ly) {
+            let cost = ly.success ? 0 : 100000
+            const lines = ly.lines
+            for (let i = 0; i < lines.length - 1; i++) {
+                const line = ly.lines[i], items = line.items
+                let span = (i == 0)
+                    ? line.x1 - x
+                    : line.x1 - line.x0
+                for (let j = 0; j < items.length; j++) {
+                    span -= items[j].width
+                }
+                cost += span * span * span
+            }
+            return cost
+        }
+        if (this.ymax != ymax) {
+            this.ymax = ymax
+            this.cache = {}
+        }
+        const key = `${x},${y}`
+        if (this.cache.hasOwnProperty(key)) {
+            return copyLayout(this.cache[key])
+        }
+        // console.log("Trying to lay out ws " + this.index + " at (" + x  + ","  + y + ")")
+        if (following.length == 0) {
+            return {
+                success: true,
+                lines: [{ x0, x1, y, items: []}]
+            }
+        }
+        const TeXFormat = tc.get("layoutAlgorithm") == "TeX",
+              space = figure.ctx.measureText(" ").width
+        let layout1
+        if (x + space <= x1) {
+            layout1 = following[0].layoutIn(figure, tc, container, x + space, y, x0, x1, ymax,
+                following.slice(1)) 
+            layout1.lines[0].items.unshift({
+                item: this,
+                width: space,
+                stretch: 1
+            })
+        } else {
+            layout1 = {
+                success: false,
+                lines: [ { x0, x1, y, items: [] } ]
+            }
+        }
+        this.cache[key] = copyLayout(layout1)
+        if (layout1.success && !TeXFormat) {
+            return layout1
+        }
+        const ls = tc.get("lineSpacing"), inset = tc.get("inset")
+        if (y + ls > ymax) {
+            return layout1
+        }
+        let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
+        nx0 += inset
+        nx1 -= inset
+        const layout2 = following[0].layoutIn(figure, tc, container, nx0, y + ls, nx0, nx1, ymax,
+                                              following.slice(1))
+        layout2.lines.unshift({x0, x1, y, items: []})
+        const s1 = layout1.success, s2 = layout2.success
+        if (s1 && !s2) return layout1
+        if (s1 && s2) {
+            const cost1 = layoutCost(layout1), cost2 = layoutCost(layout2)
+            if (cost1 <= cost2) {
+                return layout1
+            }
+        }
+        if (!s1 && !s2 && countItems(layout1) >= countItems(layout2)) return layout1
+
+        this.cache[key] = copyLayout(layout2)
+        return layout2
+    }
+    render(ctx, x, y) {
+        delete this.ymax
+        delete this.cache
+    }
+}
+
+class ConcatText extends TextItem {
+    // The arguments (other than the figure) can be either other ContainedText
+    // objects or strings. Strings are automatically split into words
+    // around whitespace
+    constructor(...text) {
+        super()
+        this.items = []
+        text.forEach(t => {
+            if (t.constructor == String) { 
+                let wds = 0;
+                t.split(/  */).forEach(w => {
+                    if (w) {
+                        if (wds++) {
+                            this.items.push(new Whitespace())
+                        }
+                        this.items.push(new WordText(w))
+                    }
+                })
+            } else {
+                if (!t.layoutIn) console.error("Can't concatenate non-text item")
+                else this.items.push(t)
+            }
+        })
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        return this.items[0].layoutIn(figure, tc, container, x, y, x0, x1, ymax,
+            this.items.slice(1).concat(following))
+    }
+}
+
+class SuperscriptText extends TextItem {
+    constructor(text) {
+        super()
+        this.text = (text.constructor == String) ? new WordText(text) : text
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const baseline = tc.get("baseline"), font = tc.get("font"),
+              fontSize = font.getSize()
+        tc = new TextContext(tc, figure)
+        const scriptFont = new Font(figure)
+        scriptFont.copyFrom(font)
+        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        tc.set("font", scriptFont)
+        tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
+        return this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
+    }
+}
+
+class SubscriptText extends TextItem {
+    constructor(text) {
+        super()
+        this.text = (text.constructor == String) ? new WordText(text) : text
+    }
+    layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        const baseline = tc.get("baseline"), font = tc.get("font"),
+              fontSize = font.getSize()
+        tc = new TextContext(tc, figure)
+        const scriptFont = new Font(figure)
+        scriptFont.copyFrom(font)
+        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        tc.set("font", scriptFont)
+        tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
+        return this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
     }
 }
 
@@ -3698,6 +4113,9 @@ class Handle extends InteractiveObject {
         ctx.strokeStyle = this.strokeStyle
         ctx.setLineDash([])
         ctx.stroke()
+    }
+    setStrokeStyle(style) {
+        this.strokeStyle = style
     }
     mousedown(x, y, e) {
         if (this.figure.currentValuation === undefined)
@@ -4035,7 +4453,7 @@ function autoResize() {
     Circle: Circle,
     Ellipse: Ellipse,
     Polygon: Polygon,
-    FormattedText: FormattedText,
+    ContainedText: ContainedText,
     InteractiveObject: InteractiveObject,
     CanvasRect: CanvasRect,
     Button: Button,
@@ -4064,6 +4482,7 @@ function autoResize() {
     evaluate: evaluate,
     fullWindowCanvas: fullWindowCanvas,
     setupTouchListeners: setupTouchListeners,
+    Figure_defaults : Figure_defaults,
     isFigure: isFigure,
     statistics: statistics,
     currentValue: currentValue,

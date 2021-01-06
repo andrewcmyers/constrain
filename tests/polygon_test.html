@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 200px; height: 200px;
+    }
+  </style>
+</head>
+<body>
+<canvas id=polygon></canvas>
+<script>
+  var fig = new Constrain.Figure("polygon")
+  with (fig) {
+    let p1 = point(), p2 = point(), p3 = point()
+    equal(100, distance(p1, p2),
+          distance(p2, p3), distance(p1, p3))
+    equal(p2.y(), p3.y())
+    polygon([p1, p2, p3], "#dfd")
+    start()
+  }
+</script>
+
+</body>
+</html>

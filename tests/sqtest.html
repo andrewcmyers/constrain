@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <script src="numeric-1.2.6.js"></script>
+  <script src="constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 200px; height: 200px;
+    }
+  </style>
+</head>
+<body>
+<canvas id=handle_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("handle_ex_fig")) {
+    let r = rectangle()
+     equal(r.x(), r.y(), 90)
+    start()
+  }
+</script>
+
+</body>
+</html>

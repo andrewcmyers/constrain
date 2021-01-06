@@ -195,7 +195,7 @@ by providing these parameters.
 <script>
   with (new Constrain.Figure("ellipse_ex_fig")) {
     let e = ellipse("pink", "gray", 3)
-             .addText(text(some_text).atCenter())
+             .addText(some_text)
     equal(e.width(),
           times(2, e.height()),
           canvasRect().inset(2).width())
@@ -215,7 +215,9 @@ parameters.
 
 <h4>polygon(points, [fillStyle], [strokeStyle], [lineWidth])</h4>
 <p>
-A closed polygon connecting the given array of points (class <code>Polygon</code>).
+A closed polygon connecting the given array of points (class <code>Polygon</code>). For
+example, we can draw an equilateral triangle by constraining the three sides to have the same
+length.
 
 <pre id="polygon_ex_code" class=code></pre>
 <div id="polygon_ex">
@@ -283,9 +285,23 @@ like B-splines (which are smoother) in the middle.
 
 <h3>Text</h3>
 
+<p>
+Text is not a graphical object but can be part of a graphical object. Where text is
+expected, an ordinary string may be used. Alternatively, the method <code>text()</code>
+may be applied to a string or a sequence of strings to construct a text object. Whitespace
+in those strings is interpreted as a place where line breaks are allowed. Text objects
+support the methods of <code>ContainedText</code> to control their appearance.
+</p>
+<p>Constrain uses a variant of the TeX formatting algorithm by default, in
+which line breaks are chosen to minimize the sum of the cubes of excess space
+on each line. If it is not possible to lay out text in the available space, Constrain
+will choose the formatting that maximizes the amount of text that does fit.
+</p>
+
 <h4>label(text, [fontSize], [fontName], [fillStyle])</h4>
 <p>
-Creates a graphical object that is a simple line of text.
+Creates a graphical object that is a simple line of text. The text may either be a string
+or a text object created using <code>text()</code>.
 </p>
 
 <h4>textFrame(text, [fillStyle])</h4>
@@ -302,7 +318,8 @@ support adding text with similar formatting capability.
 <script>
   with (new Constrain.Figure("textFrame_ex_fig")) {
     let r = rectangle(),
-        tf = textFrame(some_text)
+        tf = textFrame(text(some_text)
+                       .setJustification("full"))
     align("left right", "top bottom",
            tf.expand(15), r.expand(10), canvasRect())
 
@@ -340,6 +357,20 @@ currently supported for simple lines, although they ought to be.)
 <script>
     show_example("linelabel_ex_code", "linelabel_ex")
 </script>
+
+<h4>text(...)</h4>
+<p>
+Create a text object from a sequence of strings. Each string may contain whitespace to indicate
+potential line breaks.
+</p>
+
+<h4>subscript(text)<br>
+superscript(text)</h4>
+<p>
+Create a text object that places its text in subscript or superscript position while reducing
+the font size.
+</p>
+
 
 <h3>Interactive objects</h3>
 
@@ -951,7 +982,7 @@ is an array specifying the lengths of the dash segments.
 <p>
 Graphical objects generally have the ability to hold some text, which is specified
 by calling the <code>addText</code> method. The argument should be either a string 
-or a <code>FormattedText</code> object.
+or a text object.
 
 <h3>Rectangle methods</h3>
 
@@ -983,10 +1014,10 @@ This method sets the scale of the arrowhead if there is any.
 <p>Add a label to the connector. The text, position, and offset of the label are specified by
 the <code>LineLabel</code> object itself.</p>
 
-<h3>FormattedText methods</h3>
+<h3>ContainedText methods</h3>
 <p>
-An object of class <code>FormattedText</code> can be created by the method 
-<code>text</code> of <code>Figure</code> objects.  A <code>FormattedText</code>
+An object of class <code>ContainedText</code> can be created by the method 
+<code>text</code> of <code>Figure</code> objects.  A <code>ContainedText</code>
 is not a graphical object; to be useful, it needs to be added as the text
 associated with a graphical object and typically, some of the following methods
 are used to control its appearance.
@@ -1015,6 +1046,16 @@ This is equivalent to setting both the justification and vertical alignment to <
 
 <h4>setFontSize(s), setFontName(f)</h4>
 <p>These methods act like the corresponding methods on labels.</p>
+
+
+<h4>setLayoutAlgorithm(algorithm)</h4>
+<p>
+This method can be used to change the layout algorithm.
+Currently there are two choices: <code>"TeX"</code> (the default) and
+<code>"greedy"</code>. The latter is faster but chooses line breaks greedily
+and tends to find uglier layouts. Constrain does not do automatic hyphenation
+ala TeX.
+</p>
 
 <h2>Animation</h2>
 
