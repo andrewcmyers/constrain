@@ -3518,7 +3518,7 @@ class Label extends GraphicalObject {
         return this
     }
 
-    // Set font name
+    // Set font style
     setFontStyle(n) {
         this.font.setStyle(n)
         return this
