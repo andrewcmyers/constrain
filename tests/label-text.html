@@ -25,7 +25,11 @@ var figure = new Constrain.Figure(canvas)
 with (figure) {
     align("left", "abut",
         label("simple", 18, "Times-Italic"),
-        label(text("a", subscript("2"))))
+        label(text("a", subscript("2"), "b", superscript("3"), "c", subscript("4")))
+        // label(text("complex", superscript("2"), "b", subscript("2")))
+        // label(text("two words"))
+        // label(text("word"))
+    )
 }
 
 </script>

@@ -3405,11 +3405,95 @@ class Font {
     }
 }
 
+// Find a layout for the given sequence of items in context, within the container,
+// starting from position (x, y) and not exceeding ymax, and assuming that the
+// line that position is on extends from x0 to x1. The input sequence
+// citems is an array of objects ("context-items") with the following structure:
+//    {
+//       item: the text item 
+//       context: the context of the item (TextContext)
+//    }
+// The result is an object with two fields:
+//  {
+//     success: a boolean indicating whether layout was completed
+//     lines: an array each of whose elements describe one formatted line.
+//            In the case where success is false, lines contains an incomplete
+//            layout.
+//  }
+// A lines array element is an object with
+// the following properties:
+// { x0:    the left margin of the line
+//   x1:    the right margin of the line
+//   y:     the vertical position of the baseline
+//   items: an array of "renderable" items as defined in TextItem.layout
+// }
+function findLayout(figure, citems, x, y, x0, x1, ymax) {
+    // Measure the 'cost' of a layout that starts from position x on the first line.
+    // Note that the last line is ignored.
+    function layoutCost(ly) {
+        let cost = ly.success ? 0 : 100000
+        const lines = ly.lines
+        for (let i = 0; i < lines.length - 1; i++) {
+            const line = ly.lines[i], items = line.items
+            let span = (i == 0)
+                ? line.x1 - x
+                : line.x1 - line.x0
+            for (let j = 0; j < items.length; j++) {
+                span -= items[j].width
+            }
+            cost += span * span * span
+        }
+        return cost
+    }
+    if (citems.length == 0) {
+        return {
+            success: true,
+            lines: [{ x0, x1, y, items: []}]
+        }
+    }
+    const citem = citems[0],
+          tc = citem.context, // XXX ugh
+          ls = tc.get("lineSpacing"), 
+          res0 = citem.item.layout(figure, citem.context, x, y, x0, x1, ymax)
+    if (!res0.success || res0.positions.length == 0) {
+        return {
+            success: false,
+            lines: [{ x0, x1, y, items: []}]
+        }
+    }
+    const posns = res0.positions
+    let best = undefined
+    citems = res0.following.concat(citems.slice(1))
+    for (let i = 0; i < posns.length; i++) {
+        const posn = posns[i]
+        let rest
+        if (posn.newLine) {
+            const inset = tc.get("inset"), container = citem.context.get("container")
+            let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
+            nx0 += inset
+            nx1 -= inset
+            rest = findLayout(figure, citems, nx0, y + ls, nx0, nx1, ymax)
+            rest.lines.unshift({x0, x1, y, items: []})
+        } else {
+            rest = findLayout(figure, citems, posn.x, y, x0, x1, ymax)
+            if (posn.renderable) rest.lines[0].items.unshift(posn.renderable)
+        }
+        if (i == 0) {
+            best = rest
+        } else {
+            if (layoutCost(rest) < layoutCost(best)) {
+                best = rest
+            }
+        }
+    }
+    return best
+}
+
 // A label.
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
-        this.text = text // either a String or a TextItem
+        this.text = text // either a String or a ContainedText
         if (text.constructor == ContainedText) {
             this.font = text.font
             if (fillStyle != undefined) {
@@ -3463,15 +3547,21 @@ class Label extends GraphicalObject {
             const tc = new TextContext(null, figure)
             tc.setAll({font: this.font, verticalAlign: "center",
               justification: "center", lineSpacing: 0, inset: 0,
-              layoutAlgorithm: "greedy", fillStyle: this.fillStyle, strokeStyle: null, baseline: 0
+              layoutAlgorithm: "greedy", baseline: 0,
+              fillStyle: this.fillStyle, strokeStyle: null,
+              container: this
             })
+            /*
             const layout = this.text.text.layoutIn(this.figure, tc, this, x, y, x,
                                                    Figure_defaults.LARGE_SPAN, y, [])
+            */
+            const layout = findLayout(figure, [{item: this.text.text, context: tc}],
+                                       x, y, x, Figure_defaults.LARGE_SPAN, y)
             let w = 0, items = layout.lines[0].items
             for (let i = 0; i < items.length; i++) {
                 const item = items[i]
-                item.font.setContextFont(ctx)
-                item.item.render(ctx, x + w, item.y)
+                if (item.font) item.font.setContextFont(ctx)
+                if (item.item) item.item.render(ctx, x + w, item.y)
                 w += item.width
             }
         }
@@ -3491,10 +3581,15 @@ class Label extends GraphicalObject {
               layoutAlgorithm: "greedy",
               fillStyle: this.fillStyle,
               strokeStyle: null, baseline: 0,
-              forceLayout: false
+              forceLayout: false, container: this
             })
+            /*
             const layout = this.text.text.layoutIn(this.figure, tc, this, 0, 0, 0,
                                                    Figure_defaults.LARGE_SPAN, 0, [])
+            */
+            const layout = findLayout(this.figure, [{item: this.text.text, context: tc}],
+                                      0, 0, 0, Figure_defaults.LARGE_SPAN, 0)
+
             if (!layout.success) {
                 console.error("Could not lay out a label")
                 return 0
@@ -3659,7 +3754,7 @@ class ContainedText {
               yc = evaluate(container.y(), valuation)
         let layout = {success: false, lines: []}
         tc.setAll({ font, verticalAlign, justification, fillStyle, lineSpacing, inset,
-                    layoutAlgorithm, strokeStyle, baseline })
+                    layoutAlgorithm, strokeStyle, baseline, container })
         let guessed_lines = 1, y = y0
         if (this.verticalAlign == "top") guessed_lines = Math.floor(maxh/lineSpacing)
 
@@ -3678,7 +3773,9 @@ class ContainedText {
             let [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
             x0 += inset
             x1 -= inset
-            const ly = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, ymax, [])
+            // const ly = this.text.layoutIn(figure, tc, container, x0, y, x0, x1, ymax, [])
+            const ly = findLayout(figure, [{ item: this.text, context: tc }],
+                                  x0, y, x0, x1, ymax)
             if (ly.success) {
                 layout = ly
                 break
@@ -3713,15 +3810,17 @@ class ContainedText {
             }
             for (let i = 0; i < items.length; i++) {
                 const item = items[i],
-                        font = item.font
+                      font = item.font
                 if (font && font != currentFont) {
                     font.setContextFont(ctx)
                     currentFont = font
                 }
                 // if (item.item.text) console.log("rendering " + item.item.text + " font " + font)
-                if (item.fillStyle) ctx.fillStyle = item.fillStyle
-                if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
-                item.item.render(ctx, x, item.y)
+                if (item.item) {
+                    if (item.fillStyle) ctx.fillStyle = item.fillStyle
+                    if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
+                    item.item.render(ctx, x, item.y)
+                }
                 if (stretch && stretchers > 0 && j != last) {
                     x += (extra * item.stretch)/stretchers
                 }
@@ -3729,6 +3828,7 @@ class ContainedText {
             }
         }
     }
+
 }
 
 // A component of formatted text. It does not know what figure or container it belongs to.
@@ -3745,7 +3845,7 @@ class TextItem {
     //  {
     //     success: a boolean indicating whether layout was completed
     //     lines: an array each of whose elements describe one formatted line.
-    //            in the case where success is false, lines contains an incomplete
+    //            In the case where success is false, lines contains an incomplete
     //            layout.
     //  }
     // A lines array element is an object with
@@ -3753,19 +3853,43 @@ class TextItem {
     // { x0:    the left margin of the line
     //   x1:    the right margin of the line
     //   y:     the vertical position of the baseline
-    //   items: an array of items of the following form:
-    //     { item: the actual item to render, or null for whitespace
-    //       width: the minimum width
-    //       baseline: y offset from baseline (negative)
-    //       font: the font
-    //       fillStyle: the fill style
-    //       strokeStyle: the stroke style (if any)
-    //       stretch: the amount of stretchiness (typically 0 for non-whitespace)
-    //     }
-    // }
+    //   items: an array of "renderable" items as defined in TextItem.layout
     layoutIn(figure, textContext, container, x, y, x0, x1, ymax, followingItems) {
         return {success: false, lines: [ {x0, x1, y, items: []} ] }
     }
+
+    // TextItem.layout tries to format this text item into the container
+    // starting from baseline position (x,y) but without extending below y position
+    // ymax, and with x1 as the right margin of the current line.  The result
+    // is an object with these fields:
+    //  {
+    //     success: a boolean indicating whether layout was completed
+    //     positions: an array of positions at which formatting can continue
+    //           after this item. For most text items, this is a single-element array, but
+    //           breakable whitespace may return two positions. If success is false, this
+    //           property is left undefined. A position has the following properties:
+    //           {
+    //              newLine: boolean; whether the next position is on the next line. In this
+    //                 case there will be no x position
+    //              x: the x position at which to start formatting the next context-item on the same line
+    //                 (this property is undefined if newLine is true)
+    //              renderable: an item appearing on the line (possibly undefined if nothing
+    //                 to render or lay out or if success is false) with the following properties:
+    //                   { item: the actual text item to render (may be null for non-rendered items)
+    //                     y: vertical position of the item
+    //                     width: the minimum width of this item
+    //                     stretch: the amount of stretchiness (typically 0 for non-whitespace)
+    //                     font: the font
+    //                     fillStyle: the fill style
+    //                     strokeStyle: the stroke style (if any)
+    //                   }
+    //     following: an array of context-items (see findLayout) that should be
+    //                formatted after this one, or undefined if success is false
+    //  }
+    layout(figure, textContext, x, y, x0, x1, ymax) {
+        return {success: false}
+    }
+
     // Render this text item at (x,y) in graphics context ctx.  The font, fill
     // style, and stroke style are assumed already to be set correctly.
     // Default: do nothing
@@ -3812,6 +3936,7 @@ class WordText extends TextItem {
         this.text = t
     }
     layoutIn(figure, tc, container, x, y, x0, x1, ymax, following) {
+        alert("using wrong layout")
         const ctx = figure.ctx,
               font = tc.get("font")
         let width = this.width
@@ -3840,11 +3965,11 @@ class WordText extends TextItem {
         let item = {
             item: this,
             width: width,
+            stretch: 0,
             y: y - tc.get("baseline"),
             font: font,
-            fillStyle: tc.get("fillStyle"),
+            fillStyle: tc.get("fillStyle")
             // strokeStyle: tc.get("strokeStyle"),
-            stretch: 0
         }
         if (following.length > 0) {
             const layout = following[0].layoutIn(figure, tc, container, x, y,
@@ -3859,6 +3984,34 @@ class WordText extends TextItem {
             }]
         }
     }
+
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const ctx = figure.ctx,
+              font = tc.get("font")
+        let width = this.width
+        if (!width) {
+            font.setContextFont(ctx)
+            this.width = width = ctx.measureText(this.text).width
+        }
+        if (x + width > x1) {
+            return { success: false }
+        }
+        let renderable = {
+          item: this,
+          y: y - tc.get("baseline"),
+          width,
+          stretch: 0, 
+          font,
+          fillStyle: tc.get("fillStyle"),
+          // strokeStyle: tc.get("strokeStyle"),
+        }
+
+        return { success: true,
+                 positions: [{ newLine: false, x: x + width, renderable }],
+                 following: []
+               }
+    }
     render(ctx, x, y) {
         ctx.fillText(this.text, x, y)
         delete this.width 
@@ -3866,6 +4019,8 @@ class WordText extends TextItem {
 }
 
 var ws_counter = 0
+
+var EMPTY_IMMUTABLE_ARRAY = []
 
 class Whitespace extends TextItem {
     constructor(figure) {
@@ -3971,6 +4126,39 @@ class Whitespace extends TextItem {
         this.cache[key] = copyLayout(layout2)
         return layout2
     }
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        let space = this.width
+        if (!space) {
+              const font = tc.get("font")
+              font.setContextFont(figure.ctx)
+              space = figure.ctx.measureText(" ").width
+              this.width = space
+        }
+        const TeXFormat = tc.get("layoutAlgorithm") == "TeX"
+        const positions = []
+        if (x + space <= x1) {
+            positions.push( { newLine: false,
+                              x: x + space,
+                              renderable: {
+                                item: null,
+                                width: space,
+                                stretch: 1
+                              }
+                            } )
+        }
+        const ls = tc.get("lineSpacing")
+        if (y + ls <= ymax && (positions.length == 0 || TeXFormat)) {
+            positions.push({
+                newLine: true
+            })
+        }
+        return {
+            success: positions.length > 0,
+            positions,
+            following: []
+        }
+    }
     render(ctx, x, y) {
         delete this.ymax
         delete this.cache
@@ -3982,6 +4170,8 @@ class ConcatText extends TextItem {
     // The arguments (other than the figure) can be either other ContainedText
     // objects or strings. Strings are automatically split into words
     // around whitespace
+    // XXX factor out the string-splitting stuff as a separate function usable from
+    // XXX elsewhere, that returns a simple WordText if the string doesn't split.
     constructor(...text) {
         super()
         this.items = []
@@ -4006,8 +4196,17 @@ class ConcatText extends TextItem {
         return this.items[0].layoutIn(figure, tc, container, x, y, x0, x1, ymax,
             this.items.slice(1).concat(following))
     }
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        return {
+            success: true,
+            positions: [{newLine: false, x}],
+            following: this.items.map(item => ({item, context: tc}))
+        }
+    }
 }
 
+// XXX rewrite this and Subscript as subclasses of a ContextTransformer
 class SuperscriptText extends TextItem {
     constructor(text) {
         super()
@@ -4023,6 +4222,18 @@ class SuperscriptText extends TextItem {
         tc.set("font", scriptFont)
         tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
         return this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
+    }
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const baseline = tc.get("baseline"), font = tc.get("font"),
+              fontSize = font.getSize()
+        tc = new TextContext(tc, figure)
+        const scriptFont = new Font(figure)
+        scriptFont.copyFrom(font)
+        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        tc.set("font", scriptFont)
+        tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
+        return this.text.layout(figure, tc, x, y, x0, x1, ymax)
     }
 }
 
@@ -4041,6 +4252,17 @@ class SubscriptText extends TextItem {
         tc.set("font", scriptFont)
         tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
         return this.text.layoutIn(figure, tc, container, x, y, x0, x1, ymax, following)
+    }
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const baseline = tc.get("baseline"), font = tc.get("font"),
+              fontSize = font.getSize()
+        tc = new TextContext(tc, figure)
+        const scriptFont = new Font(figure)
+        scriptFont.copyFrom(font)
+        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
+        tc.set("font", scriptFont)
+        tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
+        return this.text.layout(figure, tc, x, y, x0, x1, ymax)
     }
 }
 
