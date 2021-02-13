@@ -899,6 +899,9 @@ class Figure {
     subscript(t) {
         return new SubscriptText(t)
     }
+    italic(t) {
+        return new ItalicText(t)
+    }
     textFrame(txt, fillStyle) {
         if (typeof txt == "string") txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
@@ -3490,7 +3493,6 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
     }
     const posns = res0.positions
     let best = undefined, besti = undefined
-    // const rest_citems = res0.following.concat(citems.slice(1))
     let rest_citems = citems.slice(1), n = citems.length;
     if (res0.following.length > 0) {
         rest_citems = res0.following.concat(rest_citems)
@@ -3523,7 +3525,7 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
     let key
     if (posns.length > 1) {
         // key = `${x},${y}`
-        key = x + y * 1000
+        key = x + y * 1009
         if (!item.cache) item.cache = {}
         const memoized = item.cache[key]
         if (memoized !== undefined) {
@@ -4092,14 +4094,30 @@ class ConcatText extends TextItem {
     }
 }
 
-// XXX rewrite this and Subscript as subclasses of a ContextTransformer
-class SuperscriptText extends TextItem {
+class ContextTransformer extends TextItem {
     constructor(text) {
         super()
         this.text = (text.constructor == String) ? new WordText(text) : text
     }
     // See TextItem.layout
     layout(figure, tc, x, y, x0, x1, ymax) {
+        tc = this.transformContext(tc, figure)
+        return this.text.layout(figure, tc, x, y, x0, x1, ymax)
+    }
+    // Transform the outside context in some way. Default
+    // implementation: do nothing to context.
+    transformContext(tc, figure) {
+        return tc
+    }
+    resetCaches() {
+        this.text.resetCaches()
+    }
+}
+
+// XXX rewrite this and Subscript as subclasses of a ContextTransformer
+class SuperscriptText extends ContextTransformer {
+    constructor(text) { super(text) }
+    transformContext(tc, figure) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
         tc = new TextContext(tc, figure)
@@ -4108,19 +4126,13 @@ class SuperscriptText extends TextItem {
         scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
         tc.set("font", scriptFont)
         tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
-        return this.text.layout(figure, tc, x, y, x0, x1, ymax)
-    }
-    resetCaches() {
-        this.text.resetCaches()
+        return tc
     }
 }
 
-class SubscriptText extends TextItem {
-    constructor(text) {
-        super()
-        this.text = (text.constructor == String) ? new WordText(text) : text
-    }
-    layout(figure, tc, x, y, x0, x1, ymax) {
+class SubscriptText extends ContextTransformer {
+    constructor(text) { super(text) }
+    transformContext(tc, figure) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
         tc = new TextContext(tc, figure)
@@ -4129,10 +4141,20 @@ class SubscriptText extends TextItem {
         scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
         tc.set("font", scriptFont)
         tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
-        return this.text.layout(figure, tc, x, y, x0, x1, ymax)
+        return tc
     }
-    resetCaches() {
-        this.text.resetCaches()
+}
+
+class ItalicText extends ContextTransformer {
+    constructor(text) { super(text) }
+    transformContext(tc, figure) {
+        const font = tc.get("font")
+        tc = new TextContext(tc, figure)
+        const italicFont = new Font(figure)
+        italicFont.copyFrom(font)
+        italicFont.setStyle("italic")
+        tc.set("font", italicFont)
+        return tc
     }
 }
 
