@@ -3480,7 +3480,7 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
           item = citem.item,
           tc = citem.context, // XXX really ok to use other than for res0?
           ls = tc.get("lineSpacing"), 
-          res0 = citem.item.layout(figure, tc, x, y, x0, x1, ymax)
+          res0 = item.layout(figure, tc, x, y, x0, x1, ymax)
     if (!res0.success || res0.positions.length == 0) {
         // console.log(spaces(layoutDepth--) + "failed on " + item + " at " + x + "," + y)
         return {
@@ -3490,9 +3490,13 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
     }
     const posns = res0.positions
     let best = undefined, besti = undefined
-    citems = res0.following.concat(citems.slice(1))
+    // const rest_citems = res0.following.concat(citems.slice(1))
+    let rest_citems = citems.slice(1), n = citems.length;
+    if (res0.following.length > 0) {
+        rest_citems = res0.following.concat(rest_citems)
+    }
     const greedy = tc.get("layoutAlgorithm") == "greedy"
-    function checkBest(i) {
+    function checkIfBest(i) {
         const posn = posns[i]
         let rest
         if (posn.newLine) {
@@ -3500,10 +3504,10 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
             let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
             nx0 += inset
             nx1 -= inset
-            rest = findLayout(figure, citems, nx0, y + ls, nx0, nx1, ymax)
+            rest = findLayout(figure, rest_citems, nx0, y + ls, nx0, nx1, ymax)
             rest.lines.unshift({x0, x1, y, items: []})
         } else {
-            rest = findLayout(figure, citems, posn.x, y, x0, x1, ymax)
+            rest = findLayout(figure, rest_citems, posn.x, y, x0, x1, ymax)
         }
         if (posn.renderable) rest.lines[0].items.unshift(posn.renderable)
         if (best === undefined) {
@@ -3518,17 +3522,19 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
     }
     let key
     if (posns.length > 1) {
-        key = `${x},${y}`
+        // key = `${x},${y}`
+        key = x + y * 1000
         if (!item.cache) item.cache = {}
-        if (item.cache.hasOwnProperty(key)) {
-            checkBest(item.cache[key])
-            // console.log(spaces(layoutDepth--) + "reused decision for " + item + " at " + key)
+        const memoized = item.cache[key]
+        if (memoized !== undefined) {
+            checkIfBest(memoized)
+            // console.log(spaces(layoutDepth--) + "reused decision (" + item.cache[key] + ") for " + item + " at " + key)
             return best
         }
     }
     for (let i = 0; i < posns.length; i++) {
-        checkBest(i)
-        if (best != undefined && best.success && greedy) break
+        checkIfBest(i)
+        if (greedy && best !== undefined && best.success) break
     }
     if (posns.length > 1) item.cache[key] = besti
     // console.log(spaces(layoutDepth--) + " finished layout of " + item + ":" + best.success + "," + best.lines)
