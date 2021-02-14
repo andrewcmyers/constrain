@@ -138,12 +138,12 @@ class Figure {
             return this.focused.mousemove(x, y, e)
         })
         this.canvas.addEventListener('dblclick', e => {
-            console.log("Saw double-click, trying to stop it " + e)
+            // console.log("Saw double-click, trying to stop it " + e)
             e.stopPropagation()// XXX why doesn't this work?
             return false
         })
         this.canvas.addEventListener('click', e => {
-            console.log("saw click, trying to stop it " + e)
+            // console.log("saw click, trying to stop it " + e)
             e.stopPropagation() 
             return true
         })
@@ -253,7 +253,6 @@ class Figure {
                 }
             }
         }
-        // console.log(grad)
         return [val, grad]
     }
 
@@ -894,14 +893,14 @@ class Figure {
     }
     box() { return new Box(this) }
     text(...t) { return createText(...t) }
-    superscript(t) {
-        return new SuperscriptText(t)
+    superscript(...t) {
+        return new SuperscriptText(createText(...t))
     }
-    subscript(t) {
-        return new SubscriptText(t)
+    subscript(...t) {
+        return new SubscriptText(createText(...t))
     }
-    italic(t) {
-        return new ItalicText(t)
+    italic(...t) {
+        return new ItalicText(createText(...t))
     }
     textFrame(txt, fillStyle) {
         if (typeof txt == "string") txt = new ContainedText(this, createText(txt))
@@ -3845,9 +3844,7 @@ class ContainedText {
         // Compute the successful layout with the least guessed lines, or the largest
         // unsuccessful layout.
         let x0 = 0, x1 = 0
-        console.log(`maxh = ${maxh}, y0 = ${y0}, y1 = ${y1}, lineSpacing=${lineSpacing}, guessed_lines = ${guessed_lines}`)
         for (; guessed_lines * lineSpacing <= maxh; guessed_lines++) {
-            // console.log(`Trying layout with ${guessed_lines} lines`)
             let ymax = y1
             switch (this.verticalAlign) {
                 case "center":
@@ -3860,7 +3857,6 @@ class ContainedText {
                 default: break
             }
             [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
-            // console.log(`x0 = ${x0}, x1 = ${x1}, y = ${y}, lineSpacing=${lineSpacing}`)
             x0 += inset
             x1 -= inset
             const ly = findLayout(figure, [{ item: this.text, context: tc }],
@@ -3871,7 +3867,6 @@ class ContainedText {
             }
             if (countItems(ly) > countItems(layout)) layout = ly
         }
-        console.log('layout ('+(x1-x0)+'):' + layout.success + ':' + layout.lines.length)
 
         if (!layout.success) {
             // console.log("Could not lay out text items in container " + container)
