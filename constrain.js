@@ -15,7 +15,8 @@ const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
       CHECK_NAN = false,
-      COMPARE_GRADIENTS = false
+      COMPARE_GRADIENTS = false,
+      TOL = 1e-6
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
 
@@ -3567,8 +3568,8 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
     }
     let key
     if (posns.length > 1) {
-        // key = `${x},${y}`
-        key = x + y * 1009
+         // key = `${x},${y}`
+         key = x + y * 1009
         if (!item.cache) item.cache = {}
         const memoized = item.cache[key]
         if (memoized !== undefined) {
@@ -3839,11 +3840,12 @@ class ContainedText {
                     layoutAlgorithm, strokeStyle, baseline, container })
         this.text.resetCaches()
         let guessed_lines = 1, y = y0
-        if (this.verticalAlign == "top") guessed_lines = Math.floor(maxh/lineSpacing)
+        if (this.verticalAlign == "top") guessed_lines = Math.floor(maxh/lineSpacing - TOL)
 
         // Compute the successful layout with the least guessed lines, or the largest
         // unsuccessful layout.
-        let x0, x1
+        let x0 = 0, x1 = 0
+        console.log(`maxh = ${maxh}, y0 = ${y0}, y1 = ${y1}, lineSpacing=${lineSpacing}, guessed_lines = ${guessed_lines}`)
         for (; guessed_lines * lineSpacing <= maxh; guessed_lines++) {
             // console.log(`Trying layout with ${guessed_lines} lines`)
             let ymax = y1
@@ -3858,6 +3860,7 @@ class ContainedText {
                 default: break
             }
             [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
+            // console.log(`x0 = ${x0}, x1 = ${x1}, y = ${y}, lineSpacing=${lineSpacing}`)
             x0 += inset
             x1 -= inset
             const ly = findLayout(figure, [{ item: this.text, context: tc }],
@@ -3868,6 +3871,7 @@ class ContainedText {
             }
             if (countItems(ly) > countItems(layout)) layout = ly
         }
+        console.log('layout ('+(x1-x0)+'):' + layout.success + ':' + layout.lines.length)
 
         if (!layout.success) {
             // console.log("Could not lay out text items in container " + container)
@@ -4058,7 +4062,6 @@ class WordText extends TextItem {
     }
     render(ctx, x, y) {
         ctx.fillText(this.text, x, y)
-        delete this.width 
     }
     resetCaches() {
         delete this.width 
