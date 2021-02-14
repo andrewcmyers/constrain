@@ -48,7 +48,7 @@ const Figure_defaults = {
     LINE_SPACING : 1.3,
     SUPERSCRIPT_OFFSET : 0.44,
     SUBSCRIPT_OFFSET : -0.16,
-    SCRIPTSIZE : 0.60,
+    SCRIPTSIZE : 0.80,
     LARGE_SPAN : 10000.0
 }
 
@@ -892,7 +892,7 @@ class Figure {
         return r
     }
     box() { return new Box(this) }
-    text(...t) { return new ContainedText(this, ...t) }
+    text(...t) { return createText(...t) }
     superscript(t) {
         return new SuperscriptText(t)
     }
@@ -903,7 +903,7 @@ class Figure {
         return new ItalicText(t)
     }
     textFrame(txt, fillStyle) {
-        if (typeof txt == "string") txt = new ContainedText(this, txt)
+        if (typeof txt == "string") txt = new ContainedText(this, createText(txt))
         return new TextFrame(this, txt, fillStyle)
     }
     label(text, fontSize, fontName, fillStyle) {
@@ -2655,13 +2655,56 @@ class GraphicalObject extends Box {
         this.lineDash = d
         return this
     }
+// control contained text
     addText(...t) {
-        t = t.flat()
-        if (t.length == 1 && t[0].constructor == ContainedText) {
-            this.text = t[0]
-        } else {
-            this.text = this.figure.text(...t)
-        }
+        this.text = new ContainedText(this.figure, createText(...t))
+        return this
+    }
+    setTextStyle(s) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setFillStyle(s)
+        return this
+    }
+    setLayoutAlgorithm(a) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setLayoutAlgorithm(a)
+        return this
+    }
+    setJustification(j) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setJustification(j)
+        return this
+    }
+    setVerticalAlign(a) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setVerticalAlign(a)
+        return this
+    }
+    setLineSpacing(s) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setLineSpacing(s)
+        return this
+    }
+    setInset(ins) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setInset(ins)
+        return this
+    }
+    setFont(f) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setFont(f)
+        return this
+    }
+    // Set font size
+    setFontSize(s) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setFontSize(s)
+        return this
+    }
+    // Set font name
+    setFontName(f) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setFontName(f)
         return this
     }
 // rendering control
@@ -3547,15 +3590,16 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
-        this.text = text // either a String or a ContainedText
-        if (text.constructor == ContainedText) {
-            this.font = text.font
+        if (text.layout) {
+            this.text = new ContainedText(figure, text) // either a String or a TextItem
+            this.font = new Font(figure)
             if (fillStyle != undefined) {
                 this.fillStyle = this.text.fillStyle = fillStyle
             } else {
                 this.fillStyle = figure.strokeStyle
             }
         } else {
+            this.text = text
             this.font = new Font(figure)
             if (fillStyle != undefined) this.fillStyle = fillStyle
             else this.fillStyle = figure.strokeStyle
@@ -3697,13 +3741,11 @@ class LineLabel {
 }
 
 function countItems(ly) {
-    // if (ly.itemCount) return ly.itemCount
     let c = 0
     const lines = ly.lines, nlines = lines.length
     for (let i = 0; i < nlines; i++) {
         c += lines[i].items.length
     }
-    // ly.itemCount = c
     return c
 }
 
@@ -3714,7 +3756,7 @@ function countItems(ly) {
 // centering) and the default style of the text it contains.
 // 
 class ContainedText {
-    constructor(figure, ...text) {
+    constructor(figure, text) {
         this.figure = figure
         this.justification = "center"
         this.verticalAlign = "center"
@@ -3723,11 +3765,10 @@ class ContainedText {
         this.fillStyle = figure.strokeStyle
         this.strokeStyle = null
         this.inset = this.font.getSize() / 3
-        if (text.length > 1 || text[0].constructor == String) {
-            this.text = new ConcatText(...text)
-        } else {
+        if (text.constructor == String) // XXX needed?
+            this.text = createText(text)
+        else
             this.text = text
-        }
     }
     setLineSpacing(s) {
         this.lineSpacing = s
@@ -3747,11 +3788,6 @@ class ContainedText {
         this.verticalAlign = va
         return this
     }
-    atCenter() {
-        this.setJustification("center")
-        this.setVerticalAlign("center")
-        return this
-    } 
     setFont(f) {
         this.font = f
         return this
@@ -3928,6 +3964,30 @@ class TextItem {
     toString() { return "[TextItem]" }
 }
 
+function createText(...text) {
+    text = text.flat()
+    const result = []
+    text.forEach(t => {
+        if (t.constructor == String) { 
+            let wds = 0;
+            t.split(/  */).forEach(w => {
+                if (w) {
+                    if (wds++) {
+                        result.push(new Whitespace())
+                    }
+                    result.push(new WordText(w))
+                }
+            })
+        } else {
+            result.push(t)
+            if (!t.layout) console.error("Can't concatenate non-text item")
+        }
+    })
+    if (result.length == 0) return new WordText("")
+    else if (result.length == 1) return result[0]
+    else return new ConcatText(...result)
+}
+
 //  A context for rendering and laying out text items, to be provided at the point
 //  of rendering.
 class TextContext {
@@ -4061,23 +4121,7 @@ class ConcatText extends TextItem {
     // XXX elsewhere, that returns a simple WordText if the string doesn't split.
     constructor(...text) {
         super()
-        this.items = []
-        text.forEach(t => {
-            if (t.constructor == String) { 
-                let wds = 0;
-                t.split(/  */).forEach(w => {
-                    if (w) {
-                        if (wds++) {
-                            this.items.push(new Whitespace())
-                        }
-                        this.items.push(new WordText(w))
-                    }
-                })
-            } else {
-                if (!t.layout) console.error("Can't concatenate non-text item")
-                else this.items.push(t)
-            }
-        })
+        this.items = text
     }
     toString() { return "[ConcatText]" }
     // See TextItem.layout

@@ -53,15 +53,13 @@ with (figure) {
     setFontName("Times")
     setFontSize(18)
 
-    let content = () => text(dickens).setJustification("full")
-                                     .setVerticalAlign("top")
+    let content = () => text(dickens)
 
     let c1 = content(), c2 = content()
-    c1.setLayoutAlgorithm("greedy")
     h.setStrokeStyle("red")
 
-    r1.addText(c1)
-    r2.addText(c2)
+    r1.addText(c1) .setJustification("full") .setVerticalAlign("top")
+    r2.addText(c2) .setJustification("full") .setVerticalAlign("top").setLayoutAlgorithm("greedy")
     e.addText(dickens)
 }
 

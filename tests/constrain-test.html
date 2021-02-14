@@ -81,10 +81,10 @@ let s3 = square (grd, "black", 3),
           // content = text("It was the best of times,")
            // content = text("It was the best of times, it was the worst of times, it was the age of wisdom")
            content = text("It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair.") 
-         // .setLayoutAlgorithm("greedy")
-            .setFillStyle("black").setJustification("full").setVerticalAlign("top")
 
-     txt.addText(content).setFillStyle('transparent')
+    txt.setFillStyle('pink').addText(content)
+        // .setLayoutAlgorithm("greedy")
+       .setTextStyle("black").setJustification("full").setVerticalAlign("top")
 
     equal(txt.x0(), s1.x0())
     equal(txt.x1(), h.x())
