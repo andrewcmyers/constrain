@@ -15,8 +15,7 @@ const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
       CHECK_NAN = false,
-      COMPARE_GRADIENTS = false,
-      TOL = 1e-6
+      COMPARE_GRADIENTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
 
@@ -3838,13 +3837,15 @@ class ContainedText {
         tc.setAll({ font, verticalAlign, justification, fillStyle, lineSpacing, inset,
                     layoutAlgorithm, strokeStyle, baseline, container })
         this.text.resetCaches()
-        let guessed_lines = 1, y = y0
-        if (this.verticalAlign == "top") guessed_lines = Math.floor(maxh/lineSpacing - TOL)
+        let guessed_lines = 1,
+            y = y0,
+            max_guessed_lines = Math.floor(maxh/lineSpacing)
+        if (this.verticalAlign == "top") guessed_lines = max_guessed_lines
 
         // Compute the successful layout with the least guessed lines, or the largest
         // unsuccessful layout.
         let x0 = 0, x1 = 0
-        for (; guessed_lines * lineSpacing <= maxh; guessed_lines++) {
+        for (; guessed_lines <= max_guessed_lines; guessed_lines++) {
             let ymax = y1
             switch (this.verticalAlign) {
                 case "center":
