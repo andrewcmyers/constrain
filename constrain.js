@@ -106,7 +106,6 @@ class Figure {
               _width = br.width, _height = br.height
         this.width = _width
         this.height = _height
-//       console.log("Width, height are " + _width + "," + _height)
         this.canvas.width = _width * this.scale
         this.canvas.height = _height * this.scale
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
@@ -353,7 +352,6 @@ class Figure {
             this.animationTime = 0
         }
         this.setupCanvas()
-        // console.log("Rendering figure at time " + t)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
         this.Graphs.forEach(g => g.setupHints())
@@ -3511,7 +3509,6 @@ function lowerCost(ly1, ly2, x) {
 //   y:     the vertical position of the baseline
 //   items: an array of "renderable" items as defined in TextItem.layout
 // }
-
 function findLayout(figure, citems, x, y, x0, x1, ymax) {
     if (citems.length == 0) {
         return {
@@ -3622,7 +3619,6 @@ class Label extends GraphicalObject {
         this.installFont()
         const x = evaluate(this.x0(), valuation),
               y = evaluate(figure.average(this.y(), this.y1()), valuation)
-        // console.log("rendering " + this.text + " at " + x + "," + y)
         if (this.text.constructor == String) {
             if (this.fillStyle) {
                 ctx.fillStyle = this.fillStyle
@@ -3896,7 +3892,6 @@ class ContainedText {
                     font.setContextFont(ctx)
                     currentFont = font
                 }
-                // if (item.item.text) console.log("rendering " + item.item.text + " font " + font)
                 if (item.item) {
                     if (item.fillStyle) ctx.fillStyle = item.fillStyle
                     if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
