@@ -3468,6 +3468,15 @@ function layoutCost(ly, x) {
     return cost
 }
 
+function spaces(n) {
+    let result = "";
+    while (n > 0) {
+        result += "  ";
+        n--;
+    }
+    return result;
+}
+
 // Whether ly1 is a better layout than ly2. Both layouts start from x on the first line.
 // Successful layouts always beat unsuccessful ones. Successful layouts are compared using
 // layout cost. Unsuccessful layouts are compared based on how much of the text was laid out.
@@ -3502,15 +3511,6 @@ function lowerCost(ly1, ly2, x) {
 //   y:     the vertical position of the baseline
 //   items: an array of "renderable" items as defined in TextItem.layout
 // }
-var layoutDepth = 0
-function spaces(n) {
-    let result = "";
-    while (n > 0) {
-        result += "  ";
-        n--;
-    }
-    return result;
-}
 
 function findLayout(figure, citems, x, y, x0, x1, ymax) {
     if (citems.length == 0) {
@@ -3519,15 +3519,12 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
             lines: [{ x0, x1, y, items: []}]
         }
     }
-    layoutDepth++;
-    // console.log(spaces(layoutDepth) + "Trying to lay out " + citems[0].item + " at " + x + "," + y)
     const citem = citems[0],
           item = citem.item,
-          tc = citem.context, // XXX really ok to use other than for res0?
+          tc = citem.context, // XXX
           ls = tc.get("lineSpacing"), 
           res0 = item.layout(figure, tc, x, y, x0, x1, ymax)
     if (!res0.success || res0.positions.length == 0) {
-        // console.log(spaces(layoutDepth--) + "failed on " + item + " at " + x + "," + y)
         return {
             success: false,
             lines: [{ x0, x1, y, items: []}]
@@ -3572,7 +3569,6 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
         const memoized = item.cache[key]
         if (memoized !== undefined) {
             checkIfBest(memoized)
-            // console.log(spaces(layoutDepth--) + "reused decision (" + item.cache[key] + ") for " + item + " at " + key)
             return best
         }
     }
@@ -3581,7 +3577,6 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
         if (greedy && best !== undefined && best.success) break
     }
     if (posns.length > 1) item.cache[key] = besti
-    // console.log(spaces(layoutDepth--) + " finished layout of " + item + ":" + best.success + "," + best.lines)
     return best
 }
 
