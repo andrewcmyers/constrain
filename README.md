@@ -13,8 +13,8 @@
 [Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/examples/reveal-demo.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
-[CS 4120: lexer generation](https://www.cs.cornell.edu/courses/cs4120/2021sp/notes.html?id=leximpl)
-[CS 4120: bottom-up parsing](https://www.cs.cornell.edu/courses/cs4120/2020sp/notes.html?id=bottomup)
+[CS 4120/lexer generation](https://www.cs.cornell.edu/courses/cs4120/2021sp/notes.html?id=leximpl),
+[CS 4120/bottom-up parsing](https://www.cs.cornell.edu/courses/cs4120/2020sp/notes.html?id=bottomup)
 
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
