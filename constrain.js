@@ -27,10 +27,6 @@ const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
 // They have a cost that is supposed to be as small as possible (zero, if the constraint
 // is fully satisfiable). The solver tries to minimize the total cost of all constraints.
 //
-// Variables, expressions, and constraints are not associated with particular
-// figures (except for some special expressions), so they can actually be
-// reused across figures.
-//
 // Associated with each figure is a set of GraphicalObjects that know how to
 // render themselves based on associated Variables.
 //
