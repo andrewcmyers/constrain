@@ -19,6 +19,7 @@ Cornell University course notes using Constrain for embedded figures: [CS 2112](
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
 [Animated solving of triangle constraints](https://andrewcmyers.github.io/constrain/examples/triangles.html)
+[TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
 [Simple template page for using Constrain](https://andrewcmyers.github.io/constrain/examples/template.html)
 
