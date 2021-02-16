@@ -895,6 +895,9 @@ class Figure {
     italic(...t) {
         return new ItalicText(createText(...t))
     }
+    textContext(t, f) {
+        return new ContextTransformer(t, f)
+    }
     textFrame(txt, fillStyle) {
         if (typeof txt == "string") txt = new ContainedText(this, createText(txt))
         return new TextFrame(this, txt, fillStyle)
@@ -3449,13 +3452,12 @@ class Font {
 function layoutCost(ly, x) {
     let cost = 0
     const lines = ly.lines
-    for (let i = 0; i < lines.length - 1; i++) {
-        const line = ly.lines[i], items = line.items
-        let span = (i == 0)
-            ? line.x1 - x
-            : line.x1 - line.x0
-        for (let j = 0; j < items.length; j++) {
-            span -= items[j].width
+    let first = lines[lines.length - 1]
+    for (let line of lines) {
+        let span = (line === first) ? line.x1 - x
+                                    : line.x1 - line.x0
+        for (let item of line.items) {
+            span -= item.width
         }
         cost += span * span * span
     }
@@ -3486,7 +3488,8 @@ function lowerCost(ly1, ly2, x) {
 // Find a layout for the given sequence of items in context, within the container,
 // starting from position (x, y) and not exceeding ymax, and assuming that the
 // line that position is on extends from x0 to x1. The input sequence
-// citems is an array of objects ("context-items") with the following structure:
+// citems is an array of objects ("context-items") in reverse order, each
+// with the following structure:
 //    {
 //       item: the text item 
 //       context: the context of the item (TextContext)
@@ -3494,7 +3497,8 @@ function lowerCost(ly1, ly2, x) {
 // The result is an object with two fields:
 //  {
 //     success: a boolean indicating whether layout was completed
-//     lines: an array each of whose elements describe one formatted line.
+//     lines: an array each of whose elements describe one formatted line. The
+//            elements appear in *reverse order*.
 //            In the case where success is false, lines contains an incomplete
 //            layout.
 //  }
@@ -3503,7 +3507,8 @@ function lowerCost(ly1, ly2, x) {
 // { x0:    the left margin of the line
 //   x1:    the right margin of the line
 //   y:     the vertical position of the baseline
-//   items: an array of "renderable" items as defined in TextItem.layout
+//   items: an array of "renderable" items as defined in TextItem.layout. The items
+//          are in *reverse order*
 // }
 function findLayout(figure, citems, x, y, x0, x1, ymax) {
     if (citems.length == 0) {
@@ -3512,11 +3517,12 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
             lines: [{ x0, x1, y, items: []}]
         }
     }
-    const citem = citems[0],
+    const citem = citems[citems.length-1],
           item = citem.item,
           tc = citem.context, // XXX
           ls = tc.get("lineSpacing"), 
           res0 = item.layout(figure, tc, x, y, x0, x1, ymax)
+    citems = citems.slice(0, citems.length-1) // XXX a real linked list would be nice...
     if (!res0.success || res0.positions.length == 0) {
         return {
             success: false,
@@ -3524,34 +3530,29 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
         }
     }
     const posns = res0.positions
-    let best = undefined, besti = undefined
-    let rest_citems = citems.slice(1), n = citems.length;
+    let best = undefined, bestp = undefined
     if (res0.following.length > 0) {
-        rest_citems = res0.following.concat(rest_citems)
+        for (let ci of res0.following.reverse()) {
+            citems.push(ci)
+        }
     }
     const greedy = tc.get("layoutAlgorithm") == "greedy"
-    function checkIfBest(i) {
-        const posn = posns[i]
+    function checkIfBest(posn) {
         let rest
         if (posn.newLine) {
             const inset = tc.get("inset"), container = citem.context.get("container")
             let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
             nx0 += inset
             nx1 -= inset
-            rest = findLayout(figure, rest_citems, nx0, y + ls, nx0, nx1, ymax)
-            rest.lines.unshift({x0, x1, y, items: []})
+            rest = findLayout(figure, citems, nx0, y + ls, nx0, nx1, ymax)
+            rest.lines.push({x0, x1, y, items: []})
         } else {
-            rest = findLayout(figure, rest_citems, posn.x, y, x0, x1, ymax)
+            rest = findLayout(figure, citems, posn.x, y, x0, x1, ymax)
         }
-        if (posn.renderable) rest.lines[0].items.unshift(posn.renderable)
-        if (best === undefined) {
+        if (posn.renderable) rest.lines[rest.lines.length - 1].items.push(posn.renderable)
+        if (best === undefined || lowerCost(rest, best, x)) {
             best = rest
-            besti = i
-        } else {
-            if (lowerCost(rest, best, x)) {
-                best = rest
-                besti = i
-            }
+            bestp = posn
         }
     }
     let key
@@ -3565,11 +3566,11 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
             return best
         }
     }
-    for (let i = 0; i < posns.length; i++) {
-        checkIfBest(i)
+    for (let posn of posns) {
+        checkIfBest(posn)
         if (greedy && best !== undefined && best.success) break
     }
-    if (posns.length > 1) item.cache[key] = besti
+    if (posns.length > 1) item.cache[key] = bestp
     return best
 }
 
@@ -3637,9 +3638,8 @@ class Label extends GraphicalObject {
             })
             const layout = findLayout(figure, [{item: this.text.text, context: tc}],
                                        x, y, x, Figure_defaults.LARGE_SPAN, y)
-            let w = 0, items = layout.lines[0].items
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i]
+            let w = 0, items = layout.lines[0].items.reverse()
+            for (let item of items) {
                 if (item.font) item.font.setContextFont(ctx)
                 if (item.item) item.item.render(ctx, x + w, item.y)
                 w += item.width
@@ -3671,7 +3671,7 @@ class Label extends GraphicalObject {
                 return 0
             }
             let w = 0, items = layout.lines[0].items
-            for (let i = 0; i < items.length; i++) w += items[i].width
+            for (let item of items) w += item.width
             this.computedWidth = w
         }
     }
@@ -3751,7 +3751,7 @@ class ContainedText {
         this.fillStyle = figure.strokeStyle
         this.strokeStyle = null
         this.inset = this.font.getSize() / 3
-        if (text.constructor == String) // XXX needed?
+        if (text.constructor == String) // XXX probably not needed
             this.text = createText(text)
         else
             this.text = text
@@ -3863,13 +3863,12 @@ class ContainedText {
         // Use the computed layout to horizontally position all the items
         // according to the current justification policy, and draw them.
         let currentFont = null, stretch = (justification == "full")
-        const lines = layout.lines, last = lines.length - 1
-        for (let j = 0; j < lines.length; j++) {
-            const line = lines[j]
+        const lines = layout.lines.reverse(), last = lines[lines.length - 1]
+        for (let line of lines) {
             const {x0, x1, y, items} = line
+            let items_rev = items.reverse()
             let lw = 0, stretchers = 0
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i]
+            for (let item of items_rev) {
                 lw += item.width
                 stretchers += item.stretch
             }
@@ -3881,9 +3880,8 @@ class ContainedText {
                 case "center": x = x0 + extra/2; break
                 case "right": x = x0 + extra; break
             }
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i],
-                      font = item.font
+            for (let item of items_rev) {
+                const font = item.font
                 if (font && font != currentFont) {
                     font.setContextFont(ctx)
                     currentFont = font
@@ -3893,7 +3891,7 @@ class ContainedText {
                     if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
                     item.item.render(ctx, x, item.y)
                 }
-                if (stretch && stretchers > 0 && j != last) {
+                if (stretch && stretchers > 0 && line !== last) {
                     x += (extra * item.stretch)/stretchers
                 }
                 x += item.width
@@ -3934,7 +3932,8 @@ class TextItem {
     //                     strokeStyle: the stroke style (if any)
     //                   }
     //     following: an array of context-items (see findLayout) that should be
-    //                formatted after this one, or undefined if success is false
+    //                formatted after this one, or undefined if success is false.
+    //                Elements are in forward order.
     //  }
     layout(figure, textContext, x, y, x0, x1, ymax) {
         return {success: false}
@@ -4102,8 +4101,6 @@ class ConcatText extends TextItem {
     // The arguments (other than the figure) can be either other ContainedText
     // objects or strings. Strings are automatically split into words
     // around whitespace
-    // XXX factor out the string-splitting stuff as a separate function usable from
-    // XXX elsewhere, that returns a simple WordText if the string doesn't split.
     constructor(...text) {
         super()
         this.items = text
@@ -4118,15 +4115,19 @@ class ConcatText extends TextItem {
         }
     }
     resetCaches() {
-        for (let i = 0; i < this.items.length; i++)
-            this.items[i].resetCaches()
+        for (let item of this.items) item.resetCaches();
     }
 }
 
+// A ContextTransformer wraps some text in a context that is modified in
+// some way to change how the text appears.
 class ContextTransformer extends TextItem {
-    constructor(text) {
+    // Create a ContextTransformer that wraps the text
+    // and transforms the outer context tc into f(tc).
+    constructor(text, f) {
         super()
         this.text = (text.constructor == String) ? new WordText(text) : text
+        this.fun = f
     }
     // See TextItem.layout
     layout(figure, tc, x, y, x0, x1, ymax) {
@@ -4136,16 +4137,15 @@ class ContextTransformer extends TextItem {
     // Transform the outside context in some way. Default
     // implementation: do nothing to context.
     transformContext(tc, figure) {
-        return tc
+        return this.fun(tc)
     }
     resetCaches() {
         this.text.resetCaches()
     }
 }
 
-// XXX rewrite this and Subscript as subclasses of a ContextTransformer
 class SuperscriptText extends ContextTransformer {
-    constructor(text) { super(text) }
+    constructor(text) { super(text, null) }
     transformContext(tc, figure) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
@@ -4160,7 +4160,7 @@ class SuperscriptText extends ContextTransformer {
 }
 
 class SubscriptText extends ContextTransformer {
-    constructor(text) { super(text) }
+    constructor(text) { super(text, null) }
     transformContext(tc, figure) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
@@ -4175,7 +4175,7 @@ class SubscriptText extends ContextTransformer {
 }
 
 class ItalicText extends ContextTransformer {
-    constructor(text) { super(text) }
+    constructor(text) { super(text, null) }
     transformContext(tc, figure) {
         const font = tc.get("font")
         tc = new TextContext(tc, figure)
@@ -4271,9 +4271,7 @@ class Handle extends InteractiveObject {
         const hx = evaluate(this.x(), this.figure.currentValuation),
               hy = evaluate(this.y(), this.figure.currentValuation),
               expand = e.type == "touchstart" ? 20 : 0,
-              // XXX should use radiusX/radiusX property when available;
-              // XXX may want to switch the whole interaction interface to
-              // XXX be touch-based first.
+              // XXX should use radiusX/radiusX property when available
               r = this.size + expand
         if (sqdist(x - hx, y - hy) <= r * r) {
             this.figure.focused = this
@@ -4602,6 +4600,9 @@ function autoResize() {
     Ellipse: Ellipse,
     Polygon: Polygon,
     ContainedText: ContainedText,
+    TextContext: TextContext,
+    TextItem: TextItem,
+    createText: createText,
     InteractiveObject: InteractiveObject,
     CanvasRect: CanvasRect,
     Button: Button,
