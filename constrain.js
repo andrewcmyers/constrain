@@ -3494,6 +3494,8 @@ function lowerCost(ly1, ly2, x) {
 //       item: the text item 
 //       context: the context of the item (TextContext)
 //    }
+// Only the first n items in citems are to be laid out.
+// 
 // The result is an object with two fields:
 //  {
 //     success: a boolean indicating whether layout was completed
@@ -3510,19 +3512,18 @@ function lowerCost(ly1, ly2, x) {
 //   items: an array of "renderable" items as defined in TextItem.layout. The items
 //          are in *reverse order*
 // }
-function findLayout(figure, citems, x, y, x0, x1, ymax) {
-    if (citems.length == 0) {
+function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
+    if (n == 0) {
         return {
             success: true,
             lines: [{ x0, x1, y, items: []}]
         }
     }
-    const citem = citems[citems.length-1],
+    const citem = citems[n-1],
           item = citem.item,
           tc = citem.context, // XXX
           ls = tc.get("lineSpacing"), 
           res0 = item.layout(figure, tc, x, y, x0, x1, ymax)
-    citems = citems.slice(0, citems.length-1) // XXX a real linked list would be nice...
     if (!res0.success || res0.positions.length == 0) {
         return {
             success: false,
@@ -3530,24 +3531,27 @@ function findLayout(figure, citems, x, y, x0, x1, ymax) {
         }
     }
     const posns = res0.positions
+    n--
     let best = undefined, bestp = undefined
     if (res0.following.length > 0) {
+        citems = citems.slice(0, n)
         for (let ci of res0.following.reverse()) {
             citems.push(ci)
+            n++
         }
     }
     const greedy = tc.get("layoutAlgorithm") == "greedy"
     function checkIfBest(posn) {
         let rest
         if (posn.newLine) {
-            const inset = tc.get("inset"), container = citem.context.get("container")
+            const inset = tc.get("inset"), container = tc.get("container")
             let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
             nx0 += inset
             nx1 -= inset
-            rest = findLayout(figure, citems, nx0, y + ls, nx0, nx1, ymax)
+            rest = findLayout(figure, citems, n, nx0, y + ls, nx0, nx1, ymax)
             rest.lines.push({x0, x1, y, items: []})
         } else {
-            rest = findLayout(figure, citems, posn.x, y, x0, x1, ymax)
+            rest = findLayout(figure, citems, n, posn.x, y, x0, x1, ymax)
         }
         if (posn.renderable) rest.lines[rest.lines.length - 1].items.push(posn.renderable)
         if (best === undefined || lowerCost(rest, best, x)) {
@@ -3636,7 +3640,7 @@ class Label extends GraphicalObject {
               fillStyle: this.fillStyle, strokeStyle: null,
               container: this
             })
-            const layout = findLayout(figure, [{item: this.text.text, context: tc}],
+            const layout = findLayout(figure, [{item: this.text.text, context: tc}], 1,
                                        x, y, x, Figure_defaults.LARGE_SPAN, y)
             let w = 0, items = layout.lines[0].items.reverse()
             for (let item of items) {
@@ -3663,7 +3667,7 @@ class Label extends GraphicalObject {
               strokeStyle: null, baseline: 0,
               forceLayout: false, container: this
             })
-            const layout = findLayout(this.figure, [{item: this.text.text, context: tc}],
+            const layout = findLayout(this.figure, [{item: this.text.text, context: tc}], 1,
                                       0, 0, 0, Figure_defaults.LARGE_SPAN, 0)
 
             if (!layout.success) {
@@ -3847,7 +3851,7 @@ class ContainedText {
             [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
             x0 += inset
             x1 -= inset
-            const ly = findLayout(figure, [{ item: this.text, context: tc }],
+            const ly = findLayout(figure, [{ item: this.text, context: tc }], 1,
                                   x0, y, x0, x1, ymax)
             if (ly.success) {
                 layout = ly
