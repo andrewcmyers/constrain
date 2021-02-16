@@ -5,17 +5,13 @@ Constrain.fullWindowCanvas(canvas)
 const figure = new Constrain.Figure(canvas)
 
 with (figure) {
-var border = rectangle("blue", "white")
+    var border = rectangle("blue", "white")
 
     align("center", "center", border, canvasRect())
-    border.addText(
-        text("Constrain")
-          .setFontName("Arial, Helvetica")
-          .setFillStyle("white")
-          .setJustification("center")
-          .setVerticalAlign("center")
+    border.addText("Constrain")
+          .setFontName("Helvetica, Arial")
+          .setTextStyle("white")
           .setFontSize(36)
-    )
     border.setH(150)
     border.setW(300)
 
