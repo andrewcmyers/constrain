@@ -3535,8 +3535,9 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
     let best = undefined, bestp = undefined
     if (res0.following.length > 0) {
         citems = citems.slice(0, n)
-        for (let ci of res0.following.reverse()) {
-            citems.push(ci)
+        const newItems = res0.following.reverse()
+        for (let i=0; i < newItems.length; i++) {
+            citems.push(newItems[i])
             n++
         }
     }
@@ -3572,7 +3573,8 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
             return best
         }
     }
-    for (let posn of posns) {
+    for (let i = 0; i < posns.length; i++) {
+        const posn = posns[i]
         checkIfBest(posn)
         if (greedy && best !== undefined && best.success) break
     }
@@ -3645,7 +3647,8 @@ class Label extends GraphicalObject {
             const layout = findLayout(figure, [{item: this.text.text, context: tc}], 1,
                                        x, y, x, Figure_defaults.LARGE_SPAN, y)
             let w = 0, items = layout.lines[0].items.reverse()
-            for (let item of items) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
                 if (item.font) item.font.setContextFont(ctx)
                 if (item.item) item.item.render(ctx, x + w, item.y)
                 w += item.width
@@ -3677,7 +3680,10 @@ class Label extends GraphicalObject {
                 return 0
             }
             let w = 0, items = layout.lines[0].items
-            for (let item of items) w += item.width
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                w += item.width
+            }
             this.computedWidth = w
         }
     }
@@ -3874,7 +3880,8 @@ class ContainedText {
             const {x0, x1, y, items} = line
             let items_rev = items.reverse()
             let lw = 0, stretchers = 0
-            for (let item of items_rev) {
+            for (let i = 0; i < items_rev.length; i++) {
+                const item = items_rev[i]
                 lw += item.width
                 stretchers += item.stretch
             }
@@ -3886,8 +3893,9 @@ class ContainedText {
                 case "center": x = x0 + extra/2; break
                 case "right": x = x0 + extra; break
             }
-            for (let item of items_rev) {
-                const font = item.font
+            for (let i = 0; i < items_rev.length; i++) {
+                const item = items_rev[i],
+                      font = item.font
                 if (font && font != currentFont) {
                     font.setContextFont(ctx)
                     currentFont = font
@@ -4000,11 +4008,12 @@ class TextContext {
     }
     get(name) {
         const key = this.key(name),
-              val = this.properties[key]
+              properties = this.properties,
+              val = properties[key]
         if (val !== undefined) return val
         if (this.parent) {
             const v2 = this.parent.get(name)
-            this.properties[key] = v2
+            properties[key] = v2
             return v2
         }
         console.error("Requested undefined text context attribute " + name)
