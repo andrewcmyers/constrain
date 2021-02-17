@@ -3451,13 +3451,14 @@ class Font {
 // Lower costs are better. Note that the last line does not have any cost.
 function layoutCost(ly, x) {
     let cost = 0
-    const lines = ly.lines
-    let first = lines[lines.length - 1]
-    for (let line of lines) {
-        let span = (line === first) ? line.x1 - x
-                                    : line.x1 - line.x0
-        for (let item of line.items) {
-            span -= item.width
+    const lines = ly.lines, n = lines.length
+    for (let i = 1; i < n; i++) {
+        const line = lines[i],
+              items = line.items,
+              m = items.length
+        let span = line.x1 - ((i == n-1) ? x : line.x0)
+        for (let j = 0; j < m; j++) {
+            span -= items[j].width
         }
         cost += span * span * span
     }
