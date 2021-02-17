@@ -27,6 +27,6 @@ Cornell University course notes using Constrain for embedded figures: [CS 2112](
 ## Requirements
 
 - ES6-capable web browser
-    - Tested on Chrome, Firefox, Safari, Opera
+    - Tested on Chrome, Opera, Brave, Firefox, Safari (runs best on the first three)
     - Does not work on Internet Explorer or Opera Mini
 - Numeric.js version 1.2.6 (included)

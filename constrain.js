@@ -895,6 +895,9 @@ class Figure {
     italic(...t) {
         return new ItalicText(createText(...t))
     }
+    hyphen() {
+        return new Hyphen()
+    }
     textContext(t, f) {
         return new ContextTransformer(t, f)
     }
@@ -3459,7 +3462,9 @@ function layoutCost(ly, x) {
         const left = (i == n-1) ? x : line.x0
         let span = line.x1 - left
         for (let j = 0; j < m; j++) {
-            span -= items[j].width
+            const item = items[j]
+            span -= item.width
+            if (item.cost) cost += item.cost
         }
         cost += span * span * span
     }
@@ -4130,6 +4135,44 @@ class ConcatText extends TextItem {
     }
     resetCaches() {
         for (let item of this.items) item.resetCaches();
+    }
+}
+
+class Hyphen extends TextItem {
+    constructor() {
+        super()
+        this.cost = 50
+    }
+    toString() { return "[Hyphen]" }
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        let width = this.width
+        if (!width) {
+              const font = tc.get("font")
+              font.setContextFont(figure.ctx)
+              width = figure.ctx.measureText("-").width
+              this.width = width
+        }
+        const positions = [{ newLine: false, x }]
+        const ls = tc.get("lineSpacing")
+        if (x + width <= x1 && y + ls <= ymax) {
+            positions.push( { newLine: true,
+                              renderable: {
+                                 item: this,
+                                 y,
+                                 width,
+                                 stretch: 0
+                              }
+                            } )
+        }
+        return {
+            success: true,
+            positions,
+            following: []
+        }
+    }
+    render(ctx, x, y) {
+        ctx.fillText("-", x, y)
     }
 }
 
