@@ -3456,7 +3456,8 @@ function layoutCost(ly, x) {
         const line = lines[i],
               items = line.items,
               m = items.length
-        let span = line.x1 - ((i == n-1) ? x : line.x0)
+        const left = (i == n-1) ? x : line.x0
+        let span = line.x1 - left
         for (let j = 0; j < m; j++) {
             span -= items[j].width
         }
@@ -3567,8 +3568,8 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
         // key = `${x},${y}`
         key = x + y * 1009
         cache = item.cache
-        if (!cache) item.cache = cache = {}
-        const memoized = cache[key]
+        if (!cache) item.cache = cache = new Map()
+        const memoized = cache.get(key)
         if (memoized !== undefined) {
             checkIfBest(memoized)
             return best
@@ -3579,7 +3580,7 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
         checkIfBest(posn)
         if (greedy && best !== undefined && best.success) break
     }
-    if (key !== undefined) cache[key] = bestp
+    if (key !== undefined) cache.set(key, bestp)
     return best
 }
 
@@ -3992,29 +3993,26 @@ function createText(...text) {
 //  of rendering.
 class TextContext {
     constructor(parent, figure) {
-        this.properties = {}
+        this.properties = new Map()
         this.figure = figure
         this.parent = parent
     }
-    key(name) {
-        return "*" + name
-    }
     set(name, value) {
-        this.properties[this.key(name)] = value
+        this.properties.set(name, value)
     }
     setAll(dict) {
         for (let key in dict) {
-            this.properties[this.key(key)] = dict[key]
+            this.set(key, dict[key])
         }
     }
     get(name) {
-        const key = this.key(name),
+        const key = name,
               properties = this.properties,
-              val = properties[key]
+              val = properties.get(key)
         if (val !== undefined) return val
         if (this.parent) {
             const v2 = this.parent.get(name)
-            properties[key] = v2
+            properties.set(key, v2)
             return v2
         }
         console.error("Requested undefined text context attribute " + name)
