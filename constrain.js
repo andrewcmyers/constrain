@@ -3553,18 +3553,20 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
         } else {
             rest = findLayout(figure, citems, n, posn.x, y, x0, x1, ymax)
         }
-        if (posn.renderable) rest.lines[rest.lines.length - 1].items.push(posn.renderable)
+        const renderable = posn.renderable, lines = rest.lines
+        if (renderable) lines[lines.length - 1].items.push(renderable)
         if (best === undefined || lowerCost(rest, best, x)) {
             best = rest
             bestp = posn
         }
     }
-    let key
+    let key, cache
     if (posns.length > 1) {
-         // key = `${x},${y}`
-         key = x + y * 1009
-        if (!item.cache) item.cache = {}
-        const memoized = item.cache[key]
+        // key = `${x},${y}`
+        key = x + y * 1009
+        cache = item.cache
+        if (!cache) item.cache = cache = {}
+        const memoized = cache[key]
         if (memoized !== undefined) {
             checkIfBest(memoized)
             return best
@@ -3574,7 +3576,7 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
         checkIfBest(posn)
         if (greedy && best !== undefined && best.success) break
     }
-    if (posns.length > 1) item.cache[key] = bestp
+    if (key !== undefined) cache[key] = bestp
     return best
 }
 
