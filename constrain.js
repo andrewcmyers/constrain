@@ -45,7 +45,8 @@ const Figure_defaults = {
     SUPERSCRIPT_OFFSET : 0.44,
     SUBSCRIPT_OFFSET : -0.16,
     SCRIPTSIZE : 0.80,
-    LARGE_SPAN : 10000.0
+    LARGE_SPAN : 10000.0,
+    HYPHEN_COST : 100000
 }
 
 // A Figure is attached to a canvas and knows how to render itself. It has a
@@ -3464,7 +3465,7 @@ function layoutCost(ly, x) {
         for (let j = 0; j < m; j++) {
             const item = items[j]
             span -= item.width
-            if (item.cost) cost += item.cost
+            if (item.item && item.item.cost) cost += item.item.cost
         }
         cost += span * span * span
     }
@@ -3975,13 +3976,17 @@ function createText(...text) {
     const result = []
     text.forEach(t => {
         if (t.constructor == String) { 
-            let wds = 0;
+            let wds = 0
             t.split(/  */).forEach(w => {
                 if (w) {
                     if (wds++) {
                         result.push(new Whitespace())
                     }
-                    result.push(new WordText(w))
+                    let parts = 0
+                    w.split(/­/).forEach(part => {
+                        if (parts++) result.push(new Hyphen())
+                        result.push(new WordText(part))
+                    })
                 }
             })
         } else {
@@ -4141,7 +4146,7 @@ class ConcatText extends TextItem {
 class Hyphen extends TextItem {
     constructor() {
         super()
-        this.cost = 50
+        this.cost = Figure_defaults.HYPHEN_COST
     }
     toString() { return "[Hyphen]" }
     // See TextItem.layout
