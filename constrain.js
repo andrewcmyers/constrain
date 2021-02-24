@@ -1017,6 +1017,14 @@ class Figure {
             this.equal(p0.y(), this.plus(this.times(a, p1.y()), this.times(b, p2.y())))
         )
     }
+// dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
+// make p0-p1 parallel to p2-p3
+    parallel(p0, p1, p2, p3) {
+        return this.equal(
+          this.times(this.minus(p1.y(), p0.y()), this.minus(p3.x(), p2.x())),
+          this.times(this.minus(p3.y(), p2.y()), this.minus(p1.x(), p0.x())))
+    }
+
 
 }
 
