@@ -168,8 +168,8 @@ class Figure {
         }
         return result
     }
-    evaluate(e) {
-        return evaluate(e, this.currentValuation)
+    evaluate(e, doGrad) {
+        return evaluate(e, this.currentValuation, doGrad)
     }
     numberVariables() {
         let i = 0, a = [], frame = this.currentFrame
@@ -986,10 +986,10 @@ class Figure {
     max(...args) { return new Max(...args) }
     min(...args) { return new Min(...args) }
     sqrt(x) { return new Sqrt(x) }
-    sqr(x) { return new Sqr(x) }
-    sq(x) { return new Sqr(x) }
+    sqr(x) { return new Sq(x) }
+    sq(x) { return new Sq(x) }
     average(x, y) { return new Average(x, y) }
-    distance(p1, p2) { return new Distance(p1, p2) }
+    distance(p1, p2, dims) { return new Distance(p1, p2, dims) }
     nearZero(e, cost) { return new NearZero(this, e, cost) }
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
     group(...g) { return new Group(this, ...g) }
@@ -1862,42 +1862,35 @@ class Max extends NaryExpression {
 
 // The distance between two points
 class Distance extends Expression {
-    constructor(p1, p2) {
+    constructor(p1, p2, dim) {
         super()
         this.p1 = p1
         this.p2 = p2
+        this.dim = dim || 2
     }
     evaluate(valuation, doGrad) {
       if (!doGrad) {
-        const [x1, y1] = evaluate(this.p1, valuation),
-              [x2, y2] = evaluate(this.p2, valuation),
-              xd = x2 - x1,
-              yd = y2 - y1,
-              rad = sqdist(xd, yd)
+        const p1 = evaluate(this.p1, valuation),
+              p2 = evaluate(this.p2, valuation),
+              rad = numeric.norm2Squared(numeric.sub(p2, p1))
         return Math.sqrt(rad)
       }
       const [p1, dp1] = evaluate(this.p1, valuation, true),
             [p2, dp2] = evaluate(this.p2, valuation, true),
-            [x1, y1] = p1,
-            [x2, y2] = p2,
-            [dx1, dy1] = dp1,
-            [dx2, dy2] = dp2,
-            dxd = numeric.sub(dx2, dx1),
-            dyd = numeric.sub(dy2, dy1),
-            xd = x2 - x1,
-            yd = y2 - y1,
-            rad = sqdist(xd, yd),
+            dpd = numeric.sub(dp2, dp1),
+            pd = numeric.sub(p2, p1),
+            rad = numeric.norm2Squared(pd),
             v = Math.sqrt(rad)
-      let xdn, ydn
+      // let xdn, ydn
+      let dn
       if (v != 0) {
-        xdn = xd/v
-        ydn = yd/v
+        dn = numeric.mul(1/v, pd)
       } else {
         const ang = Math.random() * Math.PI * 2
-        xdn = Math.cos(ang)
-        ydn = Math.sin(ang)
+        dn = [ Math.cos(ang), Math.sin(ang) ]
+        for (let i = 2; i < this.dim; i++) dn.push(Math.random() - 0.5)
       }
-      return [v, numeric.add(numeric.mul(xdn, dxd), numeric.mul(ydn, dyd))]
+      return [v, numeric.dot(dn, dpd)]
     }
     // Dx1(d) where rad = sqrt((x1-x2)^2 + (y1-y2)^2) is (x1-x2)/rad * dx1
     //
@@ -1907,28 +1900,26 @@ class Distance extends Expression {
     // dO/a = dO/d(ab) * d(ab)/da = dO/d(ab) * b
 
     backprop(task) {
-        const [x1, y1] = this.p1.evaluate(task.valuation),
-              [x2, y2] = this.p2.evaluate(task.valuation),
-              xd = x2 - x1,
-              yd = y2 - y1,
-              sd = sqdist(xd, yd),
+        const p1 = this.p1.evaluate(task.valuation),
+              p2 = this.p2.evaluate(task.valuation),
+              pd = numeric.sub(p2, p1),
+              sd = numeric.norm2Squared(pd),
               d = this.bpDiff
-        let xdn, ydn
+        let dn
         if (sd != 0) {
-            const idist = 1/Math.sqrt(sd)
-            xdn = xd * idist * d
-            ydn = yd * idist * d
+            const idist = d/Math.sqrt(sd)
+            dn = numeric.mul(idist, pd)
         } else {
             // positions of points are considered arbitrary, so generate a
             // differential in a random direction.
             console.log("Warning: zero distance between points, generating force at random angle")
 
             const ang = Math.random() * Math.PI * 2
-            xdn = d * Math.cos(ang)
-            ydn = d * Math.sin(ang)
+            dn = [ d * Math.cos(ang), d * Math.sin(ang) ]
+            for (let i = 2; i < this.dim; i++) dn.push(d * (Math.random() - 0.5))
         }
-        task.propagate(this.p1, [-xdn, -ydn])
-        task.propagate(this.p2, [xdn, ydn])
+        task.propagate(this.p1, numeric.neg(dn))
+        task.propagate(this.p2, dn)
     }
     addDependencies(task) {
         task.prepareBackProp(this.p1)
@@ -2012,7 +2003,7 @@ class Sqrt extends UnaryExpression {
 }
 
 // The squaring operation
-class Sqr extends UnaryExpression {
+class Sq extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return a*a }
     gradop(a, da) {
@@ -2024,7 +2015,7 @@ class Sqr extends UnaryExpression {
         task.propagate(this.expr, d*2*a)
     }
     toString() {
-        return "Sqr(" + this.expr + ")"
+        return "Sq(" + this.expr + ")"
     }
 }
 
@@ -2388,7 +2379,7 @@ class Loss extends Constraint {
 // zero as possible.
 class NearZero extends Loss {
     constructor(figure, expr, cost) {
-        super(figure, new Sqr(expr))
+        super(figure, new Sq(expr))
         this.cost = cost || 1
     }
     toString() { return "0 ~ " + this.expr }
@@ -4659,6 +4650,7 @@ function autoResize() {
     Figures: Figures,
     Frame: Frame,
     Variable: Variable,
+    LayoutObject: LayoutObject,
     GraphicalObject: GraphicalObject,
     Point: Point,
     Box: Box,
