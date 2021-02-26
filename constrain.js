@@ -896,11 +896,14 @@ class Figure {
     italic(...t) {
         return new ItalicText(createText(...t))
     }
+    bold(...t) {
+        return new BoldText(createText(...t))
+    }
     hyphen() {
         return new Hyphen()
     }
-    textContext(t, f) {
-        return new ContextTransformer(t, f)
+    textContext(f, ...t) {
+        return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
     textFrame(txt, fillStyle) {
         if (typeof txt == "string") txt = new ContainedText(this, createText(txt))
@@ -3416,11 +3419,15 @@ class Font {
             this.copyFrom(figure.font)
         }
     }
+    copy() {
+        return new Font().copyFrom(this)
+    }
     copyFrom(font) {
         if (font.fontName) this.fontName = font.fontName
         if (font.fontStyle) this.fontStyle = font.fontStyle
         if (font.fontObj) this.fontObj - font.fontObj
         this.fontSize = font.fontSize
+        return this
     }
     setFontObject(font, size) {
         this.fontObj = font
@@ -4017,11 +4024,13 @@ class TextContext {
     }
     set(name, value) {
         this.properties.set(name, value)
+        return this
     }
     setAll(dict) {
         for (let key in dict) {
             this.set(key, dict[key])
         }
+        return this
     }
     get(name) {
         const key = name,
@@ -4194,7 +4203,7 @@ class Hyphen extends TextItem {
 class ContextTransformer extends TextItem {
     // Create a ContextTransformer that wraps the text
     // and transforms the outer context tc into f(tc).
-    constructor(text, f) {
+    constructor(f, text) {
         super()
         this.text = (text.constructor == String) ? new WordText(text) : text
         this.fun = f
@@ -4215,7 +4224,7 @@ class ContextTransformer extends TextItem {
 }
 
 class SuperscriptText extends ContextTransformer {
-    constructor(text) { super(text, null) }
+    constructor(text) { super(null, text) }
     transformContext(tc, figure) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
@@ -4230,7 +4239,7 @@ class SuperscriptText extends ContextTransformer {
 }
 
 class SubscriptText extends ContextTransformer {
-    constructor(text) { super(text, null) }
+    constructor(text) { super(null, text) }
     transformContext(tc, figure) {
         const baseline = tc.get("baseline"), font = tc.get("font"),
               fontSize = font.getSize()
@@ -4245,7 +4254,7 @@ class SubscriptText extends ContextTransformer {
 }
 
 class ItalicText extends ContextTransformer {
-    constructor(text) { super(text, null) }
+    constructor(text) { super(null, text) }
     transformContext(tc, figure) {
         const font = tc.get("font")
         tc = new TextContext(tc, figure)
@@ -4253,6 +4262,19 @@ class ItalicText extends ContextTransformer {
         italicFont.copyFrom(font)
         italicFont.setStyle("italic")
         tc.set("font", italicFont)
+        return tc
+    }
+}
+
+class BoldText extends ContextTransformer {
+    constructor(text) { super(null, text) }
+    transformContext(tc, figure) {
+        const font = tc.get("font")
+        tc = new TextContext(tc, figure)
+        const newFont = new Font(figure)
+        newFont.copyFrom(font)
+        newFont.setStyle("bold")
+        tc.set("font", newFont)
         return tc
     }
 }
