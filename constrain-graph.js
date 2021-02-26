@@ -1,10 +1,7 @@
 Constrain.Graph = function() {
 
-const Loss = Constrain.Loss, Minus = Constrain.Minus,
-      CanvasRect = Constrain.CanvasRect, Min = Constrain.Min,
-      Max = Constrain.Max, Times = Constrain.Times, Distance = Constrain.Distance,
-      Plus = Constrain.Plus, Divide = Constrain.Divide,
-      Sqrt = Constrain.Sqrt
+const { Loss, Minus, CanvasRect, Min, Max, Times, Distance, Plus, Divide, Sqrt,
+        LayoutObject, Variable, evaluate, Expression, exprVariables, Global, DebugExpr} = Constrain
 
 // How strongly graph constraints are enforced, by default. << 1 because these are supposed to
 // be soft constraints, i.e., regular constraints will "give" very little to accommodate them
@@ -22,6 +19,132 @@ const GRAPH_REPULSION = 1000
 // Torsional force spreading edges apart
 const GRAPH_BRANCH_SPREAD = 400
 
+// How much it costs to use fully flattened dimensions
+const LARGE_DIM_COST = 1000000
+
+// A NodePos computes a higher-dimensional position in which
+// the first two coordinates are the (x,y) position of the object
+// and the remaining coordinates are the "extra dimensions" specified
+// by the graph.
+class NodePos extends LayoutObject {
+    constructor(object, graph) {
+        super()
+        this.obj = object
+        this.graph = graph
+        const n = this.graph.numExtraDims + 2
+        if (n > 2) {
+            this.obj.extraDims = new Array(n-2)
+            for (let i = 2; i < n; i++) {
+                this.obj.extraDims[i-2] = new Variable(graph.figure, "np" + i)
+                this.obj.extraDims[i-2].hint = Math.random() - 0.5
+            }
+        }
+    }
+    object() {
+        return this.obj
+    }
+    x() {
+        return this.obj.x()
+    }
+    y() {
+        return this.obj.y()
+    }
+    w() {
+        return this.obj.w()
+    }
+    h() {
+        return this.obj.h()
+    }
+    evaluate(valuation, doGrad) {
+        let result = evaluate(this.obj, valuation, doGrad)
+        const n = this.graph.numExtraDims + 2
+        if (n == 2) return result
+        result = result.slice(0)
+        for (let i = 2; i < n; i++) {
+            const extra = evaluate(this.obj.extraDims[i-2], valuation, doGrad) 
+            if (doGrad) {
+                result[0].push(extra[0])
+                result[1].push(extra[1])
+            } else {
+                result.push(extra)
+            }
+        }
+        return result
+    }
+    initDiff() {
+        this.bpDiff = new Array(this.graph.numExtraDims + 2).fill(0)
+    }
+    backprop(task) {
+        const d = this.bpDiff,
+              n = 2 + this.graph.numExtraDims
+        if (d.length != n) {
+            console.error("wrong number of dimensions being propagated through NodePos")
+        }
+        task.propagate(this.obj, d.slice(0, 2))
+        for (let i = 2; i < n; i++) {
+            task.propagate(this.obj.extraDims[i-2], d[i])
+        }
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.obj)
+        for (let i = 0; i < this.graph.numExtraDims; i++) {
+            task.prepareBackProp(this.obj.extraDims[i])
+        }
+    }
+    variables() {
+        let result = this.obj.variables()
+        for (let i = 0; i < this.graph.numExtraDims; i++) {
+            const vs = exprVariables(this.obj.extraDims[i])
+            if (vs.length > 0) result = result.concat(vs)
+        }
+        return result
+    }
+}
+
+// An IfPos is an expression that evaluates to one expression if its condition is
+// positive, and a second one otherwise.
+class IfPos extends Expression {
+    constructor(cond, epos, eneg) {
+        super()
+        this.cond = cond
+        this.epos = epos
+        this.eneg = eneg
+    }
+    evaluate(valuation, doGrad) {
+        const cond = evaluate(this.cond, valuation, false)
+        if (cond > 0) {
+            return evaluate(this.epos, valuation, doGrad)
+        } else {
+            return evaluate(this.eneg, valuation, doGrad)
+        }
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.cond)
+        task.prepareBackProp(this.epos)
+        task.prepareBackProp(this.eneg)
+    }
+    initDiff() {
+        this.bpDiff = 0
+    }
+    variables() {
+        return exprVariables(this.cond)
+               .concat(exprVariables(this.epos))
+               .concat(exprVariables(this.eneg))
+    }
+    backprop(task) {
+        const cond = this.cond.currentValue
+        if (cond === undefined) alert("oops")
+        if (cond > 0) {
+            task.propagate(this.epos, this.bpDiff)
+        } else {
+            task.propagate(this.eneg, this.bpDiff)
+        }
+    }
+    toString() {
+        return "ifPos(" + this.cond + "," + this.epos + "," + this.eneg + ")"
+    }
+}
+
 class Graph {
     constructor(figure) {
         this.figure = figure
@@ -34,37 +157,72 @@ class Graph {
         this.hintsComputed = false
         this.nodes = []
         this.edges = []
+        this.numExtraDims = 0
     }
+    setExtraDims(d) {
+        this.numExtraDims = d
+    }
+    // Define the effective dimensionality of points as a function f
+    // that returns the effective dimensionality when queried. This
+    // can be any real number at or above 2. Position coordinates
+    // whose dimension is at least 1 full dimension too large
+    // incur a cost multiplier of LARGE_DIM_COST. Dimensions
+    // that are too large by x incur a cost multiplier of x/(1-x)
+    //
+    setEffectiveDimension(f) {
+        this.effectiveDimensionFunction = f
+    }
+    // The NodePos associated with graphical object g. One is created if
+    // none exists yet in this graph.
     addNode(g) {
         const fig = this.figure
         for (let i = 0; i < this.nodes.length; i++) {
-            if (g === this.nodes[i]) return false
+            // if (g === this.nodes[i])
+            if (g === this.nodes[i].object()) 
+            {
+                return this.nodes[i]
+            }
         }
+        g = new NodePos(g, this)
         // nodes would like to be far apart
         const cr = fig.canvasRect().inset(2),
-              sz = fig.min(cr.w(), cr.h())
+              sz = fig.min(cr.w(), cr.h()),
+              n = this.numExtraDims + 2
         for (let i = 0; i < this.nodes.length; i++) {
             let g2 = this.nodes[i],
-                dist = fig.distance(g2, g), cr = new CanvasRect(this.figure),
-                bdist = new Min(new Max(dist, 1), new Times(1.0, cr.w()), new Times(1.0, cr.h())),
+                dist = fig.distance(g2, g, n), cr = new CanvasRect(this.figure),
+                bdist = new Min(new Max(dist, 1), cr.w(), cr.h()),
                    // repulsion cuts off below 1 pixel and at canvas size
                 potential = fig.divide(this.repulsion * this.sparsity, bdist)
             // potential = new DebugExpr("potential between " + g + " and " + g2, potential)
             fig.costEqual(this.cost, potential, 0)
         }
+        if (this.effectiveDimensionFunction) {
+            let dimension = new Global(v => (this.effectiveDimensionFunction)(v), "dimension")
+            for (let d = 2; d < n; d++) {
+                const x = fig.minus(d, dimension),
+                      x2 = fig.minus(1, x);
+                new Loss(fig, new IfPos(x,
+                             fig.times(fig.sq(fig.projection(g, d, n)),
+                                       new IfPos(x2,
+                                                 fig.divide(x, x2),
+                                                 LARGE_DIM_COST)),
+                             0))
+            }
+        }
         this.nodes.push(g)
         // but keep the node inside the figure
         fig.keepInside(g, cr)
-        return true
+        return g
     }
     // Add an undirected edge between objects g1 and g2, adding the objects as nodes if necessary.
     // Return the (straight) connector between them.
     edge(g1, g2) {
         const fig = this.figure
-        this.addNode(g1)
-        this.addNode(g2)
+        g1 = this.addNode(g1)
+        g2 = this.addNode(g2)
         fig.costEqual(this.cost,
-                      new Distance(g1, g2),
+                      new Distance(g1, g2, this.numExtraDims + 2),
                       new Times(new Plus(g1.w(), g1.h(), g2.w(), g2.h()),
                                 this.sparsity))
         // add same-direction penalty
@@ -99,21 +257,24 @@ class Graph {
                             new Sqrt(new Minus(1, cos)), 2)
         }
         this.edges.push([g1, g2])
-        return fig.connector(g1, g2)
+        return fig.connector(g1.object(), g2.object())
     }
     // Add an directed edge between objects g1 and g2, adding the objects as nodes if necessary.
     // Constraints are added to order them top-to-bottom or left-to-right, depending on the the figure's
     // horizontalLayout property.
     // Return the (straight) connector between the objects.
     dedge(g1, g2) {
-        const fig = this.figure
+        const fig = this.figure,
+              result = this.edge(g1, g2)
+        g1 = this.addNode(g1)
+        g2 = this.addNode(g2)
         if (this.horizontalLayout) {
             fig.geq(fig.minus(g2.x0(), g1.x1()), fig.times(0.25, fig.plus(g1.w(), g2.w()))).changeCost(this.cost * this.gravity)
         } else {
             new Loss(fig, new Minus(g1.y(), g2.y())).changeCost(this.cost * this.gravity)
             // fig.geq(fig.minus(g2.y0(), g1.y1()), fig.times(0.25, fig.plus(g1.h(), g2.h()))).changeCost(this.cost * this.gravity)
         }
-        return this.edge(g1, g2)
+        return result
     }
     setupHints() {
         const graph = this

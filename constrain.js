@@ -2308,8 +2308,7 @@ class DrawBefore extends TemporalFilter {
 // its list Constraints, because of ConstraintGroups.
 class Constraint extends Temporal {
 
-    // Create a constraint associated with figure but do not
-    // install it in figure.Constraints.
+    // Create a constraint associated with figure.
     constructor(figure) {
         super(figure)
         if (!isFigure(figure)) {
@@ -2323,7 +2322,7 @@ class Constraint extends Temporal {
         console.error("No cost function defined for this constraint " + this)
         return zeroCost(valuation, doGrad)
     }
-    addToTask(valuation) {
+    addToTask(task) {
         console.error("No addToTask function defined for this constraint " + this.constructor)
         return
     }
@@ -4480,20 +4479,22 @@ AdvanceButton.prototype.installHolder = GraphicalObject.prototype.installHolder
 // the values of variables that are being solved for. Its value is provided
 // by a function that is passed to the constructor.
 class Global extends Expression {
-    constructor(fun) {
+    constructor(fun, name) {
         super()
         this.fun = fun
+        this.name = name
     }
     evaluate(valuation, doGrad) {
         const v0 = this.checkCache(valuation, doGrad)
         if (v0) return v0
-        const v = (this.fun)()
+        const v = (this.fun)(valuation)
         return this.recordCache(valuation, doGrad, doGrad ? [v, getZeros(valuation.length)] : v)
     }
     backprop(task) {}
     addDependencies(task) {
         // despite lack of backpropagation, this is needed to force initialization
     }
+    toString() { return this.name || "Global" }
 }
 
 // An expression that reports its value and gives information
@@ -4700,6 +4701,7 @@ function autoResize() {
     drawLineEndSeg: drawLineEndSeg,
     evaluate: evaluate,
     sqdist: sqdist,
-    exprVariables
+    exprVariables,
+    DebugExpr
   })
 }()
