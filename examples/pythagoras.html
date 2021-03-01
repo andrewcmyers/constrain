@@ -31,8 +31,8 @@ of the right triangles shown in yellow.
 <canvas style="width: 700px; height: 400px"></canvas>
 
 <p>
-The big squares have the same size and the 4 right triangles that each big square
-contains also have exactly the same size, so the remaining space in each big square
+The big squares are the same size, and the 4 yellow right triangles that each big square
+contains also have exactly the same size and shape, so the remaining space in each big square
 must have the same area. That means the areas of the pink square (\(a^2\)) and the green square
 (\(b^2\)) must add up to the area of the blue square (\(c^2\)).
 </p>
@@ -61,7 +61,7 @@ with (figure) {
     equal(minus(h1.y(), s1.y0()), a)
     // align("none", "center", h1, hand)
 
-    const asq = square().setFillStyle("#eaa").addText("a", superscript("2"))
+    const asq = square().setFillStyle("#eab").addText("a", superscript("2"))
     const bsq = square().setFillStyle("#aea").addText("b", superscript("2"))
     align("left", "top", asq, s1)
     align("right", "none", asq, v1)
@@ -70,7 +70,7 @@ with (figure) {
 
 
     function rt(p1, p2, p3) {
-        return figure.polygon([p1, p2, p3]).setFillStyle("#eea")
+        return figure.polygon([p1, p2, p3]).setFillStyle("#ee9")
     }
     rt(s1.ll(), asq.ll(), bsq.ll())
     rt(bsq.ll(), asq.ll(), asq.lr())
@@ -81,7 +81,7 @@ with (figure) {
           p2 = s2.ul().toBottom(a),
           p3 = s2.ur().toLeft(a),
           p4 = s2.lr().toTop(a)
-    polygon([p1, p2, p3, p4]).setFillStyle("#ccf").addText("c", superscript("2"))
+    polygon([p1, p2, p3, p4]).setFillStyle("#cdf").addText("c", superscript("2"))
     rt(p1, p2, s2.ll())
     rt(p2, p3, s2.ul())
     rt(p3, p4, s2.ur())
