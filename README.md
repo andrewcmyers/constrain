@@ -1,6 +1,6 @@
 # [Constrain](https://andrewcmyers.github.io/constrain/) - a JS (ES6) library for responsive, animated figures, based on declarative constraint solving
 ![Triangle image](images/triangle.png)
-- Supports responsive, animated figures embedded in web pages
+- Responsive, animated figures embedded in web pages
 - Figures implemented declaratively with time-dependent constraints on graphical objects
 - Integrates with [Reveal.js](https://revealjs.com) presentations
 - [GitHub repository](https://github.com/andrewcmyers/constrain)
