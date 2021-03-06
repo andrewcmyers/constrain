@@ -178,8 +178,9 @@ class Figure {
         }
         return result
     }
-    evaluate(e, doGrad) {
-        return evaluate(e, this.currentValuation, doGrad)
+    evaluate(e, valuation, doGrad) {
+        if (!valuation) valuation = this.currentValuation
+        return evaluate(e, valuation, doGrad)
     }
     numberVariables() {
         let i = 0, a = [], frame = this.currentFrame
