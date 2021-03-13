@@ -2667,6 +2667,24 @@ class GraphicalObject extends Box {
         this.lineDash = d
         return this
     }
+    setOpacity(o) {
+        this.opacity = o
+        return this
+    }
+    // Fill the current graphics context appropriately based on the fill style and opacity
+    fill() {
+        const ctx = this.figure.ctx
+        if (this.fillStyle) {
+            ctx.fillStyle = this.fillStyle
+            if (this.opacity) {
+                ctx.globalAlpha = this.opacity
+                ctx.fill()
+                ctx.globalAlpha = 1
+            } else {
+                ctx.fill()
+            }
+        }
+    }
 // control contained text
     addText(...t) {
         this.text = new ContainedText(this.figure, createText(...t))
@@ -2851,10 +2869,7 @@ class Rectangle extends GraphicalObject {
             Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
         }
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
-        if (this.fillStyle) {
-            ctx.fillStyle = this.fillStyle
-            ctx.fill()
-        }
+        this.fill()
         if (this.strokeStyle) {
             ctx.strokeStyle = this.strokeStyle
             ctx.setLineDash(this.lineDash || [])
@@ -2996,10 +3011,7 @@ class Ellipse extends GraphicalObject {
         ctx.translate(x - w/2, y - h/2)
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         Paths.ellipse(ctx, w/2, h/2, w/2, h/2)
-        if (this.fillStyle) {
-            ctx.fillStyle = this.fillStyle
-            ctx.fill()
-        }
+        this.fill()
         if (this.strokeStyle) {
             ctx.strokeStyle = this.strokeStyle
             ctx.setLineDash(this.lineDash || [])
@@ -3076,7 +3088,7 @@ class Polygon extends GraphicalObject {
             }
         }
         ctx.closePath()
-        ctx.fill()
+        this.fill()
         if (this.strokeStyle) {
             ctx.strokeStyle = this.strokeStyle
             ctx.stroke()
