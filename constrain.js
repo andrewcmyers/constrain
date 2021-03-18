@@ -4573,10 +4573,14 @@ class DebugExpr extends Expression {
 class DOMElementBox extends LayoutObject {
     constructor(figure, id) {
         super()
-        if (typeof id == "string")
+        if (typeof id == "string") {
             this.obj = document.getElementById(id)
-        else
+            if (!this.obj) {
+                console.error("Can't find DOM element with id  " + id)
+            }
+        } else {
             this.obj = id
+        }
         if (!isFigure(figure)) {
             console.error("DOMElementBox requires a figure to compute coordinates relative to")
         }
@@ -4587,20 +4591,24 @@ class DOMElementBox extends LayoutObject {
     }
     x() { return this.centerX() }
     y() { return this.centerY() }
-    x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left) }
-    y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top) }
-    w() { return new Global(() => this.boundingRect().width) }
-    h() { return new Global(() => this.boundingRect().height) }
+    x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left, "DOM element x0") }
+    y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top, "DOM element y0") }
+    w() { return new Global(() => this.boundingRect().width, "DOM element width") }
+    h() { return new Global(() => this.boundingRect().height, "DOM element height") }
     x1() { return new Global(() => {
              const b = this.boundingRect()
              return b.right - this.figure.canvas.getBoundingClientRect().left
-           })
+           }, "DOM element x1")
          }
     y1() { return new Global(() => {
              const b = this.boundingRect()
              return b.bottom - this.figure.canvas.getBoundingClientRect().top
-           })
+           }, "DOM element y1")
          }
+    addDependencies(task) {
+        task.prepareBackProp(this.x())
+        task.prepareBackProp(this.y())
+    }
 }
 
 function fullWindowCanvas(canvas) {
