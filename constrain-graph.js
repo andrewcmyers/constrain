@@ -1,7 +1,10 @@
 Constrain.Graph = function() {
 
-const { Loss, Minus, CanvasRect, Min, Max, Times, Distance, Plus, Divide, Sqrt,
-        LayoutObject, Variable, evaluate, Expression, exprVariables, Global, DebugExpr} = Constrain
+const {
+    Loss, Minus, CanvasRect, Min, Max, Times, Distance, Plus, Divide, Sqrt,
+    Conditional, LayoutObject, Variable, evaluate, Expression, exprVariables,
+    Global, DebugExpr, SolverCallback
+} = Constrain
 
 // How strongly graph constraints are enforced, by default. << 1 because these are supposed to
 // be soft constraints, i.e., regular constraints will "give" very little to accommodate them
@@ -19,8 +22,11 @@ const GRAPH_REPULSION = 1000
 // Torsional force spreading edges apart
 const GRAPH_BRANCH_SPREAD = 400
 
-// How much it costs to use fully flattened dimensions
+// How much it costs to use fully squeezed dimensions
 const LARGE_DIM_COST = 1000000
+
+// cost of partially squeezed dimensions
+const DIM_COST = 100
 
 // A NodePos computes a higher-dimensional position in which
 // the first two coordinates are the (x,y) position of the object
@@ -101,49 +107,7 @@ class NodePos extends LayoutObject {
     }
 }
 
-// An IfPos is an expression that evaluates to one expression if its condition is
-// positive, and a second one otherwise.
-class IfPos extends Expression {
-    constructor(cond, epos, eneg) {
-        super()
-        this.cond = cond
-        this.epos = epos
-        this.eneg = eneg
-    }
-    evaluate(valuation, doGrad) {
-        const cond = evaluate(this.cond, valuation, false)
-        if (cond > 0) {
-            return evaluate(this.epos, valuation, doGrad)
-        } else {
-            return evaluate(this.eneg, valuation, doGrad)
-        }
-    }
-    addDependencies(task) {
-        task.prepareBackProp(this.cond)
-        task.prepareBackProp(this.epos)
-        task.prepareBackProp(this.eneg)
-    }
-    initDiff() {
-        this.bpDiff = 0
-    }
-    variables() {
-        return exprVariables(this.cond)
-               .concat(exprVariables(this.epos))
-               .concat(exprVariables(this.eneg))
-    }
-    backprop(task) {
-        const cond = this.cond.currentValue
-        if (cond === undefined) alert("oops")
-        if (cond > 0) {
-            task.propagate(this.epos, this.bpDiff)
-        } else {
-            task.propagate(this.eneg, this.bpDiff)
-        }
-    }
-    toString() {
-        return "ifPos(" + this.cond + "," + this.epos + "," + this.eneg + ")"
-    }
-}
+var graphIndex = 0
 
 class Graph {
     constructor(figure) {
@@ -158,6 +122,14 @@ class Graph {
         this.nodes = []
         this.edges = []
         this.numExtraDims = 0
+        this.setEffectiveDimension(() => this.numExtraDims+2)
+        figure.registerCallback(new SolverCallback("graph" + graphIndex,
+            (it, x0, f0, g0, H1) => {
+                const d = 2 + (1.0 - it/1000.0) * this.numExtraDims
+                // console.log("graph callback seen iter " + it + " value " + f0 + " dim=" + d);
+                this.setEffectiveDimension(() => d)
+                return false
+            }))
     }
     setExtraDims(d) {
         this.numExtraDims = d
@@ -198,16 +170,17 @@ class Graph {
             fig.costEqual(this.cost, potential, 0)
         }
         if (this.effectiveDimensionFunction) {
+            // Add the "squeeze" loss to keep nodes inside the effective dimensionality
             let dimension = new Global(v => (this.effectiveDimensionFunction)(v), "dimension")
             for (let d = 2; d < n; d++) {
                 const x = fig.minus(d, dimension),
                       x2 = fig.minus(1, x);
-                new Loss(fig, new IfPos(x,
-                             fig.times(fig.sq(fig.projection(g, d, n)),
-                                       new IfPos(x2,
-                                                 fig.divide(x, x2),
-                                                 LARGE_DIM_COST)),
-                             0))
+                new Loss(fig, new Conditional(x,
+                                fig.times(fig.sq(fig.projection(g, d, n)),
+                                          new Conditional(x2,
+                                                          fig.times(DIM_COST, fig.divide(x, x2)),
+                                                          LARGE_DIM_COST)),
+                                0))
             }
         }
         this.nodes.push(g)

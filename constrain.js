@@ -96,6 +96,7 @@ class Figure {
         this.arrowSize = Figure_defaults.ARROW_SIZE
         this.repeat = false
         this.animatedSolving = false
+        this.solverCallbacks = []
         this.fadeColor = 'white'
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
@@ -307,6 +308,24 @@ class Figure {
             this.currentValuation = this.currentValuation.slice(0, this.activeVariables.length)
         return this.solveConstraints(this.currentValuation, tol)
     }
+    // Register a callback to be invoked at every solver step
+    registerCallback(cb) {
+        for (let i = 0; i < this.solverCallbacks.length; i++) {
+            if (this.solverCallbacks[i] == cb) return
+        }
+        this.solverCallbacks.push(cb)
+    }
+    // Unregister a callback. Either the callback object itself or
+    // its name may be supplied as an argument.
+    unregisterCallback(name) {
+        for (let i = 0; i < this.solverCallbacks.length; i++) {
+            if (this.solverCallbacks[i].name == name ||
+                this.solverCallbacks[i] === name) {
+                this.solverCallbacks = this.solverCallbacks.slice(0, i)
+                                           .concat(this.solverCallbacks.slice(i+1))
+            }
+        }
+    }
     solveConstraints(valuation, tol) {
         let doGrad = true, fig = this
         if (valuation === undefined) {
@@ -318,15 +337,19 @@ class Figure {
             this.setupBackPropagation(task)
         }
         let result, callback, maxit = 1000
-        if (this.animatedSolving) {
-            callback = (it, x0, f0, g0, H1) => true
+        if (this.solverCallbacks.length > 0) {
+            callback = (it, x0, f0, g0, H1) => {
+                for (let i = 0; i < this.solverCallbacks.length; i++) {
+                    if  (this.solverCallbacks[i].call(it, x0, f0, g0, H1)) return true
+                }
+                return false
+            }
         }
         if (this.invHessian && this.invHessian.length != valuation.length) this.invHessian = undefined
         const uncmin_options = {Hinv: this.invHessian,
                                 stepSize: UNCMIN_STEPSIZE,
                                 overshoot: UNCMIN_OVERSHOOT}
-        if (doGrad) {
-            if (USE_BACKPROPAGATION) {
+        if (doGrad) { if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
                                 valuation, tol, maxit, callback, uncmin_options)
             } else {
@@ -607,6 +630,13 @@ class Figure {
 
     setAnimatedSolving(t) {
         this.animatedSolving = t
+        if (t) {
+            let counter = 0
+            this.registerCallback(new SolverCallback("animateSolving",
+                () => { counter++; return counter < 1000; }))
+        } else {
+            this.unregisterCallback("animateSolving")
+        }
     }
 
 // ---- default style control: some objects will use figure defaults if style parameters are not provided ----
@@ -1038,8 +1068,6 @@ class Figure {
           this.times(this.minus(p1.y(), p0.y()), this.minus(p3.x(), p2.x())),
           this.times(this.minus(p3.y(), p2.y()), this.minus(p1.x(), p0.x())))
     }
-
-
 }
 
 function figure(nm) {
@@ -1048,6 +1076,17 @@ function figure(nm) {
 
 function isFigure(figure) {
     return (figure.connector !== undefined)
+}
+
+// A callback that the solver will invoke if registered via Figure.registerCallback()
+class SolverCallback {
+    constructor(name, f) {
+        this.name = name
+        this.fun = f
+    }
+    call(it, x0, f0, g0, H1) {
+        return (this.fun)(it, x0, f0, g0, H1)
+    }
 }
 
 // Return which Figure is associated with element e, or null if
@@ -2046,6 +2085,50 @@ class Relu extends UnaryExpression {
         if (a > 0) task.propagate(this.expr, this.bpDiff)
     }
     toString() { return "Relu(" + this.expr + ")" }
+}
+
+// A Conditional is an expression that evaluates to one expression if its condition is
+// positive, and a second one otherwise.
+class Conditional extends Expression {
+    constructor(cond, epos, eneg) {
+        super()
+        this.cond = cond
+        this.epos = epos
+        this.eneg = eneg
+    }
+    evaluate(valuation, doGrad) {
+        const cond = evaluate(this.cond, valuation, false)
+        if (cond > 0) {
+            return evaluate(this.epos, valuation, doGrad)
+        } else {
+            return evaluate(this.eneg, valuation, doGrad)
+        }
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.cond)
+        task.prepareBackProp(this.epos)
+        task.prepareBackProp(this.eneg)
+    }
+    initDiff() {
+        this.bpDiff = 0
+    }
+    variables() {
+        return exprVariables(this.cond)
+               .concat(exprVariables(this.epos))
+               .concat(exprVariables(this.eneg))
+    }
+    backprop(task) {
+        const cond = this.cond.currentValue
+        if (cond === undefined) console.error("undefined conditional guard ")
+        if (cond > 0) {
+            task.propagate(this.epos, this.bpDiff)
+        } else {
+            task.propagate(this.eneg, this.bpDiff)
+        }
+    }
+    toString() {
+        return "conditional(" + this.cond + "," + this.epos + "," + this.eneg + ")"
+    }
 }
 
 // A fixed value between 0 and 1 representing the
@@ -4699,62 +4782,14 @@ function autoResize() {
 }
 
   return ({
-    figure: figure,
-    Figure: Figure,
-    Figures: Figures,
-    Frame: Frame,
-    Variable: Variable,
-    LayoutObject: LayoutObject,
-    GraphicalObject: GraphicalObject,
-    Point: Point,
-    Box: Box,
-    Line: Line,
-    Connector: Connector,
-    Rectangle: Rectangle,
-    Square: Square,
-    Circle: Circle,
-    Ellipse: Ellipse,
-    Polygon: Polygon,
-    ContainedText: ContainedText,
-    TextContext: TextContext,
-    TextItem: TextItem,
-    createText: createText,
-    InteractiveObject: InteractiveObject,
-    CanvasRect: CanvasRect,
-    Button: Button,
-    LineLabel: LineLabel,
-    Group: Group,
-    ConstraintGroup: ConstraintGroup,
-    Loss: Loss,
-    Font: Font,
-    Corners: Corners,
-    Expression: Expression,
-    Minus: Minus,
-    Plus: Plus,
-    Times: Times,
-    Divide: Divide,
-    Sqrt: Sqrt,
-    Distance: Distance,
-    Average: Average,
-    Min: Min,
-    Max: Max,
-    Projection: Projection,
-    Paths: Paths,
-    autoResize: autoResize,
-    rgbStyle: rgbStyle,
-    Global: Global,
-    UserDefined: UserDefined,
-    evaluate: evaluate,
-    fullWindowCanvas: fullWindowCanvas,
-    setupTouchListeners: setupTouchListeners,
-    Figure_defaults : Figure_defaults,
-    isFigure: isFigure,
-    statistics: statistics,
-    currentValue: currentValue,
-    drawLineEndSeg: drawLineEndSeg,
-    evaluate: evaluate,
-    sqdist: sqdist,
-    exprVariables,
-    DebugExpr
+    figure, Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
+    Point, Box, Line, Connector, Rectangle, Square, Circle, Ellipse, Polygon,
+    ContainedText, TextContext, TextItem, createText, InteractiveObject,
+    CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,
+    Expression, Minus, Plus, Times, Divide, Sqrt, Distance, Average, Min, Max,
+    Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
+    evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners,
+    Figure_defaults, isFigure, statistics, currentValue, drawLineEndSeg,
+    evaluate, sqdist, exprVariables, DebugExpr
   })
 }()
