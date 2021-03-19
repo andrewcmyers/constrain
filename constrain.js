@@ -4661,32 +4661,36 @@ class DOMElementBox extends LayoutObject {
             if (!this.obj) {
                 console.error("Can't find DOM element with id  " + id)
             }
+            this.id = id
         } else {
             this.obj = id
+            this.id = "anonymous"
         }
         if (!isFigure(figure)) {
             console.error("DOMElementBox requires a figure to compute coordinates relative to")
         }
         this.figure = figure
+        this.x_ = this.centerX()
+        this.y_ = this.centerY()
     }
     boundingRect() {
         return this.obj.getBoundingClientRect()
     }
-    x() { return this.centerX() }
-    y() { return this.centerY() }
-    x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left, "DOM element x0") }
-    y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top, "DOM element y0") }
-    w() { return new Global(() => this.boundingRect().width, "DOM element width") }
-    h() { return new Global(() => this.boundingRect().height, "DOM element height") }
+    x() { return this.x_ }
+    y() { return this.y_ }
+    x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left, "DOM element " + this.id + ".x0") }
+    y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top, "DOM element " + this.id + ".y0") }
+    w() { return new Global(() => this.boundingRect().width, "DOM element " + this.id + ".w") }
+    h() { return new Global(() => this.boundingRect().height, "DOM element " + this.id + ".h") }
     x1() { return new Global(() => {
              const b = this.boundingRect()
              return b.right - this.figure.canvas.getBoundingClientRect().left
-           }, "DOM element x1")
+           }, "DOM element " + this.id + ".x1")
          }
     y1() { return new Global(() => {
              const b = this.boundingRect()
              return b.bottom - this.figure.canvas.getBoundingClientRect().top
-           }, "DOM element y1")
+           }, "DOM element " + this.id + ".y1")
          }
     addDependencies(task) {
         task.prepareBackProp(this.x())
