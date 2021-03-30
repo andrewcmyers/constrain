@@ -152,8 +152,7 @@ var ConstrainReveal = function() {
                     dependencies: [
                             { src: dir + '/reveal.js/plugin/markdown/marked.js' },
                             { src: dir + '/reveal.js/plugin/markdown/markdown.js' },
-                            { src: dir + '/reveal.js/plugin/notes/notes.js', async: true },
-                            { src: dir + '/reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+                            { src: dir + '/reveal.js/plugin/notes/notes.js', async: true }
                     ],
 
                     keyboard: {
