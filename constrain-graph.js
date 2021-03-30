@@ -284,6 +284,10 @@ class Graph {
     }
 }
 
+Constrain.Figure.prototype.graph = function() {
+    return new Graph(this)
+}
+
 return Graph
 
 }()
