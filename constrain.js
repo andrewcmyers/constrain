@@ -943,6 +943,9 @@ class Figure {
     hyphen() {
         return new Hyphen()
     }
+    br() {
+        return new LineBreak()
+    }
     textContext(f, ...t) {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
@@ -4087,18 +4090,24 @@ function createText(...text) {
     const result = []
     text.forEach(t => {
         if (t.constructor == String) { 
-            let wds = 0
-            t.split(/  */).forEach(w => {
-                if (w) {
-                    if (wds++) {
-                        result.push(new Whitespace())
-                    }
-                    let parts = 0
-                    w.split(/­/).forEach(part => {
-                        if (parts++) result.push(new Hyphen())
-                        result.push(new WordText(part))
-                    })
+            let lines = 0
+            t.split(/\n/).forEach(ln => {
+                let wds = 0
+                if (lines++) {
+                    result.push(new LineBreak())
                 }
+                ln.split(/  */).forEach(w => {
+                    if (w) {
+                        if (wds++) {
+                            result.push(new Whitespace())
+                        }
+                        let parts = 0
+                        w.split(/­/).forEach(part => {
+                            if (parts++) result.push(new Hyphen())
+                            result.push(new WordText(part))
+                        })
+                    }
+                })
             })
         } else {
             result.push(t)
@@ -4282,6 +4291,30 @@ class Hyphen extends TextItem {
                                  stretch: 0
                               }
                             } )
+        }
+        return {
+            success: true,
+            positions,
+            following: []
+        }
+    }
+    render(ctx, x, y) {
+        ctx.fillText("-", x, y)
+    }
+}
+
+class LineBreak extends TextItem {
+    constructor() {
+        super()
+        this.cost = Figure_defaults.HYPHEN_COST
+    }
+    toString() { return "[LineBreak]" }
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const positions = []
+        const ls = tc.get("lineSpacing")
+        if (y + ls <= ymax) {
+            positions.push( { newLine: true } )
         }
         return {
             success: true,
