@@ -904,8 +904,11 @@ class Figure {
     ellipse(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint) {
         return new Ellipse(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, r_hint)
     }
-    polygon(points, fillStyle, strokeStyle, lineWidth) {
-        return new Polygon(this, points, fillStyle, strokeStyle, lineWidth)
+    polygon(...points) {
+        return new Polygon(this, points)
+    }
+    closedCurve(...points) {
+        return new ClosedCurve(this, points)
     }
     line(strokeStyle, lineWidth) {
         return new Line(this, strokeStyle, lineWidth)
@@ -940,6 +943,9 @@ class Figure {
     bold(...t) {
         return new BoldText(createText(...t))
     }
+    textColor(c, ...t) {
+        return this.textContext(tc => tc.set("fillStyle", c), ...t)
+    }
     hyphen() {
         return new Hyphen()
     }
@@ -950,7 +956,7 @@ class Figure {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
     textFrame(txt, fillStyle) {
-        if (typeof txt == "string") txt = new ContainedText(this, createText(txt))
+        if (txt.constructor != ContainedText) txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
     label(text, fontSize, fontName, fillStyle) {
@@ -2917,6 +2923,7 @@ class Group extends GraphicalObject {
 // A TextFrame is a graphical object that doesn't have any rendering but does
 // format contained text into a rectangular shape.
 class TextFrame extends GraphicalObject {
+    // text should be a ContainedText object
     constructor(figure, text, fillStyle) {
         super(figure, fillStyle)
         this.text = text
@@ -3025,11 +3032,10 @@ const Paths = {
         ctx.bezierCurveTo(x3, y1,  x4, y2,  x4, y)
         ctx.closePath()
     },
-    // Using ctx and the current line style, create a path of cubic splines
-    // going through or near the points in bs_pts. Near the endpoints,
-    // it acts like a Bezier spline: the curve goes through the first
-    // and last point and its initial and final direction are toward the
-    // second and second-to-last points.
+    // Using ctx, create a path of cubic splines going through or near the
+    // points in bs_pts. Near the endpoints, it acts like a Bezier spline: the
+    // curve goes through the first and last point and its initial and final
+    // direction are toward the second and second-to-last points.
     bsplines: function(ctx, bs_pts) {
         ctx.beginPath()
         ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
@@ -3074,6 +3080,30 @@ const Paths = {
             }
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
         }
+    },
+    // Using ctx, create a closed path of cubic splines going near the points in pts. 
+    curve: function(ctx, pts) {
+        ctx.beginPath()
+        const n = pts.length
+        const i0 = (n-1)%n, i1 = (n-0)%n, i2 = (n+1)%n, i3 = (n+2)%n
+        const x0 = pts[i0][0]*0.125 + pts[i1][0]*0.375 + pts[i2][0]*0.375 + pts[i3][0] * 0.125
+        const y0 = pts[i0][1]*0.125 + pts[i1][1]*0.375 + pts[i2][1]*0.375 + pts[i3][1] * 0.125
+        ctx.moveTo(x0, y0)
+        for (let i = 0; i < n; i += 2) {
+            let p1=[], p2=[], p3=[]
+            const im1 = (i + n - 1)%n, i0 = i%n, i1 = (i + 1)%n, i2 = (i + 2)%n, i3 = (i + 3)%n
+
+            p1[0] = pts[im1][0]*0.25 + pts[i0][0]*0.5 + pts[i1][0]*0.25
+            p1[1] = pts[im1][1]*0.25 + pts[i0][1]*0.5 + pts[i1][1]*0.25
+            p2[0] = pts[i0][0]*0.25 + pts[i1][0]*0.5 + pts[i2][0]*0.25
+            p2[1] = pts[i0][1]*0.25 + pts[i1][1]*0.5 + pts[i2][1]*0.25
+            p3[0] = pts[i0][0]*0.125 + pts[i1][0]*0.375
+                    + pts[i2][0]*0.375 + pts[i3][0]*0.125
+            p3[1] = pts[i0][1]*0.125 + pts[i1][1]*0.375
+                    + pts[i2][1]*0.375 + pts[i3][1]*0.125
+            ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
+        }
+         ctx.closePath()
     }
 }
 
@@ -3150,6 +3180,7 @@ class Circle extends Ellipse {
 class Polygon extends GraphicalObject {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
         super(figure, fillStyle, strokeStyle, lineWidth)
+        points = points.flat()
         this.points = points
         figure.equal(this.x1(), figure.max(points.map(p => p.x())))
         figure.equal(this.y1(), figure.max(points.map(p => p.y())))
@@ -3176,6 +3207,7 @@ class Polygon extends GraphicalObject {
         ctx.closePath()
         this.fill()
         if (this.strokeStyle) {
+            ctx.setLineDash(this.lineDash || [])
             ctx.strokeStyle = this.strokeStyle
             ctx.stroke()
         }
@@ -3190,6 +3222,37 @@ class Polygon extends GraphicalObject {
             result = result.concat(p.variables())
         })
         return result
+    }
+}
+
+class ClosedCurve extends Polygon {
+    constructor(figure, points) {
+        super(figure, points)
+    }
+    render() {
+        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        ctx.save()
+        const [x0, y0] = evaluate([this.x0(), this.y0()], valuation)
+        ctx.translate(x0, y0)
+        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.lineDash = this.lineDash
+        ctx.fillStyle = this.fillStyle
+        const pts = []
+        for (let i = 0; i < this.points.length; i++) {
+            const [x, y] = evaluate(this.points[i], valuation)
+            pts.push([x - x0, y - y0])
+        }
+        Paths.curve(ctx, pts)
+        this.fill()
+        if (this.strokeStyle) {
+            ctx.setLineDash(this.lineDash || [])
+            ctx.strokeStyle = this.strokeStyle
+            ctx.stroke()
+        }
+        ctx.restore()
+        if (this.text) {
+            this.text.renderIn(this.figure, this)
+        }
     }
 }
 
@@ -3876,7 +3939,7 @@ function countItems(ly) {
 // centering) and the default style of the text it contains.
 // 
 class ContainedText {
-    constructor(figure, text) {
+    constructor(figure, ...text) {
         this.figure = figure
         this.justification = "center"
         this.verticalAlign = "center"
@@ -3885,10 +3948,7 @@ class ContainedText {
         this.fillStyle = figure.strokeStyle
         this.strokeStyle = null
         this.inset = this.font.getSize() / 3
-        if (text.constructor == String) // XXX probably not needed
-            this.text = createText(text)
-        else
-            this.text = text
+        this.text = createText(...text)
     }
     setLineSpacing(s) {
         this.lineSpacing = s
