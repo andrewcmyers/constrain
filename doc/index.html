@@ -213,9 +213,9 @@ constrained to have equal dimensions. The default fill style, stroke style, and
 line width of the figure may optionally be overridden by providing these
 parameters.
 
-<h4>polygon(points, [fillStyle], [strokeStyle], [lineWidth])</h4>
+<h4>polygon(...points)</h4>
 <p>
-A closed polygon connecting the given array of points (class <code>Polygon</code>). For
+A closed polygon connecting the given points (class <code>Polygon</code>). For
 example, we can draw an equilateral triangle by constraining the three sides to have the same
 length.
 
@@ -229,12 +229,39 @@ length.
     equal(100, distance(p1, p2),
           distance(p2, p3), distance(p1, p3))
     equal(p2.y(), p3.y())
-    polygon([p1, p2, p3], "#dfd").at(canvasRect())
+    setFillStyle("#dfd")
+    polygon(p1, p2, p3).at(canvasRect())
   }
 </script>
 </div>
 <script>
     show_example("polygon_ex_code", "polygon_ex")
+</script>
+
+<h4>closedCurve(...points)</h4>
+<p>
+A smooth closed curve that goes near the specified control points (class <code>ClosedCurve</code>).
+Its continuity is <i>C</i><sub>2</sub>, so it sacrifices some closeness for smoothness. Control
+points can be repeated to make the curve go closer while losing some smoothness.
+</p>
+
+<pre id="curve_ex_code" class=code></pre>
+<div id="curve_ex">
+<canvas id=curve_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("curve_ex_fig")) {
+    const c = canvasRect()
+    sameSize(rectangle().at(c)
+               .setFillStyle(null).setLineDash([6,6]),
+             c)
+    setFillStyle("#fdf")
+    closedCurve(c.ul(), c.ur(), c.ur(), c, c, c,
+                c.lr(), c.ll())
+  }
+</script>
+</div>
+<script>
+    show_example("curve_ex_code", "curve_ex")
 </script>
 
 <h3>Lines</h3>
