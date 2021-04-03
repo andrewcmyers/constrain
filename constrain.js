@@ -3085,29 +3085,21 @@ const Paths = {
     curve: function(ctx, pts) {
         ctx.beginPath()
         const n = pts.length,
-              i0 = 0, i1 = 1, im = n-1,
-              x0 = pts[im][0]*0.25 + pts[i0][0]*0.5 + pts[i1][0]*0.25,
-              y0 = pts[im][1]*0.25 + pts[i0][1]*0.5 + pts[i1][1]*0.25
+              i0 = 0, i1 = 1,
+              x0 = pts[0][0]*0.5 + pts[1][0]*0.5,
+              y0 = pts[0][1]*0.5 + pts[1][1]*0.5
         ctx.moveTo(x0, y0)
         let p1=[], p2=[], p3=[]
-        for (let i = 0; i < n-1; i += 2) {
-            let i0 = i, i1 = (i+1)%n, i2 = (i+2)%n, i3 = (i+3)%n
+        const k1 = 0.5*(1 - bezier_k), k2 = 1-k1
+        for (let i = 0; i < n; i++) {
+            let i0 = i, i1 = (i+1)%n, i2 = (i+2)%n
 
-            p1[0] = pts[i0][0]*0.5 + pts[i1][0]*0.5
-            p1[1] = pts[i0][1]*0.5 + pts[i1][1]*0.5
-            p2[0] = pts[i1][0]*0.5 + pts[i2][0]*0.5
-            p2[1] = pts[i1][1]*0.5 + pts[i2][1]*0.5
-            p3[0] = pts[i1][0]*0.25 + pts[i2][0]*0.5 + pts[i3][0]*0.25
-            p3[1] = pts[i1][1]*0.25 + pts[i2][1]*0.5 + pts[i3][1]*0.25
-            ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
-        }
-        if (n%2 != 0) {
-            p1[0] = pts[0][0]*0.375 + pts[n-1][0]*0.5 + pts[n-2][0]*0.125
-            p1[1] = pts[0][1]*0.375 + pts[n-1][1]*0.5 + pts[n-2][1]*0.125
-            p2[0] = pts[0][0]*0.5 + pts[n-1][0]*0.375 + pts[1][0]*0.125
-            p2[1] = pts[0][1]*0.5 + pts[n-1][1]*0.375 + pts[1][1]*0.125
-            p3[0] = pts[n-1][0]*0.25 + pts[0][0]*0.5 + pts[1][0]*0.25
-            p3[1] = pts[n-1][1]*0.25 + pts[0][1]*0.5 + pts[1][1]*0.25
+            p1[0] = pts[i0][0]*k1 + pts[i1][0]*k2
+            p1[1] = pts[i0][1]*k1 + pts[i1][1]*k2
+            p2[0] = pts[i1][0]*k2 + pts[i2][0]*k1
+            p2[1] = pts[i1][1]*k2 + pts[i2][1]*k1
+            p3[0] = pts[i1][0]*0.5 + pts[i2][0]*0.5
+            p3[1] = pts[i1][1]*0.5 + pts[i2][1]*0.5
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
         }
         ctx.closePath()

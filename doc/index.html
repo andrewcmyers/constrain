@@ -241,8 +241,7 @@ length.
 <h4>closedCurve(...points)</h4>
 <p>
 A smooth closed curve that goes near the specified control points (class <code>ClosedCurve</code>).
-Its continuity is <i>C</i><sub>2</sub>, so it sacrifices some closeness for smoothness. Control
-points can be repeated to make the curve go closer while losing some smoothness.
+Control points can be repeated to introduce sharp vertices in the curve.
 </p>
 
 <pre id="curve_ex_code" class=code></pre>
@@ -255,7 +254,7 @@ points can be repeated to make the curve go closer while losing some smoothness.
                .setFillStyle(null).setLineDash([6,6]),
              c)
     setFillStyle("#fdf")
-    closedCurve(c.ul(), c.ur(), c.ur(), c, c, c,
+    closedCurve(c.ul(), c.ur(), c, c,
                 c.lr(), c.ll())
   }
 </script>
