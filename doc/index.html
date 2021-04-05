@@ -300,7 +300,14 @@ like B-splines (which are smoother) in the middle.
   with (new Constrain.Figure("connector_ex_fig")) {
     let c1 = circle().setW(30).at(point(30, 100)),
         c2 = circle().setW(30).at(c1.toRight(100))
+    polygon(c2, average(c1, c2).toBottom(40), c1,
+                average(c1, c2).toTop(20))
+        .setFillStyle(null)
+        .setLineDash([4,4])
+        .setStrokeStyle("#888")
     connector(c1, average(c1, c2).toTop(20), c2)
+        .setEndArrow("arrow")
+    connector(c2, average(c1, c2).toBottom(40), c1)
         .setEndArrow("arrow")
   }
 </script>
