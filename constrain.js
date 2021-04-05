@@ -3033,50 +3033,48 @@ const Paths = {
         ctx.closePath()
     },
     // Using ctx, create a path of cubic splines going through or near the
-    // points in bs_pts. Near the endpoints, it acts like a Bezier spline: the
+    // points in pts. Near the endpoints, it acts like a Bezier spline: the
     // curve goes through the first and last point and its initial and final
     // direction are toward the second and second-to-last points.
-    bsplines: function(ctx, bs_pts) {
+    bsplines: function(ctx, pts) {
         ctx.beginPath()
-        ctx.moveTo(bs_pts[0][0], bs_pts[0][1])
-        let n = bs_pts.length
+        ctx.moveTo(pts[0][0], pts[0][1])
+        let n = pts.length
         switch(n) {
             case 1: ctx.stroke(); return
             case 2:
-                ctx.lineTo(bs_pts[1][0], bs_pts[1][1])
+                ctx.lineTo(pts[1][0], pts[1][1])
                 ctx.stroke()
                 return
             case 4:
-                ctx.bezierCurveTo(bs_pts[1][0], bs_pts[1][1],
-                                bs_pts[2][0], bs_pts[2][1],
-                                bs_pts[3][0], bs_pts[3][1])
+                ctx.bezierCurveTo(pts[1][0], pts[1][1],
+                                pts[2][0], pts[2][1],
+                                pts[3][0], pts[3][1])
                 ctx.stroke()
                 return
             default: break
         }
-        for (let i = 0; i < n - 1; i += 2) {
+        const bk = bezier_k
+        const k1 = 0.5*(1 - bk), k2 = 1 - k1
+        for (let i = 0; i < n - 2; i++) {
             let p1=[], p2=[], p3=[]
-            if (i >= 1) {
-                p1[0] = bs_pts[i-1][0]*0.25 + bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.25
-                p1[1] = bs_pts[i-1][1]*0.25 + bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.25
+            if (i == 0) {
+                p1[0] = pts[i][0]*(1-bk) + pts[i+1][0]*bk
+                p1[1] = pts[i][1]*(1-bk) + pts[i+1][1]*bk
             } else {
-                p1[0] = bs_pts[i][0]*0.5 + bs_pts[i+1][0]*0.5
-                p1[1] = bs_pts[i][1]*0.5 + bs_pts[i+1][1]*0.5
+                p1[0] = pts[i][0]*k1 + pts[i+1][0]*k2
+                p1[1] = pts[i][1]*k1 + pts[i+1][1]*k2
             }
-            if (i + 3 < n) {
-                p2[0] = bs_pts[i][0]*0.25 + bs_pts[i+1][0]*0.5 + bs_pts[i+2][0]*0.25
-                p2[1] = bs_pts[i][1]*0.25 + bs_pts[i+1][1]*0.5 + bs_pts[i+2][1]*0.25
+            if (i == n-3) {
+                p2[0] = pts[i+1][0]*bk + pts[i+2][0]*(1-bk)
+                p2[1] = pts[i+1][1]*bk + pts[i+2][1]*(1-bk)
+                p3 = pts[i+2]
             } else {
-                p2[0] = bs_pts[n-2][0]*0.5 + bs_pts[n-1][0]*0.5
-                p2[1] = bs_pts[n-2][1]*0.5 + bs_pts[n-1][1]*0.5
-            }
-            if (i + 3 < n) {
-                p3[0] = bs_pts[i][0]*0.125 + bs_pts[i+1][0]*0.375
-                        + bs_pts[i+2][0]*0.375 + bs_pts[i+3][0]*0.125
-                p3[1] = bs_pts[i][1]*0.125 + bs_pts[i+1][1]*0.375
-                        + bs_pts[i+2][1]*0.375 + bs_pts[i+3][1]*0.125
-            } else {
-                p3 = bs_pts[n-1]
+                p2[0] = pts[i+1][0]*k2 + pts[i+2][0]*k1
+                p2[1] = pts[i+1][1]*k2 + pts[i+2][1]*k1
+
+                p3[0] = pts[i+1][0]*bk + pts[i+2][0]*(1-bk)
+                p3[1] = pts[i+1][1]*bk + pts[i+2][1]*(1-bk)
             }
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
         }
@@ -3255,16 +3253,16 @@ class ClosedCurve extends Polygon {
     }
 }
 
-function drawLineLabels(figure, bs_pts, labels, startAdj, endAdj) {
+function drawLineLabels(figure, pts, labels, startAdj, endAdj) {
     let ctx = figure.ctx,
-        n = bs_pts.length
+        n = pts.length
     if (startAdj === undefined) startAdj = 0
     if (endAdj === undefined) endAdj = 0
     if (labels && labels.length > 0) {
       let total_d = -startAdj, cdists = [total_d], dists = []
       for (let i = 0; i < n - 1; i++) {
-        let d = norm2d(bs_pts[i+1][0] - bs_pts[i][0],
-                       bs_pts[i+1][1] - bs_pts[i][1])
+        let d = norm2d(pts[i+1][0] - pts[i][0],
+                       pts[i+1][1] - pts[i][1])
         dists[i] = d
         total_d += d
         cdists[i+1] = total_d
@@ -3289,10 +3287,10 @@ function drawLineLabels(figure, bs_pts, labels, startAdj, endAdj) {
         for (i = 0; i < n - 1; i++) {
             if (cdists[i+1] > dpos) break
         }
-        let x1 = bs_pts[i][0],
-            y1 = bs_pts[i][1],
-            x2 = bs_pts[i+1][0],
-            y2 = bs_pts[i+1][1],
+        let x1 = pts[i][0],
+            y1 = pts[i][1],
+            x2 = pts[i+1][0],
+            y2 = pts[i+1][1],
             d = norm2d(x2-x1, y2-y1),
             dx = (x2 - x1)/d,
             dy = (y2 - y1)/d
