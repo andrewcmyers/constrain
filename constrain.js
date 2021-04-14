@@ -4545,6 +4545,7 @@ class Handle extends InteractiveObject {
     }
     setStrokeStyle(style) {
         this.strokeStyle = style
+        return this
     }
     mousedown(x, y, e) {
         if (this.figure.currentValuation === undefined)
