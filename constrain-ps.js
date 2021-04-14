@@ -512,14 +512,14 @@ Constrain.Figure.prototype.printButton = function() {
 }
 
 Constrain.Figure.prototype.print = function() {
-    const save_ctx = this.ctx
-    const pc = new PrintContext(this, this.ctx)
+    const save_ctx = this.ctx,
+          pc = new PrintContext(this, this.ctx)
     this.ctx = pc
 
     this.render(false)
     exportData(pc.getOutput(), "constrain-figure.ps", "application/postscript")
 
-    this.ctx = save_ctx;
+    this.ctx = save_ctx
     this.render(false)
 }
 

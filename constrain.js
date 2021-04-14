@@ -4671,6 +4671,7 @@ class AdvanceButton extends Button {
 
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        if (Constrain.PS && ctx.constructor == Constrain.PS.PrintContext) return
         const s = this.size
         ctx.beginPath()
         const x = evaluate(this.x(), valuation),
