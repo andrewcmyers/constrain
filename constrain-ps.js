@@ -448,6 +448,7 @@ class PrintContext {
             return (c >= 32 && c < 127);
         }
         this.append(`${this.pt(x,y)} moveto`)
+        this.updateFillStyle()
         let i = 0, j = i
         while (i < s.length) {
             for (j = i; j < s.length; j++) {
