@@ -651,6 +651,11 @@ class Figure {
         this.strokeStyle = style
     }
 
+    // Set the default text color/style
+    setTextStyle(style) {
+        this.textStyle = style
+    }
+
     // Set the default line width
     setLineWidth(w) {
         this.lineWidth = w
@@ -3777,13 +3782,13 @@ class Label extends GraphicalObject {
             if (fillStyle != undefined) {
                 this.fillStyle = this.text.fillStyle = fillStyle
             } else {
-                this.fillStyle = figure.strokeStyle
+                this.fillStyle = figure.textStyle
             }
         } else {
             this.text = text
             this.font = new Font(figure)
             if (fillStyle != undefined) this.fillStyle = fillStyle
-            else this.fillStyle = figure.strokeStyle
+            else this.fillStyle = figure.textStyle
         }
         if (fontSize) this.font.setSize(fontSize)
         if (fontName) this.font.setName(fontName)
@@ -3906,7 +3911,7 @@ class LineLabel {
         this.position = position
         this.offset = offset || figure.font.getSize()
         this.strokeStyle = figure.strokeStyle
-        this.fillStyle = "#000000"
+        this.fillStyle = figure.textStyle || "#000000"
         this.font = new Font(figure)
     }
     drawAt(ctx, x, y) {
