@@ -476,9 +476,9 @@ class PrintContext {
     }
     rotate(r) { 
         if (r != 0) {
-            this.append(`0 ${figure.height} translate`)
+            this.append(`0 ${this.figure.height} translate`)
             this.append(`${mround(r * -57.29578)} rotate`)
-            this.append(`0 ${-figure.height} translate`)
+            this.append(`0 ${-this.figure.height} translate`)
         }
     }
     bezierCurveTo(x1, y1, x2, y2, x3, y3) {
@@ -505,6 +505,10 @@ function exportData(data, filename, ty) {
         elem.click();
         document.body.removeChild(elem);
     }
+}
+
+Constrain.Figure.prototype.printButton = function() {
+    return new Constrain.PS.PrintButton(this)
 }
 
 Constrain.Figure.prototype.print = function() {

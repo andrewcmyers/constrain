@@ -3368,7 +3368,7 @@ function drawLineEndSeg(ctx, style, size, x, y, x2, y2) {
     const xd = x - x2, yd = y - y2,
           d = norm2d(xd, yd)
     let cosa = 1, sina = 0
-    if (d != 0) {
+    if (Math.abs(d) > 1e-7) {
         cosa = xd/d; sina = yd/d
     }
     return drawLineEndDir(ctx, style, size, x, y, cosa, sina)
