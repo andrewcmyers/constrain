@@ -183,6 +183,10 @@ const PSFontStyles = {
     "Wingdings" : [],
 }
 
+const fontMap = {
+    "Arial" : "Helvetica"
+}
+
 /** Maps Unicode code points to the corresponding Symbol font position. */
 const UnicodeToSymbol = {
     0x0020: 0x20, 0x00A0: 0x20, 0x0021: 0x21, 0x2200: 0x22, 0x0023: 0x23,
@@ -297,6 +301,16 @@ function mround(x) {
 
 let PX_TO_PT = 96/72
 
+function mapFontName(fontnames) {
+    for (let i = 0; i < fontnames.length; i++) {
+        const f = PSFontStyles[fontnames[i]]
+        if (f) return f
+        if (fontMap[f]) return fontMap[f]
+    }
+    console.error("Don't know how to map fonts " + fontnames.join(",") + " to PS fonts")
+    return fontnames[0]
+}
+
 function mapStyle(fontname, style) {
     if (!style) {
         const styles = PSFontStyles[fontname]
@@ -365,7 +379,7 @@ class PrintContext {
     }
     parseFont() {
         let fontname = this.font, style = null, ignore, size
-        let nostyle = fontname.match("^([1-9][.0-9]*)px ([A-Za-z-]+)$")
+        let nostyle = fontname.match("^([1-9][.0-9]*)px ([A-Za-z- ]+(, [A-Za-z- ]+)*)$")
         if (nostyle) {
             [ignore, size, fontname] = nostyle
         } else {
@@ -380,7 +394,8 @@ class PrintContext {
         if (this.font && this.font != this.activeFont) {
             this.activeFont = this.font
             let [fontname, size, style] = this.parseFont()
-            fontname = fontname.replace(" ", "")
+            const fontnames = fontname.split(/, */)
+            fontname = mapFontName(fontnames).replace(" ", "")
             if (style) {
                 fontname += "-" + style
             }
