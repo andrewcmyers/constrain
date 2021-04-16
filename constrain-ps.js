@@ -312,21 +312,21 @@ class PrintContext {
     constructor(figure, ctx2d) {
         this.figure = figure
         this.ctx2d = ctx2d
-        this.output = ""
+        this.output = []
         this.append("%!PS-Adobe-2.0")
-        this.append("%%Creator: Constrain PostScript Renderer")
-        this.append("%%Pages: 1")
-        this.append("%%PageOrder: Ascend")
-        this.append(`%%BoundingBox: 0 0 ${Math.round(figure.width)} ${Math.round(figure.height)}`)
-        this.append(`%%HiResBoundingBox: 0 0 ${figure.width} ${(figure.height)}`)
-        this.append(`%%PageSize: 0 0 ${Math.round(figure.width)} ${Math.round(figure.height)}`)
-        this.append("%%EndComments")
-        this.append("%%BeginProlog")
-        this.append("%%EndProlog")
-        this.append("%%BeginSetup")
-        this.append("%%EndSetup")
-        this.append("%%Page: 1 1")
-        this.append("/Helvetica findfont 12 scalefont setfont")
+            .append("%%Creator: Constrain PostScript Renderer")
+            .append("%%Pages: 1")
+            .append("%%PageOrder: Ascend")
+            .append(`%%BoundingBox: 0 0 ${Math.round(figure.width)} ${Math.round(figure.height)}`)
+            .append(`%%HiResBoundingBox: 0 0 ${figure.width} ${(figure.height)}`)
+            .append(`%%PageSize: 0 0 ${Math.round(figure.width)} ${Math.round(figure.height)}`)
+            .append("%%EndComments")
+            .append("%%BeginProlog")
+            .append("%%EndProlog")
+            .append("%%BeginSetup")
+            .append("%%EndSetup")
+            .append("%%Page: 1 1")
+            .append("/Helvetica findfont 12 scalefont setfont")
         this.activeFillStyle = null
         this.activeStrokeStyle = null
         this.activeLineWidth = null
@@ -338,8 +338,9 @@ class PrintContext {
     }
 
     append(s) {
-        this.output += s
-        this.output += "\n"
+        this.output.push(s)
+        this.output.push("\n")
+        return this
     }
     updateLineWidth() {
         if (this.lineWidth != this.activeLineWidth) {
@@ -396,8 +397,8 @@ class PrintContext {
     }
     clearRect(x, y, w, h) {
         this.append("1 setgray")
-        this.append(`${this.pt(x,y+h)} ${w} ${h} rectfill`)
-        this.append("0 setgray")
+            .append(`${this.pt(x,y+h)} ${w} ${h} rectfill`)
+            .append("0 setgray")
     }
     save() {
         this.append("gsave")
@@ -477,8 +478,8 @@ class PrintContext {
     rotate(r) { 
         if (r != 0) {
             this.append(`0 ${figure.height} translate`)
-            this.append(`${mround(r * -57.29578)} rotate`)
-            this.append(`0 ${-figure.height} translate`)
+                .append(`${mround(r * -57.29578)} rotate`)
+                .append(`0 ${-figure.height} translate`)
         }
     }
     bezierCurveTo(x1, y1, x2, y2, x3, y3) {
@@ -488,7 +489,7 @@ class PrintContext {
         this.append(`${this.pt(x,y-h)} ${w} ${h} rectfill`)
     }
     getOutput() {
-        return this.output + "\nshowpage\n%%EOF\n"
+        return this.output.join("") + "\nshowpage\n%%EOF\n"
     }
 }
 
