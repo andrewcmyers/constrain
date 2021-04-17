@@ -183,6 +183,10 @@ const PSFontStyles = {
     "Wingdings" : [],
 }
 
+const fontMap = {
+    "Arial" : "Helvetica"
+}
+
 /** Maps Unicode code points to the corresponding Symbol font position. */
 const UnicodeToSymbol = {
     0x0020: 0x20, 0x00A0: 0x20, 0x0021: 0x21, 0x2200: 0x22, 0x0023: 0x23,
@@ -308,6 +312,16 @@ function mround(x) {
 
 let PX_TO_PT = 96/72
 
+function mapFontName(fontnames) {
+    for (let i = 0; i < fontnames.length; i++) {
+        const f = PSFontStyles[fontnames[i]]
+        if (f) return fontnames[i]
+        if (fontMap[f]) return fontMap[f]
+    }
+    console.error("Don't know how to map fonts " + fontnames.join(",") + " to PS fonts")
+    return fontnames[0]
+}
+
 function mapStyle(fontname, style) {
     if (!style) {
         const styles = PSFontStyles[fontname]
@@ -380,7 +394,7 @@ class PrintContext {
     }
     parseFont() {
         let fontname = this.font, style = null, ignore, size
-        let nostyle = fontname.match("^([1-9][.0-9]*)px ([A-Za-z-]+)$")
+        let nostyle = fontname.match("^([1-9][.0-9]*)px ([A-Za-z- ]+(, [A-Za-z- ]+)*)$")
         if (nostyle) {
             [ignore, size, fontname] = nostyle
         } else {
@@ -395,7 +409,8 @@ class PrintContext {
         if (this.font && this.font != this.activeFont) {
             this.activeFont = this.font
             let [fontname, size, style] = this.parseFont()
-            fontname = fontname.replace(" ", "")
+            const fontnames = fontname.split(/, */)
+            fontname = mapFontName(fontnames).replace(" ", "")
             if (style) {
                 fontname += "-" + style
             }
@@ -463,6 +478,7 @@ class PrintContext {
             return (c >= 32 && c < 127);
         }
         this.append(`${this.pt(x,y)} moveto`)
+        this.updateFillStyle()
         let i = 0, j = i
         while (i < s.length) {
             for (j = i; j < s.length; j++) {
@@ -491,9 +507,9 @@ class PrintContext {
     }
     rotate(r) { 
         if (r != 0) {
-            this.append(`0 ${figure.height} translate`)
+            this.append(`0 ${this.figure.height} translate`)
                 .append(`${mround(r * -57.29578)} rotate`)
-                .append(`0 ${-figure.height} translate`)
+                .append(`0 ${-this.figure.height} translate`)
         }
     }
     bezierCurveTo(x1, y1, x2, y2, x3, y3) {
@@ -520,6 +536,10 @@ function exportData(data, filename, ty) {
         elem.click();
         document.body.removeChild(elem);
     }
+}
+
+Constrain.Figure.prototype.printButton = function() {
+    return new Constrain.PS.PrintButton(this)
 }
 
   return {

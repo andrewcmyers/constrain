@@ -651,6 +651,11 @@ class Figure {
         this.strokeStyle = style
     }
 
+    // Set the default text color/style
+    setTextStyle(style) {
+        this.textStyle = style
+    }
+
     // Set the default line width
     setLineWidth(w) {
         this.lineWidth = w
@@ -3366,8 +3371,11 @@ const arrows = {
 function drawLineEndSeg(ctx, style, size, x, y, x2, y2) {
     if (style === undefined) return [x,y]
     const xd = x - x2, yd = y - y2,
-          d = norm2d(xd, yd),
-          cosa = xd/d, sina = yd/d
+          d = norm2d(xd, yd)
+    let cosa = 1, sina = 0
+    if (Math.abs(d) > 1e-7) {
+        cosa = xd/d; sina = yd/d
+    }
     return drawLineEndDir(ctx, style, size, x, y, cosa, sina)
 }
 
@@ -3774,13 +3782,13 @@ class Label extends GraphicalObject {
             if (fillStyle != null) {
                 this.fillStyle = this.text.fillStyle = fillStyle
             } else {
-                this.fillStyle = figure.strokeStyle
+                this.fillStyle = figure.textStyle
             }
         } else {
             this.text = text
             this.font = new Font(figure)
             if (fillStyle != undefined) this.fillStyle = fillStyle
-            else this.fillStyle = figure.strokeStyle
+            else this.fillStyle = figure.textStyle
         }
         if (fontSize) this.font.setSize(fontSize)
         if (fontName) this.font.setName(fontName)
@@ -3903,7 +3911,7 @@ class LineLabel {
         this.position = position
         this.offset = offset || figure.font.getSize()
         this.strokeStyle = figure.strokeStyle
-        this.fillStyle = "#000000"
+        this.fillStyle = figure.textStyle || "#000000"
         this.font = new Font(figure)
     }
     drawAt(ctx, x, y) {
@@ -4543,6 +4551,7 @@ class Handle extends InteractiveObject {
     }
     setStrokeStyle(style) {
         this.strokeStyle = style
+        return this
     }
     mousedown(x, y, e) {
         if (this.figure.currentValuation === undefined)
@@ -4663,6 +4672,7 @@ class AdvanceButton extends Button {
 
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        if (this.printMedia) return
         const s = this.size
         ctx.beginPath()
         const x = evaluate(this.x(), valuation),
