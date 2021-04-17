@@ -90,6 +90,7 @@ class Figure {
     // default styles
         this.setFillStyle("white")
         this.setStrokeStyle("black")
+        this.setTextStyle("black")
         this.setLineWidth(Figure_defaults.LINEWIDTH)
         this.font = new Font()
         this.lineSpacing = Figure_defaults.LINE_SPACING
