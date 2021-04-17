@@ -253,7 +253,7 @@ class PrintButton extends Constrain.Button {
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
-        if (ctx.constructor == PrintContext) return
+        if (ctx.printMedia) return
         const s = this.size
         ctx.beginPath()
         const x = Constrain.evaluate(this.x(), valuation),
@@ -334,6 +334,7 @@ class PrintContext {
         this.fillStyle = "black"
         this.strokeStyle = "black"
         this.lineWidth = 1
+        this.printMedia = true
         figure.font.setContextFont(this)
     }
 

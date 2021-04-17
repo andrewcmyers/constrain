@@ -2950,9 +2950,9 @@ class Rectangle extends GraphicalObject {
         ctx.save()
         const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], valuation)
         ctx.translate(x0, y0)
-        ctx.beginPath()
         const w = x1-x0, h = y1-y0
         if (this.cornerRadius == 0) {
+            ctx.beginPath()
             ctx.moveTo(0, 0)
             ctx.lineTo(w, 0)
             ctx.lineTo(w, h)
@@ -2963,7 +2963,7 @@ class Rectangle extends GraphicalObject {
         }
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         this.fill()
-        if (this.strokeStyle) {
+        if (this.strokeStyle != null) {
             ctx.strokeStyle = this.strokeStyle
             ctx.setLineDash(this.lineDash || [])
             ctx.stroke()
@@ -3125,7 +3125,7 @@ class Ellipse extends GraphicalObject {
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         Paths.ellipse(ctx, w/2, h/2, w/2, h/2)
         this.fill()
-        if (this.strokeStyle) {
+        if (this.strokeStyle != null) {
             ctx.strokeStyle = this.strokeStyle
             ctx.setLineDash(this.lineDash || [])
             ctx.stroke()
@@ -3203,7 +3203,7 @@ class Polygon extends GraphicalObject {
         }
         ctx.closePath()
         this.fill()
-        if (this.strokeStyle) {
+        if (this.strokeStyle != null) {
             ctx.setLineDash(this.lineDash || [])
             ctx.strokeStyle = this.strokeStyle
             ctx.stroke()
@@ -3241,7 +3241,7 @@ class ClosedCurve extends Polygon {
         }
         Paths.curve(ctx, pts)
         this.fill()
-        if (this.strokeStyle) {
+        if (this.strokeStyle != null) {
             ctx.setLineDash(this.lineDash || [])
             ctx.strokeStyle = this.strokeStyle
             ctx.stroke()
@@ -3405,7 +3405,7 @@ class Line extends GraphicalObject {
         const xd = x1 - x0, yd = y1 - y0,
                 d = norm2d(xd, yd),
                 cosa = xd/d, sina = yd/d
-        if (this.fillstyle) ctx.fillStyle = this.fillStyle
+        if (this.fillstyle != null) ctx.fillStyle = this.fillStyle
         else ctx.fillStyle = this.strokeStyle
         ctx.setLineDash(this.lineDash || [])
         let [x2, y2] = drawLineEndDir(ctx, this.startArrowStyle, this.arrowSize, x0, y0, -cosa, -sina),
@@ -3771,7 +3771,7 @@ class Label extends GraphicalObject {
         if (text.layout) {
             this.text = new ContainedText(figure, text) // either a String or a TextItem
             this.font = new Font(figure)
-            if (fillStyle != undefined) {
+            if (fillStyle != null) {
                 this.fillStyle = this.text.fillStyle = fillStyle
             } else {
                 this.fillStyle = figure.strokeStyle
@@ -3811,7 +3811,7 @@ class Label extends GraphicalObject {
                 ctx.fillStyle = this.fillStyle
                 ctx.fillText(this.text, x, y)
             }
-            if (this.strokeStyle) {
+            if (this.strokeStyle != null) {
                 ctx.strokeStyle = this.strokeStyle
                 if (this.lineWidth) {
                     ctx.lineWidth = evaluate(this.lineWidth, valuation)
@@ -3908,7 +3908,6 @@ class LineLabel {
     }
     drawAt(ctx, x, y) {
         this.font.setContextFont(ctx)
-        ctx.strokeStyle = undefined
         ctx.fillStyle = this.fillStyle
         x -= ctx.measureText(this.text).width / 2
         y += this.font.getSize()/2
@@ -4080,8 +4079,8 @@ class ContainedText {
                     currentFont = font
                 }
                 if (item.item) {
-                    if (item.fillStyle) ctx.fillStyle = item.fillStyle
-                    if (item.strokeStyle) ctx.strokeStyle = item.strokeStyle
+                    if (item.fillStyle != null) ctx.fillStyle = item.fillStyle
+                    if (item.strokeStyle != null) ctx.strokeStyle = item.strokeStyle
                     item.item.render(ctx, x, item.y)
                 }
                 if (stretch && stretchers > 0 && line !== last) {
@@ -4509,7 +4508,7 @@ class Handle extends InteractiveObject {
         this.y_ = vy
         this.variables = () => [vx, vy]
         this.size = 5
-        this.strokeStyle = strokeStyle
+        this.strokeStyle = strokeStyle || figure.strokeStyle
         this.isActive = true
         this.isVisible = true
         figure.positive(vx, 0)
@@ -4526,7 +4525,7 @@ class Handle extends InteractiveObject {
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
-        if (Constrain.PS && ctx.constructor == Constrain.PS.PrintContext) return
+        if (ctx.printMedia) return
         ctx.beginPath()
         const x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation)
@@ -4536,9 +4535,11 @@ class Handle extends InteractiveObject {
         ctx.lineTo(x, y - this.size)
         ctx.closePath()
         ctx.lineWidth = 1
-        ctx.strokeStyle = this.strokeStyle
-        ctx.setLineDash([])
-        ctx.stroke()
+        if (this.strokeStyle != null) {
+            ctx.strokeStyle = this.strokeStyle
+            ctx.setLineDash([])
+            ctx.stroke()
+        }
     }
     setStrokeStyle(style) {
         this.strokeStyle = style
