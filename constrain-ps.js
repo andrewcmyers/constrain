@@ -157,6 +157,7 @@ const PSFontStyles = {
     "Cooper Black Italic" : [],
     "Copperplate Gothic" : [],
     "Coronet" : [],
+    "Courier" : ["Regular", "Oblique", "Bold", "Bold Oblique"],
     "Eurostile" : ["Medium", "Bold", "Extended No.2", "Bold Extended No.2"],
     "Geneva" : [],
     "Gill Sans" : ["Light", "Light Italic", "Book", "Book Italic",
@@ -314,11 +315,12 @@ let PX_TO_PT = 96/72
 
 function mapFontName(fontnames) {
     for (let i = 0; i < fontnames.length; i++) {
-        const f = PSFontStyles[fontnames[i]]
-        if (f) return fontnames[i]
-        if (fontMap[f]) return fontMap[f]
+        const n = fontnames[i],
+              f = PSFontStyles[n]
+        if (f) return n
+        if (fontMap[n]) return fontMap[n]
     }
-    console.error("Don't know how to map fonts " + fontnames.join(",") + " to PS fonts")
+    console.error("Don't know how to map font(s) " + fontnames.join(",") + " to PS fonts")
     return fontnames[0]
 }
 
