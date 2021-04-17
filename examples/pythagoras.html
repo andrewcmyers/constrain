@@ -4,6 +4,7 @@
   <script src="../numeric-1.2.6.js"></script>
   <script src="../constrain.js"></script>
   <script src="../constrain-ps.js"></script>
+  <script src="../constrain-pdf.js"></script>
   <style>
     body { font-family: sans-serif }
     h1 { text-align: center }
@@ -15,6 +16,7 @@
         id="MathJax-script"
         src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"></script>
 <body>
 <h1>Interactive Pythagorean Theorem</h1>
 
@@ -125,8 +127,9 @@ with (figure) {
     keepInside(hand, s1.inset(10)).changeCost(10)
     align("center", "none", v1, hand)
 
-    let pb = new Constrain.PS.PrintButton(figure)
+    let pb = new Constrain.PDF.PrintButton(figure)
     align("right", "bottom", pb, canvasRect().inset(2))
+    align("abut", "bottom", new Constrain.PS.PrintButton(figure), hspace(8), pb)
 
     start()
 }

@@ -281,10 +281,21 @@ class PrintButton extends Constrain.Button {
         ctx.beginPath(); ctx.moveTo(-4, -3); ctx.lineTo(6, -3); ctx.stroke()
         ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(6, 0); ctx.stroke()
         ctx.beginPath(); ctx.moveTo(-6, 3); ctx.lineTo(4, 3); ctx.stroke()
+        ctx.fillStyle = "#444"
+        ctx.font = "10px Helvetica, Arial"
+        ctx.fillText("PS", -8, 0)
         ctx.restore()
     }
     activate() {
-        this.figure.print()
+        const save_ctx = this.figure.ctx
+        const pc = new PrintContext(this.figure, this.figure.ctx)
+        this.figure.ctx = pc
+
+        this.figure.render(false)
+        exportData(pc.getOutput(), "constrain-figure.ps", "application/postscript")
+
+        this.figure.ctx = save_ctx;
+        this.figure.render(false)
     }
 }
 
@@ -313,10 +324,12 @@ class PrintContext {
         this.figure = figure
         this.ctx2d = ctx2d
         this.output = []
+        const orientation = (this.figure.width > this.figure.height) ? "Landscape" : "Portrait"
         this.append("%!PS-Adobe-2.0")
             .append("%%Creator: Constrain PostScript Renderer")
             .append("%%Pages: 1")
             .append("%%PageOrder: Ascend")
+            .append("%%Orientation: " + orientation)
             .append(`%%BoundingBox: 0 0 ${Math.round(figure.width)} ${Math.round(figure.height)}`)
             .append(`%%HiResBoundingBox: 0 0 ${figure.width} ${(figure.height)}`)
             .append(`%%PageSize: 0 0 ${Math.round(figure.width)} ${Math.round(figure.height)}`)
@@ -507,18 +520,6 @@ function exportData(data, filename, ty) {
         elem.click();
         document.body.removeChild(elem);
     }
-}
-
-Constrain.Figure.prototype.print = function() {
-    const save_ctx = this.ctx
-    const pc = new PrintContext(this, this.ctx)
-    this.ctx = pc
-
-    this.render(false)
-    exportData(pc.getOutput(), "constrain-figure.ps", "application/postscript")
-
-    this.ctx = save_ctx;
-    this.render(false)
 }
 
   return {
