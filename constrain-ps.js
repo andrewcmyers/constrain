@@ -351,6 +351,7 @@ class PrintContext {
             .append("%%BeginProlog")
             .append("%%EndProlog")
             .append("%%BeginSetup")
+            .append(`<< /PageSize [${figure.width} ${figure.height}] >> setpagedevice`)
             .append("%%EndSetup")
             .append("%%Page: 1 1")
             .append("/Helvetica findfont 12 scalefont setfont")
