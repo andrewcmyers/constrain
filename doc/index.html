@@ -3,6 +3,7 @@
 <head>
   <script src="../numeric-1.2.6.js"></script>
   <script src="../constrain.js"></script>
+  <script src="../constrain-ps.js"></script>
   <script src="../constrain-pdf.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"></script>
   <title>Constrain Reference Manual</title>
@@ -1228,22 +1229,29 @@ To make it easier to generate printable output on demand, the classes
 <code>Constrain.PS.PrintButton</code> and <code>Constrain.PDF.PrintButton</code>
 define buttons (interactive objects)
 that causes the appopriate kind of output to be generated for the figure in which it
-appears.  Thus, the example figure below is printable using the gray button.
+appears.  Thus, the example figure below is printable using the gray buttons.
 </p>
-<canvas id=print_ex>
-</canvas>
+<pre class=code id="print_code_ex"></pre>
+<div id="print_ex_div" style="margin: 1em">
+<canvas id=print_ex></canvas>
 <script>
-    let print_ex_fig = new Constrain.Figure("print_ex")
-    with (print_ex_fig) {
-        const s = square()
-            .setFillStyle("aquamarine")
-            .setLineDash([4,4])
-            .addText("Square")
-            .setFontName("Palatino")
-        handle().at(s.lr())
-        align("left", "top", s, canvasRect().inset(2))
-        align("right", "bottom", new Constrain.PDF.PrintButton(print_ex_fig), canvasRect().inset(2))
-    }
+let fig = new Constrain.Figure("print_ex")
+with (fig) {
+  const s = square().setFillStyle("aquamarine")
+                    .setLineDash([4,4])
+                    .addText("Square")
+                    .setFontName("Palatino")
+  handle().at(s.lr())
+  align("left", "top", s, canvasRect().inset(2))
+  align("abut", "bottom",
+    new Constrain.PS.PrintButton(fig), hspace(8),
+    new Constrain.PDF.PrintButton(fig),
+    canvasRect().inset(2).lr())
+}
+</script>
+</div>
+<script>
+  show_example("print_code_ex", "print_ex_div")
 </script>
 <p>
 In the rendering, dimensions are expanded by 33% so that all pixel
