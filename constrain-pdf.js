@@ -263,11 +263,50 @@ function override_jsPDF(jspdf, ctx) {
     }
 }
 
+class PrintJob {
+    constructor(figure) {
+        this.figure = figure
+        this.fonts = []
+        this.fontFiles = []
+    }
+    addFont(filename, family, variant, fontWeight, encoding) {
+        this.fonts.push([filename, family, variant, fontWeight, encoding])
+        return this
+    }
+    addFontFile(filename, data) {
+        this.fontFiles.push([filename, data])
+        return this
+    }
+    print() {
+        const figure = this.figure
+        const save_ctx = figure.ctx
+        const orientation = (figure.width > figure.height) ? "l" : "p"
+        const output = new jspdf.jsPDF(orientation, "px",
+            [figure.width * figure.scale,
+                figure.height * figure.scale])
+        for (let [filename, data] of this.fontFiles) {
+            output.addFileToVFS(filename, data)
+        }
+        for (let [filename, family, variant, fontWeight, encoding] of this.fonts) {
+            output.addFont(filename, family, variant, fontWeight, encoding)
+        }
+        const pc = output.context2d
+        override_jsPDF(output, save_ctx)
+        figure.ctx = pc
+
+        figure.render(false)
+        output.save("constrain-figure.pdf")
+
+        figure.ctx = save_ctx;
+        figure.render(false)
+    }
+}
+
+
 class PrintButton extends Constrain.Button {
     constructor(figure) {
         super(figure)
-        this.fonts = []
-        this.fontFiles = []
+        this.printJob = new PrintJob(figure)
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -305,33 +344,14 @@ class PrintButton extends Constrain.Button {
         ctx.restore()
     }
     activate() {
-        const save_ctx = this.figure.ctx
-        const orientation = (this.figure.width > this.figure.height) ? "l" : "p"
-        const output = new jspdf.jsPDF(orientation, "px",
-            [this.figure.width * this.figure.scale,
-             this.figure.height * this.figure.scale])
-        for (let [filename, data] of this.fontFiles) {
-            output.addFileToVFS(filename, data)
-        }
-        for (let [filename, family, variant, fontWeight, encoding] of this.fonts) {
-            output.addFont(filename, family, variant, fontWeight, encoding)
-        }
-        const pc = output.context2d
-        override_jsPDF(output, save_ctx)
-        this.figure.ctx = pc
-
-        this.figure.render(false)
-        output.save("constrain-figure.pdf")
-
-        this.figure.ctx = save_ctx;
-        this.figure.render(false)
+        this.printJob.print()
     }
     addFont(filename, family, variant, fontWeight, encoding) {
-        this.fonts.push([filename, family, variant, fontWeight, encoding])
+        this.printJob.addFont(filename, family, variant, fontWeight, encoding)
         return this
     }
     addFontFile(filename, data) {
-        this.fontFiles.push([filename, data])
+        this.printJob.addFontFile(filename, data)
         return this
     }
 }
@@ -357,7 +377,8 @@ function mapStyle(fontname, style) {
 }
 
   return {
-     PrintButton: PrintButton,
-     colorTable: colorTable
+     PrintJob,
+     PrintButton,
+     colorTable
   }
 }()

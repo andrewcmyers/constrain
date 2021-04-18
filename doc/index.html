@@ -3,7 +3,8 @@
 <head>
   <script src="../numeric-1.2.6.js"></script>
   <script src="../constrain.js"></script>
-  <script src="../constrain-ps.js"></script>
+  <script src="../constrain-pdf.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"></script>
   <title>Constrain Reference Manual</title>
   <style>
     canvas {
@@ -250,9 +251,9 @@ Control points can be repeated to introduce sharp vertices in the curve.
 <script>
   with (new Constrain.Figure("curve_ex_fig")) {
     const c = canvasRect()
-    sameSize(rectangle().at(c)
-               .setFillStyle(null).setLineDash([6,6]),
-             c)
+    align("LR", "TB", rectangle().setFillStyle(null)
+                                 .setLineDash([6,6]),
+                      c)
     setFillStyle("#fdf")
     closedCurve(c.ul(), c.ur(), c, c,
                 c.lr(), c.ll())
@@ -1204,34 +1205,31 @@ to the following frame once its duration is over.
 
 <h2>Generating printable diagrams</h2>
 <p>
-The <code>Constrain.PS</code> subpackage (in <kbd>constrain-ps.js</kbd>)
-enables Constrain to generate figures in PostScript, a printable non-HTML
-format. This is useful for generating figures for papers, and it also allows
-you to use the same code to generate the HTML version of the figure and the PDF
-version.
+The <code>Constrain.PS</code> and <code>Constrain.PDF</code>
+subpackages (in <kbd>constrain-ps.js</kbd> and <kbd>constrain-pdf.js</kbd>)
+enable Constrain to generate figures in printable non-HTML
+format. They are useful for generating figures for papers, so
+you can use the same code to generate both the HTML version of the figure and
+the printed version.
 </p>
 <p>
-Currently Constrain only supports generating PostScript output, which can be
-converted to PDF and other formats using tools such as <code>epstopdf</code>.
+Interactive objects in the figure, such
+as handles and buttons, are not rendered.
 </p>
 <p>
-<code>Constrain.PS</code> extends the class <code>Figure</code> with a method
-<code>print</code> that can be used to generate PostScript output.  Interactive
-objects in the figure, such as handles, are not rendered.
+The function <code>Constrain.PS.print</code> can be called on a figure to
+generate PostScript output. For PDF output, the class
+<code>Constrain.PDF.PrintJob</code> allows more control. Fonts can be made
+available to the PDF renderer using its <code>addFont</code> and
+<code>addFontFile</code> methods.
 </p>
 <p>
-To make it easier to generate printable output on demand, the class
-<code>Constrain.PS.PrintButton</code> defines a button (an interactive object)
-that causes PostScript output to be generated for the figure in which it
+To make it easier to generate printable output on demand, the classes
+<code>Constrain.PS.PrintButton</code> and <code>Constrain.PDF.PrintButton</code>
+define buttons (interactive objects)
+that causes the appopriate kind of output to be generated for the figure in which it
 appears.  Thus, the example figure below is printable using the gray button.
 </p>
-<p>
-In the PostScript rendering, all dimensions are expanded by 33% so that all pixel
-dimensions become point dimensions. The figure therefore becomes
-correspondingly larger, although since PostScript is a resolution-independent
-page description language, the generated figures are easily rescaled.
-</p>
-
 <canvas id=print_ex>
 </canvas>
 <script>
@@ -1244,9 +1242,20 @@ page description language, the generated figures are easily rescaled.
             .setFontName("Palatino")
         handle().at(s.lr())
         align("left", "top", s, canvasRect().inset(2))
-        align("right", "bottom", new Constrain.PS.PrintButton(print_ex_fig), canvasRect().inset(2))
+        align("right", "bottom", new Constrain.PDF.PrintButton(print_ex_fig), canvasRect().inset(2))
     }
 </script>
+<p>
+In the rendering, dimensions are expanded by 33% so that all pixel
+dimensions become point dimensions. The figure therefore becomes
+correspondingly larger, although since PostScript and PDF are resolution-independent
+page descriptions, the generated figures are easily rescaled.
+</p>
+<p>The support for PDF depends on the jsPDF package, so HTML documents using PDF
+should include thas package, with a line like the following:
+<pre>
+    &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"&gt;&lt;/script&gt;
+</pre>
 
 <h2>Graphs</h2>
 <p>

@@ -292,15 +292,7 @@ class PrintButton extends Constrain.Button {
         ctx.restore()
     }
     activate() {
-        const save_ctx = this.figure.ctx
-        const pc = new PrintContext(this.figure, this.figure.ctx)
-        this.figure.ctx = pc
-
-        this.figure.render(false)
-        exportData(pc.getOutput(), "constrain-figure.ps", "application/postscript")
-
-        this.figure.ctx = save_ctx;
-        this.figure.render(false)
+        print(this.figure)
     }
 }
 
@@ -333,6 +325,18 @@ function mapStyle(fontname, style) {
         }
     }
     return style[0].toUpperCase() + style.substr(1)
+}
+
+function print(figure) {
+    const save_ctx = figure.ctx
+    const pc = new PrintContext(figure, figure.ctx)
+    figure.ctx = pc
+
+    figure.render(false)
+    exportData(pc.getOutput(), "constrain-figure.ps", "application/postscript")
+
+    figure.ctx = save_ctx;
+    figure.render(false)
 }
 
 class PrintContext {
@@ -545,9 +549,5 @@ Constrain.Figure.prototype.printButton = function() {
     return new Constrain.PS.PrintButton(this)
 }
 
-  return {
-     PrintButton: PrintButton,
-     PrintContext: PrintContext,
-     colorTable: colorTable
-  }
+  return { print, PrintButton, PrintContext, colorTable }
 }()
