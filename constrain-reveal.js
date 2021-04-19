@@ -1,7 +1,3 @@
-/* RevealFig.init() :
- *      set up Reveal to animate figures.
- */
-
 // Figures can be fragments or regular components.
 // In the latter case, the frames of the figure happen
 // with the Reveal fragments.
