@@ -248,19 +248,50 @@ function colorToRGB(s) {
 }
 
 
-function override_jsPDF(jspdf, ctx) {
+function override_jsPDF(jspdf, ctx, figure) {
     const prototype = jspdf.context2d.constructor.prototype,
         Point = jspdf.internal.Point
 
     prototype.printMedia = true
 
     prototype.setLineDash = function(pattern) {
-        jspdf.setLineDashPattern(pattern)
+        this.ctx.lineDash = pattern
+        jspdf.setLineDashPattern(pattern.map(x => x * figure.scale))
+    }
+    prototype.getLineDash = function() {
+        const r = this.ctx.lineDash
+        if (!r) return []
+        if (r.length % 2 == 0) return r
+        else return r.concat(r)
     }
     prototype.measureText = function(s) {
         ctx.font = this.font
         return ctx.measureText(s)
     }
+  prototype.closePath = function() {
+    let pathBegin = new Point(0, 0);
+    let i = 0;
+    for (i = this.path.length - 1; i !== -1; i--) {
+      if (this.path[i].type === "begin") {
+        if (
+          typeof this.path[i + 1] === "object" &&
+          typeof this.path[i + 1].x === "number"
+        ) {
+          pathBegin = new Point(this.path[i + 1].x, this.path[i + 1].y);
+          this.path.push({
+            type: "lt",
+            x: pathBegin.x,
+            y: pathBegin.y
+          });
+          break;
+        }
+      }
+    }
+    this.path.push({
+      type: "close"
+    });
+    this.ctx.lastPoint = new Point(pathBegin.x, pathBegin.y);
+  }
 }
 
 class PrintJob {
@@ -281,9 +312,12 @@ class PrintJob {
         const figure = this.figure
         const save_ctx = figure.ctx
         const orientation = (figure.width > figure.height) ? "l" : "p"
-        const output = new jspdf.jsPDF(orientation, "px",
-            [figure.width * figure.scale,
-                figure.height * figure.scale])
+        const output = new jspdf.jsPDF({
+               orientation,
+               unit: "px",
+               format: [figure.width * figure.scale, figure.height * figure.scale],
+               hot_fixes: ["px_scaling"]
+            })
         for (let [filename, data] of this.fontFiles) {
             output.addFileToVFS(filename, data)
         }
@@ -291,7 +325,7 @@ class PrintJob {
             output.addFont(filename, family, variant, fontWeight, encoding)
         }
         const pc = output.context2d
-        override_jsPDF(output, save_ctx)
+        override_jsPDF(output, save_ctx, figure)
         figure.ctx = pc
 
         figure.render(false)
