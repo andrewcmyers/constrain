@@ -962,7 +962,7 @@ class Figure {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
     textFrame(txt, fillStyle) {
-        if (txt.constructor != ContainedText) txt = new ContainedText(this, txt)
+        if (txt && txt.constructor != ContainedText) txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
     label(text, fontSize, fontName, fillStyle) {
