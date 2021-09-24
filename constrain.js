@@ -2835,6 +2835,12 @@ class GraphicalObject extends Box {
         this.text.setFontName(f)
         return this
     }
+    // Set font style
+    setFontStyle(s) {
+        if (!this.text) console.error("This object does not contain text")
+        this.text.setFontStyle(s)
+        return this
+    }
 // rendering control
     active() { return true }
     visible() { return true }
@@ -3937,11 +3943,13 @@ function countItems(ly) {
     return c
 }
 
-// A ContainedText is some text that can be formatted inside
-// a graphical object. It is not a graphical object itself.
-// It knows how to format itself and render into a containing
-// shape. It has methods to control its style (e.g., inset and
-// centering) and the default style of the text it contains.
+// A ContainedText holds some text that can be formatted inside
+// a graphical object. It is not a graphical object itself;
+// it serves as the glue between a graphical object and the text
+// it contains. It knows how to format the text and to render it
+// into the containing shape. It has methods to control the presentation
+// style (e.g., inset and centering) and the default style of the text it
+// contains.
 // 
 class ContainedText {
     constructor(figure, ...text) {
