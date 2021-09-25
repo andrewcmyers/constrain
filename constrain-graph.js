@@ -259,7 +259,7 @@ class Graph {
             if (x === undefined) x = 200
             if (y === undefined) y = 100
             if (visited.includes(n)) return
-            console.log("Hinting " + n + " at " + x + ", " + y)
+            // console.log("Hinting " + n + " at " + x + ", " + y)
             visited.push(n)
             let outgoing = 0
             graph.edges.forEach(e => {

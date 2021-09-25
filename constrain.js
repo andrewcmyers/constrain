@@ -2060,7 +2060,7 @@ class Sqrt extends UnaryExpression {
         let a = evaluate(this.expr, task.valuation)
         const d = this.bpDiff
         if (a <= 0) {
-            console.log("Trying to take the sqrt of a nonpositive number, generating random answer")
+            // console.log("Trying to take the sqrt of a nonpositive number, generating random answer")
             a = Math.random()/1000 + 0.001
         }
         task.propagate(this.expr, d * 0.5/a)
@@ -2893,7 +2893,7 @@ class Point extends LayoutObject {
 class Group extends GraphicalObject {
     constructor(figure, ...objects) {
         super(figure)
-        this.objects = objects.flat()
+        this.objects = flattenGraphicalObjects(objects)
         this.objects.forEach(o => { o.parent = this })
     }
     variables() {
@@ -3494,13 +3494,23 @@ function argsForEach(args, i, f) {
     }
 }
 
+function flattenGraphicalObjects(objects) {
+    return objects.flat().filter(o => {
+        if (!o.variables) {
+            console.error("Not a graphical object: " + o)
+            return false
+        }
+        return true
+    })
+}
+
 // A Connector draws a curve from a first object to a last object, passing near 
 // intermediate objects along the way. Bezier splines are used to connect objects.
 class Connector extends GraphicalObject {
     constructor(figure, ...objects) {
         super(figure, undefined, figure.strokeStyle, figure.lineWidth)
         this.fillStyle = this.strokeStyle
-        this.objects = objects.flat()
+        this.objects = flattenGraphicalObjects(objects)
         this.labels = []
         this.arrowSize = figure.arrowSize
     }
