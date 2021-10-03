@@ -734,7 +734,7 @@ class Figure {
 
     // constraints to pin all the objects at the same location
     pin(...objects) {
-        objects = objects.flat()
+        objects = flattenGraphicalObjects(objects)
         const r = []
         for (let i = 1; i < objects.length; i++) {
             r.push(this.equal(objects[0].x(), objects[i].x()))
