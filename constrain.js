@@ -862,10 +862,10 @@ class Figure {
             this.geq(g1.y0(), g2.y0()))
     }
     // keep g1 and g2 the same size
-    sameSize(g1, g2) {
+    sameSize(...objs) {
         return new ConstraintGroup(this,
-            this.equal(g1.w(), g2.w()),
-            this.equal(g1.h(), g2.h()))
+            this.equal(...objs.map(o => o.w())),
+            this.equal(...objs.map(o => o.h())))
     }
 
     after(frame, ...objs) {
