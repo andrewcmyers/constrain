@@ -734,7 +734,7 @@ class Figure {
 
     // constraints to pin all the objects at the same location
     pin(...objects) {
-        objects = objects.flat()
+        objects = flattenGraphicalObjects(objects)
         const r = []
         for (let i = 1; i < objects.length; i++) {
             r.push(this.equal(objects[0].x(), objects[i].x()))
@@ -862,10 +862,10 @@ class Figure {
             this.geq(g1.y0(), g2.y0()))
     }
     // keep g1 and g2 the same size
-    sameSize(g1, g2) {
+    sameSize(...objs) {
         return new ConstraintGroup(this,
-            this.equal(g1.w(), g2.w()),
-            this.equal(g1.h(), g2.h()))
+            this.equal(...objs.map(o => o.w())),
+            this.equal(...objs.map(o => o.h())))
     }
 
     after(frame, ...objs) {
