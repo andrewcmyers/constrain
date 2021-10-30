@@ -247,7 +247,6 @@ function colorToRGB(s) {
   return [r, g, b]
 }
 
-
 function override_jsPDF(jspdf, ctx, figure) {
     const prototype = jspdf.context2d.constructor.prototype,
         Point = jspdf.internal.Point
@@ -255,7 +254,7 @@ function override_jsPDF(jspdf, ctx, figure) {
     // Allow recognizing special contexts
     prototype.printMedia = true
 
-    // setLineDash() is not implemented by jsPDF.Context2d
+    // setLineDash() is not implemented correctly by jsPDF.Context2d
     prototype.setLineDash = function(pattern) {
         this.ctx.lineDash = pattern
         jspdf.setLineDashPattern(pattern.map(x => x * figure.scale))
@@ -267,6 +266,7 @@ function override_jsPDF(jspdf, ctx, figure) {
         if (r.length % 2 == 0) return r
         else return r.concat(r)
     }
+
     // Need to use original context to make text measurements correct
     prototype.measureText = function(s) {
         ctx.font = this.font
