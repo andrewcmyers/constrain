@@ -20,6 +20,8 @@ const USE_BACKPROPAGATION = true,
       CHECK_NAN = false,
       COMPARE_GRADIENTS = false
 
+let DEBUG = false
+
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
 
 const Figure_defaults = {
@@ -506,6 +508,7 @@ class Figure {
             return
         }
         const f = this.nextFrame()
+        if (DEBUG) console.log("Advancing to frame " + f.name)
         if (f) {
             this.currentFrame = f
             this.startCurrentFrame()
@@ -579,15 +582,16 @@ class Figure {
             if (frac >= 1) {
                 this.animationTime = 1
                 this.stopTimer()
-                console.log("rendered " + steps_rendered + " steps in time " + t +
-                            " (" + Math.round(1000*steps_rendered/t) + "/sec)")
+                if (DEBUG)  {
+                    console.log("rendered " + steps_rendered + " steps in time " + t +
+                                " (" + Math.round(1000*steps_rendered/t) + "/sec)")
+                }
                 completedAction()
             } else {
                 this.animationTime = frac
                 action()
             }
         }, frameInterval)
-        // console.log("Started interval timer " + this.interval)
     }
 
     // Start rendering (and animating, if necessary) the current frame
@@ -598,13 +602,17 @@ class Figure {
             console.error("no current frame")
         }
         if (this.currentFrame.length > 0) {
-            // console.log("starting animated frame " + this.currentFrame.name + " in " + this.name)
+            if (DEBUG) {
+               console.log("starting animated frame " + this.currentFrame.name + " in " + this.name)
+            }
             this.animate(this.currentFrame.length, 1000/this.frameRate,
                 () => this.render(true),
                 () => this.endCurrentFrame()
             )
         } else {
-            // console.log("starting static frame " + this.currentFrame.name + " in " + this.name)
+            if (DEBUG) {
+               console.log("starting static frame " + this.currentFrame.name + " in " + this.name)
+            }
             delete this.interval
             this.render(false)
         }
@@ -612,7 +620,9 @@ class Figure {
 
     endCurrentFrame() {
         if (this.currentFrame === undefined) return
-        // console.log("Ending frame " + this.currentFrame.name)
+        if (DEBUG) {
+          console.log("Ending frame " + this.currentFrame.name)
+        }
         this.animationTime = 1
         this.stopTimer()
         this.render(false)
@@ -623,7 +633,6 @@ class Figure {
 
     stopTimer() {
         if (this.interval !== undefined) {
-            // console.log("Stopping interval timer " + this.interval)
             clearInterval(this.interval)
             delete this.interval
         }
@@ -926,13 +935,11 @@ class Figure {
         return new VertLine(this, strokeStyle, lineWidth)
     }
     hspace(w) {
-        const r = new HSpace(this)
-        if (w) r.setW(w)
+        const r = new HSpace(this, w)
         return r
     }
     vspace(h) {
-        const r = new VSpace(this)
-        if (h) r.setH(h)
+        const r = new VSpace(this, h)
         return r
     }
     box() { return new Box(this) }
@@ -957,6 +964,9 @@ class Figure {
     }
     br() {
         return new LineBreak()
+    }
+    word(w) {
+        return new WordText(w)
     }
     textContext(f, ...t) {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
@@ -999,7 +1009,7 @@ class Figure {
     // Create a point with variables for its coordinates
     point() {
         if (arguments.length == 2) {
-            return new Point(arguments[0], arguments[1])
+            return new Point(legalExpr(arguments[0]), legalExpr(arguments[1]))
         } else {
             if (arguments.length != 0) {
                 console.error("point(...) expects 0 or 2 arguments")
@@ -1021,8 +1031,9 @@ class Figure {
         return g
     }
 // ---- Utility methods for creating expressions ----
+
     plus(...args) {
-        args = args.flat()
+        args = args.flat().map(a => legalExpr(a))
         switch (args.length) {
             case 0: return 0
             case 1: return args[0]
@@ -1030,9 +1041,11 @@ class Figure {
             default: return new Plus(args[0], ...args.slice(1))
         }
     }
-    minus(x, y) { return new Minus(x, y) }
+    minus(x, y) {
+        return new Minus(legalExpr(x), legalExpr(y))
+    }
     times(...args) {
-        args = args.flat()
+        args = args.flat().map(a => legalExpr(a))
         switch (args.length) {
             case 0: return 1
             case 1: return args[0]
@@ -1040,21 +1053,29 @@ class Figure {
             default: return new Times(args[0], ...args.slice(1))
         }
     }
-    divide(x, y) { return new Divide(x, y) }
-    abs(e) { return new Abs(e) }
-    max(...args) { return new Max(...args) }
-    min(...args) { return new Min(...args) }
-    sqrt(x) { return new Sqrt(x) }
-    sqr(x) { return new Sq(x) }
-    sq(x) { return new Sq(x) }
-    average(x, y) { return new Average(x, y) }
-    distance(p1, p2, dims) { return new Distance(p1, p2, dims) }
-    nearZero(e, cost) { return new NearZero(this, e, cost) }
+    divide(x, y) {
+        return new Divide(legalExpr(x), legalExpr(y))
+    }
+    abs(e) { return new Abs(legalExpr(e)) }
+    max(...args) {
+        args = args.flat().map(a => legalExpr(a))
+        return new Max(...args)
+    }
+    min(...args) {
+        args = args.flat().map(a => legalExpr(a))
+        return new Min(...args)
+    }
+    sqrt(x) { return new Sqrt(legalExpr(x)) }
+    sqr(x) { return new Sq(legalExpr(x)) }
+    sq(x) { return new Sq(legalExpr(x)) }
+    average(x, y) { return new Average(legalExpr(x), legalExpr(y)) }
+    distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
+    nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
     group(...g) { return new Group(this, ...g) }
     // constraint that (p1 -> p2) is perpendicular to (p3->p4)
     perpendicular(p1, p2, p3, p4) {
-        let v1 = new Minus(p2, p1), v2 = new Minus(p4, p3)
+        let v1 = new Minus(legalExpr(p2), legalExpr(p1)), v2 = new Minus(legalExpr(p4), legalExpr(p3))
         return new NearZero(this,
             new Plus(new Times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
                      new Times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
@@ -1453,7 +1474,7 @@ function eventInElement(event, element) {
 class Expression {
     constructor() {}
     evaluate(valuation, doGrad) {
-        console.log("Don't know how to evaluate this expression")
+        console.error("Don't know how to evaluate this expression")
         return 0
     }
     // support for caching evaluations. Mostly not worthwhile but can pay off for
@@ -1484,6 +1505,19 @@ class Expression {
     addDependencies(task) {
         console.error("Don't know how to compute dependencies for this expression")
     }
+}
+
+/** Return e if it is a legal expression; otherwise, return a
+    *  legal expression and log an error message to the console.
+    */
+function legalExpr(e) {
+    if (e instanceof Expression ||
+        typeof e == "number" ||
+        (typeof e == "object" && e.constructor == Array)) {
+            return e;
+    }
+    console.error("Illegal expression: " + e)
+    return 0;
 }
 
 function currentValue(e) {
@@ -2644,18 +2678,19 @@ class LayoutObject extends Expression {
     }
 
     toTop(v) {
-        return new Point(this.x(), new Minus(this.y0(), v))
+        return new Point(this.x(), new Minus(this.y0(), legalExpr(v)))
     }
     toBottom(v) {
-        return new Point(this.x(), new Plus(this.y1(), v))
+        return new Point(this.x(), new Plus(this.y1(), legalExpr(v)))
     }
     toLeft(v) {
-        return new Point(new Minus(this.x0(), v), this.y())
+        return new Point(new Minus(this.x0(), legalExpr(v)), this.y())
     }
     toRight(v) {
-        return new Point(new Plus(this.x1(), v), this.y())
+        return new Point(new Plus(this.x1(), legalExpr(v)), this.y())
     }
     inset(v) {
+        v = legalExpr(v)
         const r = new LayoutObject()
         r.x = () => this.x()
         r.y = () => this.y()
@@ -2664,6 +2699,7 @@ class LayoutObject extends Expression {
         return r
     }
     expand(v) {
+        v = legalExpr(v)
         const r = new LayoutObject()
         r.x = () => this.x()
         r.y = () => this.y()
@@ -2678,10 +2714,10 @@ class LayoutObject extends Expression {
     //   a LayoutObject: coordinates are its x() and y()
     at() {
         if (arguments.length == 2) {
-            this.figure.equal(this.x(), arguments[0])
-            this.figure.equal(this.y(), arguments[1])
+            this.figure.equal(this.x(), legalExpr(arguments[0]))
+            this.figure.equal(this.y(), legalExpr(arguments[1]))
         } else if (arguments.length == 1) {
-            const p = arguments[0]
+            const p = legalExpr(arguments[0])
             if (p.constructor == Array) {
                 this.figure.equal(this.x(), p[0])
                 this.figure.equal(this.y(), p[1])
@@ -3575,9 +3611,9 @@ class Connector extends GraphicalObject {
 
 // Horizontal space.
 class HSpace extends GraphicalObject {
-    constructor(figure) {
+    constructor(figure, w) {
         super(figure)
-        figure.equal(this.h(), 0)
+        if (w) figure.equal(this.w(), w)
     }
     render() {}
     renderIfVisible() {}
@@ -3585,9 +3621,9 @@ class HSpace extends GraphicalObject {
 
 // Vertical space.
 class VSpace extends GraphicalObject {
-    constructor(figure) {
+    constructor(figure, h) {
         super(figure)
-        figure.equal(this.w(), 0)
+        if (h) figure.equal(this.h(), h)
     }
     render() {}
     renderIfVisible() {}

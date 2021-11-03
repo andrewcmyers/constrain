@@ -1,0 +1,563 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>A Short talk about Constrain</title>
+
+    <link rel="stylesheet" href="../reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="andru.css">
+
+    <!-- Theme used for syntax highlighting of code 
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css"> -->
+    <style>
+        span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px; z-index: 2 }
+        em { color: #889ee5 }
+        canvas { position: fixed; left: 0; top: 0;
+                 width: 100%; height: 100%; z-index: -1 }
+        /* #fig1 { background-color: #eef;  } */
+        section {width: 1024px; height:768px}
+        kbd {font-size: 90%; color: #468}
+        pre {background-color: #efd; color: #236}
+        .slides {background-color: white}
+    </style>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <script src="../constrain-graph.js"></script>
+</head>
+<body>
+    <div class="reveal">
+    <span class="footer">Constrain: Constraint-Based Animated Figures</span>
+    <div class="slides">
+        <section>
+          <h1><em>Constrain:</em></h1><h2 id=splash_subtitle>Constraint-Based Animated Figures<br>
+          <small>Andrew Myers</small></h2>
+          <canvas id=splashpage></canvas>
+          <script id=titlepage>
+            let Figure = Constrain.Figure
+            let splash = new Figure("splashpage")
+            with (splash) {
+                setFontName("Times")
+                setFontSize(18)
+                setFontStyle("italic")
+                const s1 = square().setLineWidth(3), s2 = square().setLineWidth(3)
+                const cr = canvasRect()
+                align("abut", "top", s1, hspace(40), s2)
+                equal(s1.w(), 400, s2.w())
+                equal(average(s1.x(), s2.x()), cr.x())
+                align("none", "abut", DOMElement("splash_subtitle"), vspace(30), s1)
+                const h1 = horzLine(), v1 = vertLine()
+                const a = minus(v1.x(), s1.x0()), b = minus(s1.x1(), v1.x())
+                equal(a, minus(h1.y(), s1.y0()))
+                align("left right", "none", h1, s1)
+                align("none", "top bottom", v1, s1)
+                equal(minus(h1.y(), s1.y0()), a)
+                // align("none", "center", h1, hand)
+
+                const asq = square().setFillStyle("#eaa").addText("a", superscript("2"))
+                const bsq = square().setFillStyle("#aea").addText("b", superscript("2"))
+                align("left", "top", asq, s1)
+                align("right", "none", asq, v1)
+                align("right", "bottom", bsq, s1)
+                align("left", "none", bsq, v1)
+
+
+                function rt(p1, p2, p3) {
+                    return figure.polygon([p1, p2, p3]).setFillStyle("#eea")
+                }
+                rt(s1.ll(), asq.ll(), bsq.ll())
+                rt(bsq.ll(), asq.ll(), asq.lr())
+                rt(asq.ur(), s1.ur(), bsq.ur())
+                rt(asq.ur(), asq.lr(), bsq.ur())
+
+                const p1 = s2.ll().toRight(a),
+                    p2 = s2.ul().toBottom(a),
+                    p3 = s2.ur().toLeft(a),
+                    p4 = s2.lr().toTop(a)
+                polygon([p1, p2, p3, p4]).setFillStyle("#ccf").addText("c", superscript("2"))
+                rt(p1, p2, s2.ll())
+                rt(p2, p3, s2.ul())
+                rt(p3, p4, s2.ur())
+                rt(p4, p1, s2.lr())
+
+                setStrokeStyle("#008")
+
+                const al1 = label("a").at(average(s1.ll(), bsq.ll()).toBottom(10))
+                connector(al1.toLeft(5), point(s1.x0(), al1.y())).setEndArrow("arrow")
+                connector(al1.toRight(5), point(bsq.x0(), al1.y())).setEndArrow("arrow")
+                const al2 = label("a").at(s2.ll().toRight(times(a, 0.5)).toBottom(10))
+                connector(al2.toLeft(5), point(s2.x0(), al2.y())).setEndArrow("arrow")
+                connector(al2.toRight(5), p1.toBottom(10)).setEndArrow("arrow")
+
+                const bl1 = label("b").at(average(s1.ll(), asq.ll()).toLeft(10))
+                connector(bl1.toTop(5), asq.ll().toLeft(10)).setEndArrow("arrow")
+                connector(bl1.toBottom(5), s1.ll().toLeft(10)).setEndArrow("arrow")
+
+                const bl2 = label("b").at(average(s2.ll(), p2).toLeft(10))
+                const bl2t = point(bl2.x(), p2.y()),
+                    bl2b = point(bl2.x(), p1.y())
+                connector(bl2.toTop(5), bl2t).setEndArrow("arrow")
+                connector(bl2.toBottom(5), bl2b).setEndArrow("arrow")
+
+                let nx = variable("nx", 5), ny = variable("ny", 5)
+                equal(times(nx, b), times(ny, a))
+                equal(plus(sq(nx), sq(ny)), 121)
+
+                const cl1 = label("c").at(average(asq.ll(), bsq.ll()).toRight(ny).toTop(nx))
+                const cl2 = label("c")
+                equal(cl1.y(), cl2.y())
+                equal(minus(cl2.x(), s2.x0()), minus(cl1.x(), s1.x0()))
+                connector(cl1.center().toLeft(nx).toTop(ny), asq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
+                connector(cl1.center().toRight(nx).toBottom(ny), bsq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
+                connector(cl2.center().toLeft(nx).toTop(ny), p2.toRight(ny).toTop(nx)).setEndArrow("arrow")
+                connector(cl2.center().toRight(nx).toBottom(ny), p1.toRight(ny).toTop(nx)).setEndArrow("arrow")
+                
+                const hand = handle()
+                geq(hand.x(), s1.x0())
+                leq(hand.x(), s1.x1())
+                keepInside(hand, s1.inset(10)).changeCost(10)
+                align("center", "none", v1, hand)
+            }
+
+
+          </script>
+        </section>
+        <section>
+          <h2><span id="title">Constrain</span></h2>
+          <span class=fragment></span>
+          <span class=fragment></span>
+          <canvas id=intro_fig></canvas>
+          <script id=intro>
+            with (new Figure("intro_fig")) {
+                let [f1, f2, f3, f4] = addFrame("1", "2", "3")
+                f2.setLength(100)
+                setFontName("Cronos Pro")
+                setLineWidth(2)
+                setFontSize(30)
+                setFillStyle("#eee")
+                const cr = canvasRect(),
+                      border = canvasRect().inset(times(0.1, cr.width()))
+                let r1 = rectangle().addText("Declarative JS code for animated figures\n")
+                                    .setW(times(border.width(), 0.25))
+                                    .setFontName("Consolas")
+                setFontName("Cronos Pro")
+                let r2 = ellipse().addText("Reveal.js presentations"),
+                    r3 = ellipse().addText("Web pages"),
+                    r4 = ellipse().addText("PDF (for papers)")
+
+                align("none", "abut", DOMElement("title"), vspace(10), r2)
+
+                r2.setFillStyle("#fdc")
+                r3.setFillStyle("#ffd")
+                r4.setFillStyle("#def")
+
+                equal(r1.h(), times(border.h(), 0.3))
+                equal(r2.h(), r3.h(), r4.h(), times(border.h(), 0.2))
+                align("left right", "distribute", r2, r3, r4)
+                align("left", "center", border, r1)
+                align("right", "center", border, r3)
+
+                setStrokeStyle("#999")
+                setArrowSize(20)
+                setLineWidth(5)
+                connector(r1, r3).setEndArrow("arrow")
+
+                drawAfter(f2, r2,
+                    connector(r1, r2.cl().toLeft(200), r2.cl()).setEndArrow("arrow")
+                )
+                drawAfter(f3, r4,
+                    connector(r1, r4.cl().toLeft(200), r4.cl()).setEndArrow("arrow")
+                )
+            }
+          </script>
+          
+        </section>
+        <section>
+          <h2><span id="title">Constrain</span></h2>
+          <ul>
+            <li>Declarative constraint-based description</li>
+            <li class=fragment>Figure can have multiple key frames</li>
+            <li class=fragment>Attributes can be animated within a frame</li>
+            <li class=fragment>Graphical content can constrain against <span id="html">HTML content</span></li>
+          </ul>
+          <canvas id="fig1"></canvas>
+          <script>
+            const fig1 = new Figure("fig1")
+            var f0, f1, s1, s2, s3, l1
+            with (fig1) {
+                setLineWidth(2)
+                setStrokeStyle('gray');
+                f0 = addFrame("start"); f05 = addFrame("0.5"); f1 = addFrame("next").setLength(1000);
+                f2 = addFrame().setLength(1500).setAutoAdvance(true)
+                s1 = square("#eee"); s3 = drawAfter(f1, square("#fdd"));
+                s2 = drawAfter(f05, square("#dfd"))
+                t1 = DOMElement("title")
+                equal(s1.x(), canvasRect().x()).changeCost(10)
+                pin(s1.lr(), s2)
+                equal(s1.w(), s2.w(), plus(t1.w(), 10))
+                equal(s1.y0(), minus(t1.y0(), 10))
+                equal(s3.x0(), smooth(f1, s2.x0(), s1.x0()))
+                equal(s3.y0(), smooth(f1, s2.y0(), s1.y1()))
+                equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
+                drawAfter(f2,
+                    l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30),
+                    pin(l1.p1(), s3.ll()),
+                    geq(l1.p2().x(), s3.x0()),
+                    equal(distance(l1.p1(), l1.p2()),
+                          distance(s3.ll(), s3.ul())),
+                    equal(distance(l1.p2(), s3.ul()),
+                        smooth(f2, 0, distance(s3.ul(), s3.lr()))).changeCost(0.1)
+                )
+                f3 = addFrame().setLength(500)
+                let t2 = DOMElement("html"),
+                    s4 = drawAfter(f3, circle().setFillStyle('#ddf').setW(
+                      smooth(f3, 0, plus(4, t2.w()))))
+                align("center", "center", t2, s4)
+            }
+          </script>
+        </section>
+        <section>
+        <h2>Rendering capabilities</h2>
+          <ul id=bullets>
+            <li>Standard graphical objects:
+            <span id=rect class=fragment>rectangles</span><span class=fragment>,</span> <span class=fragment>lines</span><span class=fragment>, circles</span>
+            <li class=fragment>Automatic connectors support diagrams</li>
+            <li class=fragment>Automatic text layout</li>
+            <li class=fragment>Constraint-based ⇒ responsive to display changes, font availability</li>
+            </li>
+          </ul>
+          <canvas id="fig2"></canvas>
+          <script>
+            const fig2 = new Constrain.Figure("fig2")
+            var circ
+            with (fig2) {
+                const cr = canvasRect(),
+                      border = canvasRect().inset(times(0.1, cr.width()))
+                const [f0, f1, f1a, f2, f3, f4, tf] = addFrame(null, "rectangles", "rect2", "lines", "circles", "textdemo", "connect")
+                const s1 = drawAfter(f1, square().setFillStyle("#f88")),
+                      r1 = drawAfter(f1a, rectangle().setFillStyle("#8f8").setCornerRadius(8)),
+                    rect_w = DOMElement("rect"),
+                    bullets = DOMElement("bullets"),
+                    l1 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray"),
+                    l2 = line().setLineDash([10,5]).setLineWidth(3).setStrokeStyle("gray")
+                drawAfter(f2, l1)
+                drawAfter(f2, l2)
+                equal(s1.x0(), bullets.x0())
+                equal(s1.y0(), plus(12, bullets.y1()))
+                equal(s1.w(), 100)
+                equal(r1.w(), s1.w())
+                equal(r1.x0(), plus(s1.x1(), 50))
+                equal(r1.y(), s1.y())
+                equal(r1.w(), times(1.618, r1.h()))
+                pin(s1.ur(), l1.p1())
+                pin(r1.ul(), l1.p2())
+                pin(s1.lr(), l2.p1())
+                pin(r1.ll(), l2.p2())
+                let p1, p2
+                let c1 = drawAfter(f4,
+                    connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow")
+                      .setLineWidth(2)
+                      .addLabel(lineLabel("a label", 0.5,
+                                times(canvasRect().h(), 0.02)))
+                )
+  var some_text = " writing is a"
+      + " literary technique in which the writer is"
+      + " bound by some condition that forbids"
+      + " certain things or imposes a pattern."
+                let ew = smooth(tf, 0, 400)
+                tf.setLength(1000)
+                let e2 = ellipse().setFillStyle("#ddf").setLineWidth(2).setW(ew).setH(300).addText(italic("Constrained"), word(" "), some_text).setFontSize(28).setFontName("Baskerville")
+                drawAfter(tf, e2)
+                align("right", "bottom", e2, border)
+                equal(p1.x(), s1.x())
+                equal(p2.x(), r1.x())
+                equal(p1.y(), average(s1.y(), canvasRect().y1()))
+                equal(p1.y(), p2.y1())
+                const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
+                grd.addColorStop(0, "purple")
+                grd.addColorStop(1, "yellow")
+                let e1 = drawAfter(f3, ellipse().setLineWidth(2).setFillStyle(grd)),
+                    p3 = point(),
+                    c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2]))
+                group(r1, s1, e1).setX(canvasRect().x())
+                let t2 = drawAfter(f1a, label("green", 18, "Courier", "black"))
+                pin(t2.center(), r1.center())
+                align("distribute", "center", s1, r1, e1)
+                equal(e1.w(), e1.h())
+                equal(p3.x(), e1.x()), equal(e1.w(), s1.w())
+                equal(p3.y(), minus(e1.y(), 50))
+            }
+          </script>
+        </section>
+          <section><h2>Programming with Constrain</h2>
+          <ul>
+            <li>Web page can hold multiple Figures, each tied to a canvas.<br>
+<pre>&lt;canvas id=canv1&gt;&lt;/canvas&gt;
+fig = new Figure("canv1")</pre>
+            </li>
+            <li class=fragment>Graphical objects created declaratively using builder pattern:<br>
+            <pre>
+with (fig) {
+  s = square()<span class=fragment>.setFillStyle("yellow")</span><span class=fragment>.setLineWidth(3)</span></pre>
+            <li class=fragment>Graphical objects introduce variables for their position:
+            <ul style="font-size: 80%">
+               <li><kbd>.x()</kbd> : x position (min/max: <kbd>.x0(), .x1()</kbd></li>
+               <li><kbd>.y()</kbd> : y position (min/max: <kbd>.y0(), .y1()</kbd></li>
+               <li><kbd>.w()</kbd> : width, <kbd>.h()</kbd> : height</li>
+            </ul>
+            </li>
+            <li class=fragment>Variable values determined by solving constraints:
+            <pre>
+  equal(s.w(), 150)    // w = 150
+  equal(s.x0(), s.w()) // x0 = w
+  equal(s.y0(), times(2, s.h())) // y0 = 2*h</pre>
+            </li>
+            <li class=fragment>Convenience methods for alignment constraints, etc.
+            <pre>
+  let t = ellipse().setFillStyle("#8f8")
+  align("abut", "top bottom", s3, hspace(100), t)
+  align("right", "none", t, canvasRect()) <i>// t.x1 == canvas.x1</i>
+            </pre></li>
+
+            <canvas id="programming"></canvas>
+            <script>
+              let fig4 = new Constrain.Figure("programming")
+              with (fig4) {
+                let [f0, f1, f2, f3, _] = addFrame("start", "square", "yellow", "thick", "x")
+                let f4 = addFrame("constraints").setLength(500)
+                let f5 = addFrame("f5")
+
+                let s1 = drawBetween(f1, f4, square().setFillStyle("white")),
+                    s2 = drawBetween(f2, f4, square().setFillStyle("yellow")),
+                    s3 = square().setFillStyle("yellow").setLineWidth(3)
+                let lh = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow"),
+                    lv = line().setStrokeStyle("gray").setStartArrow("arrow").setEndArrow("arrow")
+                drawAfter(f3, s3)
+                drawAfter(f4, lh, lv)
+
+                equal(s3.w(), smooth(f4, 100, min(150, times(canvasRect().w(), 0.3)))) // w = 150
+                pin(s1.ul(), s2.ul(), s3.ul())
+                equal(s1.w(), s2.w(), s3.w())
+                equal(s3.y0(), smooth(f4, 100, times(2, s3.h()))) // y0 = 2*h
+                equal(s3.x0(), smooth(f4, 100, s3.w())) // x0 = w
+                pin(lh.p1(), point(0, s3.y()))
+                pin(lh.p2(), point(s3.x0(), s3.y()))
+                pin(lv.p1(), point(s3.x(), 0))
+                pin(lv.p2(), point(s3.x(), s3.y0()))
+
+                let t = drawAfter(f5, ellipse().setFillStyle("#8f8"))
+                align("abut", "top bottom", s3, hspace(100), t)
+                align("right", "none", t, canvasRect())
+              }
+            </script>
+        </section>
+        <section>
+          <h2>Examples</h2>
+            <ul>
+            <li><a href="https://courses.cs.cornell.edu/cs2112/2021fa/lectures/lecture.html?id=objects">
+                Object diagrams</a></li>
+            <li><a href="https://andrewcmyers.github.io/constrain/examples/pythagoras.html">
+                Interactive Pythagorean theorem</a></li>
+            <li><a href="https://andrewcmyers.github.io/constrain/examples/triangles.html">
+                Triangle geometry</a>
+            </ul>
+        </section>
+        <section><h2>Automatic Graph Layout</h2>
+          <canvas id="graphs"></canvas>
+          <script>
+            with (new Constrain.Figure("graphs")) {
+                with (g = makeGraph()) {
+                    const a = [], n = 10
+                    g.sparsity = 1.5
+                    for (let i = 1; i <= n; i++) {
+                        let row = 0, column = 0, j = i
+                        while (j <= n) { row++; j *=2 }
+                        column = i % j
+                        a[i] = ellipse().setW(times(canvasRect().h(), 0.05))
+                                        .setH(times(canvasRect().h(), 0.04))
+                                        .setFillStyle("red").setName("C" + i)
+                        label(i.toString()).at(a[i])
+                        if (i > 1) dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
+                    }
+                    equal(a[1].x(), canvasRect().x()).changeCost(0.001)
+                    equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
+                    a[1].x().setHint(g.figure.canvas.width/2)
+                    a[1].y().setHint(g.figure.canvas.height/3)
+                    g.figure.setAnimatedSolving(true)
+                }
+            }
+            </script>
+        </section>
+        <section>
+          <h2>Extensible</h2>
+          <ul id=bullets3>
+            <li>Full power of JavaScript 2D canvas rendering</li>
+            <li class=fragment>Can add/modify graphical objects
+          </ul>
+          <canvas id="fig3"></canvas>
+          <script>
+              let fig3 = new Constrain.Figure("fig3"),
+                  Paths = Constrain.Paths
+
+              class Fireworks extends Constrain.UserDefined {
+                constructor(figure) {
+                /* set up fireworks explosion */
+                    super(figure)
+                    this.rocket_dir = []
+                    this.num_rockets = 120
+
+                    for (let i = 0; i < this.num_rockets; i++) {
+                        while (true) {
+                            let x = Math.random() - 0.5,
+                                y = Math.random() - 0.5,
+                                z = Math.random() - 0.5,
+                                s = x*x + y*y + z*z
+                            if (s < 0.25) {
+                                s = Math.sqrt(s)
+                                this.rocket_dir[i] = {x: x/s, y: y/s}
+                                break
+                            }
+                        }
+                    }
+                }
+                draw(context, frame, framepos, x0, x1, y0, y1) {
+                    const rise_time = 0.5, rise_height = y1 - y0 - 40, x = (x1 + x0)/2
+                    if (framepos < rise_time) {
+                        Paths.ellipse(context, x, y1 - framepos*rise_height/rise_time, 3, 3)
+                        context.fillStyle = "red"
+                        context.fill()
+                    } else {
+                        const colors = [ 'red', 'green', 'blue', 'purple', 'orange']
+                        const t = (framepos - rise_time)/(1 - rise_time),
+                            k = 4,
+                            shardv = 60,
+                            r = shardv*(1 - Math.exp(-k*t)),
+                            top = y1 - rise_height,
+                            g = 80
+                        for (let i = 0; i < this.num_rockets; i++) {
+                            const xr = x + this.rocket_dir[i].x * r,
+                                  yr = top + this.rocket_dir[i].y * r + g*t*t
+                            context.fillStyle = colors[i % colors.length]
+                            Paths.circle(context, xr, yr, 3)
+                            context.fill()
+                        }
+                    }
+                }
+              }
+
+              let fireworks, background
+              {
+fig3.addFrame() 
+                let f1 = fig3.addFrame().setLength(2900),
+                    bullets3 = fig3.DOMElement("bullets3")
+                with (fig3) {
+                   background = rectangle().setFillStyle("black")
+                   fireworks = drawAfter(f1, new Fireworks(fig3))
+                   align("center", "bottom", fireworks, canvasRect())
+                   align("none", "abut", bullets3, fireworks)
+                   equal(fireworks.w(), min(300, times(0.5, canvasRect().w())))
+                   pin(background.ul(), fireworks.ul())
+                   pin(background.lr(), fireworks.lr())
+                }
+              }
+            </script>
+          </section>
+        <section>
+        <h2>Implementation</h2>
+          <ul>
+            <li>Everything done online in JavaScript (ECMAScript 6)</li>
+            <li class=fragment>Constraint declarations generate a cost function
+              <ul>
+                <li> Less fragile for overconstrained problems
+                <li> Can optimize placement with costs
+              </ul></li>
+            <li class=fragment>Constraints “solved” by minimizing cost
+             <ul>
+               <li>Derivatives computed with backpropagation
+               <li>Gradient descent is way too slow!
+               <li>Uses second-order algorithm: BFGS
+             </ul>
+            <li class=fragment>Animations solved incrementally from previous solution</li>
+            <li class=fragment>Text layout: dynamic programming ala TeX</li>
+        </section>
+          <section>
+            <h2>More information</h2>
+
+            <ul>
+            <li><a href="https://andrewcmyers.github.io/constrain/doc/">Reference guide</a></li>
+            <li>Source code and releases at
+            <a href="https://github.com/andrewcmyers/constrain"><kbd>github.com/andrewcmyers/constrain</kbd></a>
+            </li>
+            <li>Feedback, suggestions, contributions welcome</li>
+            </ul>
+<canvas id=positions_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("positions_ex_fig")) {
+    function dot(p) {
+        return circle().setFillStyle("#00c").setStrokeStyle(null).setW(10).at(p)
+    }
+    function lb(n, p) {
+      return label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
+    }
+    let c = circle().setLineWidth(3).setFillStyle("#def").setStrokeStyle("#cdf"),
+        cr = canvasRect(),
+        s = box(),
+        h0 = horzLine().setLineDash([8,8]).setLineWidth(1),
+        h1 = horzLine().setLineDash([8,8]).setLineWidth(1)
+        hc = horzLine().setLineDash([8,8]).setLineWidth(1)
+        v0 = vertLine().setLineDash([8,8]).setLineWidth(1),
+        vc = vertLine().setLineDash([8,8]).setLineWidth(1),
+        v1 = vertLine().setLineDash([8,8]).setLineWidth(1)
+    align("center", "center", c, cr)
+    align("left right", "none", h0, h1, hc,cr)
+    align("none", "top bottom", v0, v1, vc, cr)
+    align("left right", "top bottom", c, s)
+    align("center", "none", vc, c)
+    align("none", "center", hc, c)
+    align("none", "top", h0, c)
+    align("none", "bottom", h1, c)
+    align("left", "none", v0, c)
+    align("right", "none", v1, c)
+    equal(c.width(), times(0.7, cr.width()))
+    dot(s.ul());    dot(s.uc());      dot(s.ur())
+    dot(s.cl());    dot(s.center());  dot(s.cr())
+    dot(s.ll());    dot(s.lc());      dot(s.lr())
+    setFillStyle("#00c")
+    let off = 15
+    lb("ul", s.ul().toLeft(off).toTop(off))
+    lb("cl", s.cl().toLeft(off).toTop(off))
+    lb("ll", s.ll().toLeft(off).toBottom(off))
+    lb("ur", s.ur().toRight(off).toTop(off))
+    lb("cr", s.cr().toRight(off).toTop(off))
+    lb("lr", s.lr().toRight(off).toBottom(off))
+    lb("uc", s.uc().toTop(off).toLeft(off))
+    lb("lc", s.lc().toBottom(off).toLeft(off))
+    lb("x", point(plus(10, c.x()), 10))
+    lb("x1", point(plus(10, c.x1()), 10))
+    lb("x0", point(plus(10, c.x0()), 10))
+    lb("y", point(10, plus(10, c.y())))
+    lb("y1", point(10, plus(10, c.y1())))
+    lb("y0", point(10, plus(10, c.y0())))
+    lb("center", c.center().toRight(25).toBottom(10))
+    let wl = horzLine().setEndArrow("arrow").setStartArrow("arrow").setStrokeStyle("#00c")
+    align("left right", "abut", c, vspace(30), wl)
+    lb("w", wl.toBottom(10))
+    let hl = vertLine().setEndArrow("arrow").setStartArrow("arrow").setStrokeStyle("#00c")
+    align("abut", "top", c, hspace(30), hl)
+    equal(hl.y1(), c.y1())
+    lb("h", hl.toRight(10))
+  }
+</script>
+          </section>
+        </div> <!-- end of slides -->
+
+        <!-- <script src="reveal.js/lib/js/head.min.js"></script> -->
+        <script src="../reveal.js/js/reveal.js"></script>
+        <script src="../constrain-reveal.js"></script>
+        <script>
+            // Set up figures
+            ConstrainReveal.initialize()
+        </script>
+</body>
+</html>

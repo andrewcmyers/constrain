@@ -10,7 +10,7 @@
 
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
-[Reveal/Constrain integration](https://andrewcmyers.github.io/constrain/examples/reveal-demo.html)
+[A short talk about Constrain, using Reveal](https://andrewcmyers.github.io/constrain/examples/talk.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
 [CS 4120/lexer generation](https://www.cs.cornell.edu/courses/cs4120/2021sp/notes.html?id=leximpl),
