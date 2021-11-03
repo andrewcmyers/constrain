@@ -1604,9 +1604,9 @@ function statistics() {
 
 // The variables used by expression e.
 function exprVariables(e) {
-    if (typeof e === NUMBER) return []
     if (e === undefined)
         console.error("undefined expr")
+    if (typeof e === NUMBER || e.constructor == Array) return []
     if (!e.variables)
         console.error("no variables method")
     return e.variables()
@@ -2451,7 +2451,7 @@ class DrawBefore extends TemporalFilter {
 
 // A Constraint has a cost that the system tries to minimize.
 // A Constraint is associated with a Figure but might not be in
-// its list Constraints, because of ConstraintGroups.
+// its list of Constraints, because of ConstraintGroups.
 class Constraint extends Temporal {
 
     // Create a constraint associated with figure.
@@ -2738,6 +2738,13 @@ Average.prototype.x1 = LayoutObject.prototype.x1
 Average.prototype.y0 = LayoutObject.prototype.y0
 Average.prototype.y1 = LayoutObject.prototype.y1
 
+function legalLayoutObject(o) {
+    if (o instanceof LayoutObject) return o
+    if (o instanceof TemporalFilter && o.obj instanceof LayoutObject) return o
+    console.error("Not a legal graphical object: " + o)
+    return new Point()
+}
+
 // A Box is a layout object with a width and height. It does not necessarily
 // render but is useful for positioning other objects, because it can be used
 // with functions that expect graphical objects, such as align().
@@ -2772,7 +2779,8 @@ class Box extends LayoutObject {
 }
 
 // A GraphicalObject is centered at (x,y) and has a width w and height h.
-// It also has some style attributes. The lineWidth attribute can be a constrained attribute too.
+// It also has some style attributes and it may contain text.
+// LineWidth can be a constrained attribute too.
 class GraphicalObject extends Box {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
         super(figure, x_hint, y_hint, w_hint, h_hint)
@@ -2794,7 +2802,7 @@ class GraphicalObject extends Box {
         return this
     }
     setLineWidth(s) {
-        this.lineWidth = s
+        this.lineWidth = legalExpr(s)
         return this
     }
     setLineDash(d) {
@@ -2929,7 +2937,7 @@ class Point extends LayoutObject {
 class Group extends GraphicalObject {
     constructor(figure, ...objects) {
         super(figure)
-        this.objects = flattenGraphicalObjects(objects)
+        this.objects = flattenGraphicalObjects(objects).map(o => legalLayoutObject(o))
         this.objects.forEach(o => { o.parent = this })
     }
     variables() {
