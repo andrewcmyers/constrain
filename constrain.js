@@ -685,7 +685,7 @@ class Figure {
     }
 
     getFont() {
-        return this.font
+        return this.font.copy()
     }
 
     // Set default line spacing
@@ -3967,7 +3967,7 @@ class ContainedText {
         this.justification = "center"
         this.verticalAlign = "center"
         this.lineSpacing = figure.lineSpacing
-        this.font = figure.font
+        this.font = figure.getFont()
         this.fillStyle = figure.strokeStyle
         this.strokeStyle = null
         this.inset = this.font.getSize() / 3
