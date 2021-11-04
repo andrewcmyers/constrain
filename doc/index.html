@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en-US">
 <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="../numeric-1.2.6.js"></script>
   <script src="../constrain.js"></script>
   <script src="../constrain-ps.js"></script>
@@ -92,7 +94,7 @@
 <a href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html">
 Heydon and Nelson wrote in 1994</a>, “thirty years after Sketchpad, the sad
 fact is that constraints have so far been more promising than useful”.
-It has now been more than fifty years, but my experience is that Constrain does make
+It has now been more than fifty years, but Constrain does seem to make
 constraints useful for graphics.
 </p>
 
@@ -145,7 +147,9 @@ is simply the circle itself.
 <p>
 All dimensions are specified in Constrain using CSS pixels, which are nominally
 1/96 of an inch, though their exact size may depend on the display device.  Even font
-sizes are specified in pixels rather than, say, points (1/72 inch).
+sizes are specified in pixels rather than, say, points (1/72 or 1/72.27 inch). Even though
+dimensions are specified in CSS pixels, rendering is done at the full resolution of the display
+device.
 </p>
 
 <h2>Graphical objects</h2>
@@ -238,12 +242,12 @@ length.
 <script>
   with (new Constrain.Figure("polygon_ex_fig")) {
     let p1 = point(), p2 = point(), p3 = point()
-    hint(p1, [100, 0])
     equal(100, distance(p1, p2),
           distance(p2, p3), distance(p1, p3))
     equal(p2.y(), p3.y())
     setFillStyle("#dfd")
     polygon(p1, p2, p3).at(canvasRect())
+                       .setCornerRadius(10)
   }
 </script>
 </div>
@@ -1060,10 +1064,10 @@ and tends to find uglier layouts. Constrain does not do automatic hyphenation
 ala TeX.
 </p>
 
-<h3>Rectangle methods</h3>
+<h3>Rectangle and Polygon methods</h3>
 
 <h4>setCornerRadius(r)</h4>
-<p>This method rounds the corners of the rectangle to the radius <code>r</code>.
+<p>This method rounds the corners of the shape to the radius <code>r</code>.
 
 <h3>Line and Connector methods</h3>
 

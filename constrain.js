@@ -3052,7 +3052,7 @@ class Rectangle extends GraphicalObject {
       }
     }
     setCornerRadius(r) {
-        this.cornerRadius = r
+        this.cornerRadius = legalExpr(r)
         return this
     }
 }
@@ -3071,6 +3071,38 @@ const Paths = {
         ctx.bezierCurveTo(x0+r-k*r, y1,  x0, y1-r+k*r, x0, y1-r)
         ctx.lineTo(x0, y0+r)
         ctx.bezierCurveTo(x0, y0+r-k*r,  x0+r-k*r, y0,  x0+r, y0)
+        ctx.closePath()
+    },
+    roundedPolygon: function(ctx, r, pts) {
+        ctx.beginPath()
+        function arcPt(p1, p2) {
+            const dx = p2[0]-p1[0],
+                  dy = p2[1]-p1[1],
+                  d2 = dx*dx + dy*dy,
+                  d = Math.sqrt(d2)
+            if (d <= 1e-17) return p1
+            if (d < 2*r) {
+                return [(p1[0] + p2[0])/2, (p1[1] + p2[1])/2]
+            }
+            const nr = r/d;
+            return [p1[0] + dx*nr, p1[1] + dy*nr]
+        }
+        for (let i = 0; i < pts.length; i++) {
+            const j = (i+1) % pts.length,
+                  k = (i+2) % pts.length
+            const p1 = arcPt(pts[i], pts[j]),
+                  p2 = arcPt(pts[j], pts[i]),
+                  p3 = arcPt(pts[j], pts[k])
+            if (i == 0) {
+                ctx.moveTo(p1[0], p1[1])
+            } else {
+                ctx.lineTo(p1[0], p1[1])
+            }
+            ctx.lineTo(p2[0], p2[1])
+            ctx.bezierCurveTo((p2[0] + pts[j][0])/2, (p2[1] + pts[j][1])/2,
+                              (p3[0] + pts[j][0])/2, (p3[1] + pts[j][1])/2,
+                              p3[0], p3[1])
+        }
         ctx.closePath()
     },
 // Create an ellipse path with center (x,y) and x radius rx, y radius ry
@@ -3253,21 +3285,27 @@ class Polygon extends GraphicalObject {
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.save()
-        const [x0, y0] = evaluate([this.x0(), this.y0()], valuation)
+        let pts = this.points.map(pt => evaluate(pt, valuation))
+        const x0 = pts[0][0], y0 = pts[0][1]
+        pts = pts.map(p => [p[0] - x0, p[1] - y0])
         ctx.translate(x0, y0)
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         ctx.lineDash = this.lineDash
-        ctx.beginPath()
         ctx.fillStyle = this.fillStyle
-        for (let i = 0; i < this.points.length; i++) {
-            const [x, y] = evaluate(this.points[i], valuation)
-            if (i == 0) {
-                ctx.moveTo(x - x0, y - y0)
-            } else {
-                ctx.lineTo(x - x0, y - y0)
+        if (this.cornerRadius) {
+            Paths.roundedPolygon(ctx, this.cornerRadius, pts)
+        } else {
+            ctx.beginPath()
+            for (let i = 0; i < this.points.length; i++) {
+                const [x, y] = pts[i]
+                if (i == 0) {
+                    ctx.moveTo(x, y)
+                } else {
+                    ctx.lineTo(x, y)
+                }
             }
+            ctx.closePath()
         }
-        ctx.closePath()
         this.fill()
         if (this.strokeStyle != null) {
             ctx.setLineDash(this.lineDash || [])
@@ -3278,6 +3316,10 @@ class Polygon extends GraphicalObject {
         if (this.text) {
             this.text.renderIn(this.figure, this)
         }
+    }
+    setCornerRadius(r) {
+        this.cornerRadius = legalExpr(r)
+        return this
     }
     variables() {
         let result = GraphicalObject.prototype.variables.call(this)
