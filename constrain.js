@@ -2743,9 +2743,14 @@ Average.prototype.x1 = LayoutObject.prototype.x1
 Average.prototype.y0 = LayoutObject.prototype.y0
 Average.prototype.y1 = LayoutObject.prototype.y1
 
+// Check whether o can be used as a layout object and return it if so.
+// Otherwise, log a suitable error message and return a legal layout object.
 function legalLayoutObject(o) {
     if (o instanceof LayoutObject) return o
-    if (o instanceof TemporalFilter) return legalLayoutObject(o.obj)
+    if (o instanceof TemporalFilter) {
+        const lo = legalLayoutObject(o.obj)
+        return o
+    }
     console.error("Not a legal graphical object: " + o)
     return new Point()
 }
