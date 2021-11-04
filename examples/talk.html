@@ -28,7 +28,7 @@
 </head>
 <body>
     <div class="reveal">
-    <span class="footer">Constrain: Constraint-Based Animated Figures</span>
+    <span id=footer class="footer">Constrain: Constraint-Based Animated Figures</span>
     <div class="slides">
         <section>
           <h1><em>Constrain:</em></h1><h2 id=splash_subtitle>Constraint-Based Animated Figures<br>
@@ -43,8 +43,9 @@
                 setFontStyle("italic")
                 const s1 = square().setLineWidth(3), s2 = square().setLineWidth(3)
                 const cr = canvasRect()
-                align("abut", "top", s1, hspace(40), s2)
-                equal(s1.w(), 400, s2.w())
+                align("abut", "top", s1, hspace(50), s2)
+                align("none", "bottom", s1, cr.toBottom(-100))
+                equal(s1.w(), s2.w())
                 equal(average(s1.x(), s2.x()), cr.x())
                 align("none", "abut", DOMElement("splash_subtitle"), vspace(30), s1)
                 const h1 = horzLine(), v1 = vertLine()
@@ -484,14 +485,14 @@ fig3.addFrame()
             <li class=fragment>Text layout: dynamic programming ala TeX</li>
         </section>
           <section>
-            <h2>More information</h2>
+            <h2>For more information</h2>
 
             <ul>
             <li><a href="https://andrewcmyers.github.io/constrain/doc/">Reference guide</a></li>
             <li>Source code and releases at
             <a href="https://github.com/andrewcmyers/constrain"><kbd>github.com/andrewcmyers/constrain</kbd></a>
             </li>
-            <li>Feedback, suggestions, contributions welcome</li>
+            <li>Questions, suggestions, contributions welcome</li>
             </ul>
 <canvas id=positions_ex_fig></canvas>
 <script>
@@ -502,17 +503,22 @@ fig3.addFrame()
     function lb(n, p) {
       return label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
     }
-    let c = circle().setLineWidth(3).setFillStyle("#def").setStrokeStyle("#cdf"),
-        cr = canvasRect(),
+    setStrokeStyle("#88c")
+    let cr = canvasRect().inset(100),
         s = box(),
+        grd = figure.ctx.createLinearGradient(0, 0, 0, 500)
+        c = closedCurve(s.uc(), s.center(), s.cr(), s.cr(), s.lr(), s.lc(), s.ll(), s.cl(), s.cl(), s.ul()).setLineWidth(5).setFillStyle(grd).setStrokeStyle("#bcf"),
         h0 = horzLine().setLineDash([8,8]).setLineWidth(1),
         h1 = horzLine().setLineDash([8,8]).setLineWidth(1)
         hc = horzLine().setLineDash([8,8]).setLineWidth(1)
         v0 = vertLine().setLineDash([8,8]).setLineWidth(1),
         vc = vertLine().setLineDash([8,8]).setLineWidth(1),
         v1 = vertLine().setLineDash([8,8]).setLineWidth(1)
+        equal(s.w(), s.h())
+                grd.addColorStop(0, "#ffc")
+                grd.addColorStop(1, "#cef")
     align("center", "center", c, cr)
-    align("left right", "none", h0, h1, hc,cr)
+    align("left right", "none", h0, h1, hc, cr)
     align("none", "top bottom", v0, v1, vc, cr)
     align("left right", "top bottom", c, s)
     align("center", "none", vc, c)
@@ -525,7 +531,7 @@ fig3.addFrame()
     dot(s.ul());    dot(s.uc());      dot(s.ur())
     dot(s.cl());    dot(s.center());  dot(s.cr())
     dot(s.ll());    dot(s.lc());      dot(s.lr())
-    setFillStyle("#00c")
+    setFillStyle("#88c")
     let off = 15
     lb("ul", s.ul().toLeft(off).toTop(off))
     lb("cl", s.cl().toLeft(off).toTop(off))
@@ -535,17 +541,19 @@ fig3.addFrame()
     lb("lr", s.lr().toRight(off).toBottom(off))
     lb("uc", s.uc().toTop(off).toLeft(off))
     lb("lc", s.lc().toBottom(off).toLeft(off))
-    lb("x", point(plus(10, c.x()), 10))
-    lb("x1", point(plus(10, c.x1()), 10))
-    lb("x0", point(plus(10, c.x0()), 10))
-    lb("y", point(10, plus(10, c.y())))
-    lb("y1", point(10, plus(10, c.y1())))
-    lb("y0", point(10, plus(10, c.y0())))
+    let lbtop = plus(cr.y0(), 180)
+    lb("x", point(plus(10, c.x()), lbtop))
+    lb("x1", point(plus(10, c.x1()), lbtop))
+    lb("x0", point(plus(10, c.x0()), lbtop))
+    let lbleft = plus(cr.x0(), 10)
+    lb("y", point(lbleft, plus(10, c.y())))
+    lb("y1", point(lbleft, plus(10, c.y1())))
+    lb("y0", point(lbleft, plus(10, c.y0())))
     lb("center", c.center().toRight(25).toBottom(10))
-    let wl = horzLine().setEndArrow("arrow").setStartArrow("arrow").setStrokeStyle("#00c")
+    let wl = horzLine().setEndArrow("arrow").setStartArrow("arrow").setStrokeStyle("#88c")
     align("left right", "abut", c, vspace(30), wl)
     lb("w", wl.toBottom(10))
-    let hl = vertLine().setEndArrow("arrow").setStartArrow("arrow").setStrokeStyle("#00c")
+    let hl = vertLine().setEndArrow("arrow").setStartArrow("arrow").setStrokeStyle("#88c")
     align("abut", "top", c, hspace(30), hl)
     equal(hl.y1(), c.y1())
     lb("h", hl.toRight(10))
