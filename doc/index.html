@@ -67,17 +67,20 @@
   web-based presentations. It has some advantages over
   alternative ways to generate diagrams:
   <ul>
-    <li>Constrain draws figures onto HTML canvases, so diagrams are
-        resolution-independent and as crisp as possible on all displays.</li>
     <li>Constrain supports animated figures in which displayed objects move and change
         their appearance smoothly or discontinuously. To make animations smooth,
         it uses a fast solver based on backpropagation, with each animation frame's
         solution used as a starting point for solving the next one.</li>
+    <li>Figures can be interactive: the reader can change their appearance.</li>
     <li>Constrain is based on declaring constraints that are automatically
         solved. This makes it easy to produce very precise diagrams,
         and easier to build and modify complex diagrams.</li>
+    <li>Constrain draws figures onto HTML canvases. Diagrams are
+        resolution-independent and as crisp as possible on all displays.</li>
     <li>Constrain includes an integration for the Reveal.js web-based presentation
         framework, so you can use it for <a href="../examples/talk.html">presentations</a> too.</li>
+    <li>Constrain supports PDF and Postscript output, so it can be used to generate figures for
+        static documents.</li>
   </ul>
 <p>
   Constrain is written in JavaScript (ECMAScript 6) and integrates into web
@@ -413,6 +416,11 @@ Create a text object from a sequence of strings. Each string may contain whitesp
 potential line breaks.
 </p>
 
+<h4>br()</h4>
+<p>
+Create a text object for a line break.
+</p>
+
 <h4>subscript(text)<br>
 superscript(text)</h4>
 <p>
@@ -420,6 +428,10 @@ Create a text object that places its text in subscript or superscript position w
 the font size.
 </p>
 
+<h4>whitespace()</h4>
+<p>
+Create a text object for whitespace that is an allowed position for a line break.
+</p>
 
 <h3>Interactive objects</h3>
 
