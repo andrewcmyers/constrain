@@ -266,7 +266,10 @@
       + " certain things or imposes a pattern."
                 let ew = smooth(tf, 0, 400)
                 tf.setLength(1000)
-                let e2 = ellipse().setFillStyle("#ddf").setLineWidth(2).setW(ew).setH(300).addText(italic("Constrained"), word(" "), some_text).setFontSize(28).setFontName("Baskerville")
+                let e2 = ellipse().setFillStyle("#ddf").setLineWidth(2).setW(ew).setH(300)
+                    .addText(italic("Constrained"), whitespace(), some_text)
+                    .setFontName("Baskerville")
+                    .setFontSize(28)
                 drawAfter(tf, e2)
                 align("right", "bottom", e2, border)
                 equal(p1.x(), s1.x())
@@ -315,7 +318,7 @@ with (fig) {
             <li class=fragment>Convenience methods for alignment constraints, etc.
             <pre>
   let t = ellipse().setFillStyle("#8f8")
-  align("abut", "top bottom", s3, hspace(100), t)
+  align("abut", "top bottom", s, hspace(100), t)
   align("right", "none", t, canvasRect()) <i>// t.x1 == canvas.x1</i>
             </pre></li>
 
@@ -465,7 +468,7 @@ fig3.addFrame()
         <section>
         <h2>Implementation</h2>
           <ul>
-            <li>Everything done online in JavaScript (ECMAScript 6)</li>
+            <li>Everything done online in JavaScript (ECMAScript 6): ~5k LoC</li>
             <li class=fragment>Constraint declarations generate a cost function
               <ul>
                 <li> Less fragile for overconstrained problems

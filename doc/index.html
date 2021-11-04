@@ -493,12 +493,12 @@ has a width and height.
 
 <h4>hspace(w)</h4>
 <p>
-Horizontal space. It has width <code>w</code> but zero height.
+Horizontal space. It has width <code>w</code> but no height constraint.
 </p>
 
 <h4>vspace(h)</h4>
 <p>
-Vertical space. It has height <code>h</code> but zero width.
+Vertical space. It has height <code>h</code> but no width constraint
 </p>
 
 <h4>DOMElement(id)</h4>
@@ -796,13 +796,12 @@ or, as in the following example, arrays.</p>
 <script>
   with (new Constrain.Figure("smooth_ex_fig")) {
     let frame1 = addFrame(),
-        frame2 = addFrame().setLength(1000)
+        frame2 = addFrame().setLength(1000),
+        CR = canvasRect().inset(20)
     square().setW(20).setLineWidth(4)
-      .at(smooth(frame2,
-        canvasRect().toLeft(-20),
-        canvasRect().toRight(-20)))
-    align("right", "bottom",
-          advanceButton(), canvasRect().inset(2))
+            .at(smooth(frame2, CR.cl(), CR.cr()))
+    align("right", "bottom", advanceButton(),
+          CR.lr().toRight(20))
   }
 </script>
 </div>

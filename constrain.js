@@ -968,6 +968,9 @@ class Figure {
     word(w) {
         return new WordText(w)
     }
+    whitespace() {
+        return new Whitespace()
+    }
     textContext(f, ...t) {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
@@ -2356,7 +2359,9 @@ class TemporalFilter extends Temporal {
     y0() { return this.obj.y0() }
     y1() { return this.obj.y1() }
     w() { return this.obj.w() }
+    width() { return this.obj.width() }
     h() { return this.obj.h() }
+    height() { return this.obj.height() }
     ul() { return this.obj.ul() }
     ll() { return this.obj.ll() }
     lr() { return this.obj.lr() }
@@ -4090,6 +4095,8 @@ class ContainedText {
             max_guessed_lines = Math.floor(maxh/lineSpacing)
         if (this.verticalAlign == "top") guessed_lines = max_guessed_lines
 
+        if (DEBUG) console.log("max guessed lines = " + max_guessed_lines)
+
         // Compute the successful layout with the least guessed lines, or the largest
         // unsuccessful layout.
         let x0 = 0, x1 = 0
@@ -4098,7 +4105,7 @@ class ContainedText {
             switch (this.verticalAlign) {
                 case "center":
                     y = yc - (guessed_lines - 1.5) * lineSpacing * 0.5
-                    ymax = y + guessed_lines * lineSpacing
+                    ymax = y + (guessed_lines - 0.25) * lineSpacing
                     break
                 case "bottom":
                     y = y1 - (guessed_lines - 0.75) * lineSpacing
@@ -4112,6 +4119,7 @@ class ContainedText {
                                   x0, y, x0, x1, ymax)
             if (ly.success) {
                 layout = ly
+                if (DEBUG) console.log("found best layout at " + guessed_lines)
                 break
             }
             if (countItems(ly) > countItems(layout)) layout = ly
