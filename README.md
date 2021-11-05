@@ -5,6 +5,7 @@
 - Integrates with [Reveal.js](https://revealjs.com) presentations
 - [GitHub repository](https://github.com/andrewcmyers/constrain)
 - [Reference manual](https://andrewcmyers.github.io/constrain/doc)
+- [A short talk about Constrain](https://www.youtube.com/watch?v=UN_HOWSijNI)
 
 ## Demos
 
