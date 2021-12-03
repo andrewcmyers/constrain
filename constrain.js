@@ -963,6 +963,13 @@ class Figure {
             return tc.set("font", f)
         }, ...t)
     }
+    fontSize(size, ...t) {
+        return this.textContext(tc => {
+            const f = tc.get("font").copy();
+            f.setSize(size)
+            return tc.set("font", f)
+        }, ...t)
+    }
     textColor(c, ...t) {
         return this.textContext(tc => tc.set("fillStyle", c), ...t)
     }
