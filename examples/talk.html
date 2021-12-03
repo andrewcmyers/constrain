@@ -211,11 +211,11 @@
                 equal(s3.x1(), smooth(f1, s2.x1(), s1.x1()))
                 drawAfter(f2,
                     l1 = line().setLineDash([5, 3]).setEndArrow("bullet").setArrowSize(30),
-                    pin(l1.p1(), s3.ll()),
-                    geq(l1.p2().x(), s3.x0()),
-                    equal(distance(l1.p1(), l1.p2()),
+                    pin(l1.start(), s3.ll()),
+                    geq(l1.end().x(), s3.x0()),
+                    equal(distance(l1.start(), l1.end()),
                           distance(s3.ll(), s3.ul())),
-                    equal(distance(l1.p2(), s3.ul()),
+                    equal(distance(l1.end(), s3.ul()),
                         smooth(f2, 0, distance(s3.ul(), s3.lr()))).changeCost(0.1)
                 )
                 f3 = addFrame().setLength(500)
@@ -259,10 +259,10 @@
                 equal(r1.x0(), plus(s1.x1(), 50))
                 equal(r1.y(), s1.y())
                 equal(r1.w(), times(1.618, r1.h()))
-                pin(s1.ur(), l1.p1())
-                pin(r1.ul(), l1.p2())
-                pin(s1.lr(), l2.p1())
-                pin(r1.ll(), l2.p2())
+                pin(s1.ur(), l1.start())
+                pin(r1.ul(), l1.end())
+                pin(s1.lr(), l2.start())
+                pin(r1.ll(), l2.end())
                 let p1, p2
                 let c1 = drawAfter(f4,
                     connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow")
@@ -353,10 +353,10 @@ with (fig) {
                 equal(s1.w(), s2.w(), s3.w())
                 equal(s3.y0(), smooth(f4, 100, times(2, s3.h()))) // y0 = 2*h
                 equal(s3.x0(), smooth(f4, 100, s3.w())) // x0 = w
-                pin(lh.p1(), point(0, s3.y()))
-                pin(lh.p2(), point(s3.x0(), s3.y()))
-                pin(lv.p1(), point(s3.x(), 0))
-                pin(lv.p2(), point(s3.x(), s3.y0()))
+                pin(lh.start(), point(0, s3.y()))
+                pin(lh.end(), point(s3.x0(), s3.y()))
+                pin(lv.start(), point(s3.x(), 0))
+                pin(lv.end(), point(s3.x(), s3.y0()))
 
                 let t = drawAfter(f5, ellipse().setFillStyle("#8f8"))
                 align("abut", "top bottom", s3, hspace(100), t)

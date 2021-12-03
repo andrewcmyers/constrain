@@ -17,7 +17,7 @@ const Figures = []
 
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
-      CHECK_NAN = false,
+      CHECK_NAN = true,
       COMPARE_GRADIENTS = false
 
 let DEBUG = false
@@ -71,7 +71,7 @@ class Figure {
                 this.canvas = canvas = c
                 this.name = c.id
             } else {
-                console.error("Could not find any canvas with id " + c)
+                console.error('Could not find any canvas with id "' + canvas + '"')
             }
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
@@ -925,14 +925,14 @@ class Figure {
     closedCurve(...points) {
         return new ClosedCurve(this, points)
     }
-    line(strokeStyle, lineWidth) {
-        return new Line(this, strokeStyle, lineWidth)
+    line(strokeStyle, lineWidth, start, end) {
+        return new Line(this, strokeStyle, lineWidth, start, end)
     }
-    horzLine(strokeStyle, lineWidth) {
-        return new HorzLine(this, strokeStyle, lineWidth)
+    horzLine(strokeStyle, lineWidth, start, end) {
+        return new HorzLine(this, strokeStyle, lineWidth, start, end)
     }
-    vertLine(strokeStyle, lineWidth) {
-        return new VertLine(this, strokeStyle, lineWidth)
+    vertLine(strokeStyle, lineWidth, start, end) {
+        return new VertLine(this, strokeStyle, lineWidth, start, end)
     }
     hspace(w) {
         const r = new HSpace(this, w)
@@ -2107,17 +2107,17 @@ class Sqrt extends UnaryExpression {
     }
 }
 
-// The squaring operation
+// Squared L2 norm
 class Sq extends UnaryExpression {
     constructor(e) { super(e) }
-    operation(a) { return a*a }
+    operation(a) { return numeric.dot(a, a) }
     gradop(a, da) {
-        return [a*a, numeric.mul(2*a, da)]
+        return [numeric.dot(a, a), numeric.mul(2, a, da)]
     }
     backprop(task) {
         const a = currentValue(this.expr),
               d = this.bpDiff
-        task.propagate(this.expr, d*2*a)
+        task.propagate(this.expr, numeric.mul(2, d, a))
     }
     toString() {
         return "Sq(" + this.expr + ")"
@@ -2366,8 +2366,8 @@ class TemporalFilter extends Temporal {
     ll() { return this.obj.ll() }
     lr() { return this.obj.lr() }
     ur() { return this.obj.ur() }
-    p1() { return this.obj.p1() }
-    p2() { return this.obj.p2() }
+    start() { return this.obj.start() }
+    end() { return this.obj.end() }
     lc() { return this.obj.lc() }
     cr() { return this.obj.cr() }
     uc() { return this.obj.uc() }
@@ -2928,7 +2928,9 @@ class Point extends LayoutObject {
     constructor(vx, vy) {
         super()
         if (vx === undefined)
-            console.log("undefined x")
+            console.error("undefined Point x")
+        if (vy === undefined)
+            console.error("undefined Point y")
         this.x_ = vx
         this.y_ = vy
     }
@@ -3329,7 +3331,7 @@ class Polygon extends GraphicalObject {
     variables() {
         let result = GraphicalObject.prototype.variables.call(this)
         this.points.forEach(p => {
-            result = result.concat(p.variables())
+            result = result.concat(exprVariables(p))
         })
         return result
     }
@@ -3503,10 +3505,10 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
 // A straight line
 class Line extends GraphicalObject {
     // create a line from p1 to p2 (optionally specified)
-    constructor(figure, p1, p2, strokeStyle, lineWidth) {
+    constructor(figure, strokeStyle, lineWidth, p1, p2) {
         super(figure, undefined, strokeStyle, lineWidth)
-        this.p1 = p1 || new Point()
-        this.p2 = p2 || new Point()
+        this.p1 = p1 || new Point(figure.variable("p1x"), figure.variable("p1y"))
+        this.p2 = p2 || new Point(figure.variable("p2x"), figure.variable("p2y"))
         this.startArrowStyle = undefined
         this.endArrowStyle = undefined
         this.arrowSize = Figure_defaults.ARROW_SIZE
@@ -3551,37 +3553,75 @@ class Line extends GraphicalObject {
         this.arrowSize = s
         return this
     }
-    p1() {
-        return new Point(this.x0(), this.y0())
-    }
-    p2() {
-        return new Point(this.x1(), this.y1())
-    }
     setStart(p) {
-        this.figure.pin(this.p1(), p)
+        this.figure.pin(this.start(), p)
         return this
     }
     setEnd(p) {
-        this.figure.pin(this.p2(), p)
+        this.figure.pin(this.end(), p)
         return this
+    }
+    x0() {
+        return new Min(this.p1.x(), this.p2.x())
+    }
+    x1() {
+        return new Max(this.p1.x(), this.p2.x())
+    }
+    y0() {
+        return new Min(this.p1.y(), this.p2.y())
+    }
+    y1() {
+        return new Max(this.p1.y(), this.p2.y())
+    }
+    x() {
+        return new Average(this.p1.x(), this.p2.x())
+    }
+    y() {
+        return new Average(this.p1.y(), this.p2.y())
+    }
+    w() {
+        return new Abs(new Minus(this.p2.x(), this.p1.x()))
+    }
+    h() {
+        return new Abs(new Minus(this.p2.y(), this.p1.y()))
+    }
+    center() {
+        return new Average(this.p1, this.p2)
+    }
+    variables() {
+        return exprVariables(this.p1).concat(exprVariables(this.p2))
     }
 }
 
 // A horizontal line.
 class HorzLine extends Line {
-    constructor(figure, strokeStyle, lineWidth) {
-        super(figure, strokeStyle, lineWidth) {
+    constructor(figure, strokeStyle, lineWidth, p1, p2) {
+        super(figure, strokeStyle, lineWidth, p1, p2)
         figure.equal(this.start().y(), this.end().y())
+        // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().x(), this.end().x())
+    }
+    x0() {
+        return this.p1.x()
+    }
+    x1() {
+        return this.p2.x()
     }
 }
 
 // A vertical line.
 class VertLine extends Line {
-    constructor(figure, strokeStyle, lineWidth) {
-        super(figure, strokeStyle, lineWidth)
+    constructor(figure, strokeStyle, lineWidth, p1, p2) {
+        super(figure, strokeStyle, lineWidth, p1, p2)
         figure.equal(this.start().x(), this.end().x())
+        // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().y(), this.end().y())
+    }
+    y0() {
+        return this.p1.y()
+    }
+    y1() {
+        return this.p2.y()
     }
 }
 
@@ -3678,7 +3718,7 @@ class Connector extends GraphicalObject {
     variables() {
         let r = []
         this.objects.forEach(o =>
-            r = r.concat(o.variables()))
+            r = r.concat(exprVariables(o)))
         return r
     }
 }
@@ -4879,7 +4919,7 @@ class DebugExpr extends Expression {
         task.prepareBackProp(this.expr)
     }
     variables() {
-        return this.expr.variables()
+        return exprVariables(this.expr)
     }
     toString() {
         return "debug(" + this.expr + ")"
