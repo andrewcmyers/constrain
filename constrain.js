@@ -4225,8 +4225,8 @@ class ContainedText {
 
         // Compute the successful layout with the least guessed lines, or the largest
         // unsuccessful layout.
-        let x0 = 0, x1 = 0
-        for (; guessed_lines <= max_guessed_lines; guessed_lines++) {
+        let x0 = 0, x1 = 0, tries = 0
+        for (; guessed_lines <= max_guessed_lines; guessed_lines++, tries++) {
             let ymax = y1
             switch (this.verticalAlign) {
                 case "center":
@@ -4247,6 +4247,11 @@ class ContainedText {
                 layout = ly
                 if (DEBUG) console.log("found best layout at " + guessed_lines)
                 break
+            }
+            if (!ly.success && this.verticalAlign == "top" && countItems(ly) == 0) {
+                guessed_lines--
+                y = y0 + tries
+                if (y > ymax) break
             }
             if (countItems(ly) > countItems(layout)) layout = ly
         }
