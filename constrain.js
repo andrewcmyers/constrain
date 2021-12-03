@@ -956,6 +956,13 @@ class Figure {
     bold(...t) {
         return new BoldText(createText(...t))
     }
+    fontName(name, ...t) {
+        return this.textContext(tc => {
+            const f = tc.get("font").copy();
+            f.setName(name)
+            return tc.set("font", f)
+        }, ...t)
+    }
     textColor(c, ...t) {
         return this.textContext(tc => tc.set("fillStyle", c), ...t)
     }
@@ -1085,10 +1092,21 @@ class Figure {
     }
 
 // dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
-    collinear(p0, p1, p2) {
-        return this.equal(
-          this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
-          this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+    collinear() {
+      switch (arguments.length) {
+        case 0: case 1: case 2: console.error("collinear expects at least 3 points"); return;
+        case 3:
+            let p0 = arguments[0], p1 = arguments[1], p2 = arguments[2]
+            return this.equal(
+                this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
+                this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+        default:
+          let result = []
+          for (let i = 2; i < arguments.length; i++) {
+            result.push(this.collinear(arguments[0], arguments[1], arguments[i]))
+          }
+          return new ConstraintGroup(this, ...result)
+      }
     }
 
     between(p0, p1, p2) {
@@ -4356,8 +4374,10 @@ function createText(...text) {
 }
 
 //  A context for rendering and laying out text items, to be provided at the point
-//  of rendering.
+//  of rendering. The context is updated imperatively, but it inherits properties
+//  from its parent, so any changes made to it do not affect the parent.
 class TextContext {
+    // Create a text context that inherits from parent
     constructor(parent, figure) {
         this.properties = new Map()
         this.figure = figure
@@ -4581,7 +4601,8 @@ class ContextTransformer extends TextItem {
     // Transform the outside context in some way. Default
     // implementation: do nothing to context.
     transformContext(tc, figure) {
-        return this.fun(tc)
+        let tc2 = new TextContext(tc, figure)
+        return this.fun(tc2)
     }
     resetCaches() {
         this.text.resetCaches()
