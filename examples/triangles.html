@@ -67,7 +67,7 @@ with (figure) {
             l2 = line().setLineDash([4,4]).setStart(circum).setEnd(m2),
             l3 = line().setLineDash([4,4]).setStart(circum).setEnd(m3)
         l1.setLineDash([4,4])
-        pin(l1.p1(), l2.p1(), l3.p1(), circum)
+        pin(l1.start(), l2.start(), l3.start(), circum)
         dot().at(circum)
         align("abut", "center", circum.center(), hspace(7), label("circumcenter"))
     }
