@@ -3572,6 +3572,7 @@ class HorzLine extends Line {
     constructor(figure, strokeStyle, lineWidth) {
         super(figure, strokeStyle, lineWidth) {
         figure.equal(this.start().y(), this.end().y())
+        figure.leq(this.start().x(), this.end().x())
     }
 }
 
@@ -3580,6 +3581,7 @@ class VertLine extends Line {
     constructor(figure, strokeStyle, lineWidth) {
         super(figure, strokeStyle, lineWidth)
         figure.equal(this.start().x(), this.end().x())
+        figure.leq(this.start().y(), this.end().y())
     }
 }
 
