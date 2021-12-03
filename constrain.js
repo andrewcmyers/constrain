@@ -2940,6 +2940,10 @@ class Point extends LayoutObject {
     toString() {
         return "Point(" + this.x_ + "," + this.y_ + ")"
     }
+    at() {
+        console.error("Sorry, Point.at() cannot be used because a Point does not know its Figure.")
+        return this
+    }
 }
 
 // A Group groups together a set of layout objects into a single object that
@@ -3270,12 +3274,13 @@ class Circle extends Ellipse {
 }
 
 // A filled polygon. The vertices must be specified explicitly.
+// polygon.points is an array of the points.
 // Doesn't support cornerRadius yet.
 //
 class Polygon extends GraphicalObject {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
         super(figure, fillStyle, strokeStyle, lineWidth)
-        points = points.flat()
+        points = flattenGraphicalObjects(points)
         this.points = points
         figure.equal(this.x1(), figure.max(points.map(p => p.x())))
         figure.equal(this.y1(), figure.max(points.map(p => p.y())))
@@ -3495,36 +3500,43 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
     return [x1, y1]
 }
 
-// A straight line from (x0,y0) to (x1, y1).
+// A straight line
 class Line extends GraphicalObject {
-    constructor(figure, strokeStyle, lineWidth, x0, y0, x1, y1) {
-        if (x0 == null) x0 = 100
-        if (x1 == null) x1 = 200
-        if (y0 == null) y0 = 100
-        if (y1 == null) y1 = 200
-        super(figure, undefined, strokeStyle, lineWidth, (x0 + x1)/2, (y0 + y1)/2, x1-x0, y1-y0)
+    // create a line from p1 to p2 (optionally specified)
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
+        super(figure, undefined, strokeStyle, lineWidth)
+        this.p1 = p1 || new Point()
+        this.p2 = p2 || new Point()
         this.startArrowStyle = undefined
         this.endArrowStyle = undefined
         this.arrowSize = Figure_defaults.ARROW_SIZE
+    }
+    // The starting point of the line
+    start() {
+        return this.p1
+    }
+    // The ending point of the line
+    end() {
+        return this.p2
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.beginPath()
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
-        const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], valuation)
-        const xd = x1 - x0, yd = y1 - y0,
+        const [x1, x2, y1, y2] = evaluate([this.p1.x(), this.p2.x(), this.p1.y(), this.p2.y()], valuation)
+        const xd = x2 - x1, yd = y2 - y1,
                 d = norm2d(xd, yd),
                 cosa = xd/d, sina = yd/d
         if (this.fillstyle != null) ctx.fillStyle = this.fillStyle
         else ctx.fillStyle = this.strokeStyle
         ctx.setLineDash(this.lineDash || [])
-        let [x2, y2] = drawLineEndDir(ctx, this.startArrowStyle, this.arrowSize, x0, y0, -cosa, -sina),
-            [x3, y3] = drawLineEndDir(ctx, this.endArrowStyle, this.arrowSize, x1, y1, cosa, sina)
+        let [x1a, y1a] = drawLineEndDir(ctx, this.startArrowStyle, this.arrowSize, x1, y1, -cosa, -sina),
+            [x2a, y2a] = drawLineEndDir(ctx, this.endArrowStyle, this.arrowSize, x2, y2, cosa, sina)
 
         ctx.beginPath()
-        ctx.moveTo(x2, y2)
-        ctx.lineTo(x3, y3)
+        ctx.moveTo(x1a, y1a)
+        ctx.lineTo(x2a, y2a)
         ctx.stroke()
     }
     setStartArrow(style) {
@@ -3557,17 +3569,17 @@ class Line extends GraphicalObject {
 
 // A horizontal line.
 class HorzLine extends Line {
-    constructor(figure, strokeStyle, lineWidth, x0, x1, y) {
-        super(figure, strokeStyle, lineWidth, x0, y, x1, y)
-        figure.equal(this.height(), 0)
+    constructor(figure, strokeStyle, lineWidth) {
+        super(figure, strokeStyle, lineWidth) {
+        figure.equal(this.start().y(), this.end().y())
     }
 }
 
 // A vertical line.
 class VertLine extends Line {
-    constructor(figure, strokeStyle, lineWidth, x, y0, y1) {
-        super(figure, strokeStyle, lineWidth, x, y0, x, y1)
-        figure.equal(this.width(), 0)
+    constructor(figure, strokeStyle, lineWidth) {
+        super(figure, strokeStyle, lineWidth)
+        figure.equal(this.start().x(), this.end().x())
     }
 }
 
