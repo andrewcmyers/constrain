@@ -33,6 +33,8 @@
         <section>
           <h1><em>Constrain:</em></h1><h2 id=splash_subtitle>Constraint-Based Animated Figures<br>
           <small>Andrew Myers</small></h2>
+          <span class=fragment></span>
+          <span class=fragment></span>
           <canvas id=splashpage></canvas>
           <script id=titlepage>
             let Figure = Constrain.Figure
@@ -114,12 +116,19 @@
                 connector(cl2.center().toLeft(nx).toTop(ny), p2.toRight(ny).toTop(nx)).setEndArrow("arrow")
                 connector(cl2.center().toRight(nx).toBottom(ny), p1.toRight(ny).toTop(nx)).setEndArrow("arrow")
                 
-                const hand = handle()
+                const hand = point()
                 geq(hand.x(), s1.x0())
                 leq(hand.x(), s1.x1())
                 keepInside(hand, s1.inset(10)).changeCost(10)
                 align("center", "none", v1, hand)
+
+                addFrame("start")
+                const f1 = addFrame("f1").setLength(1000)
+                const f2 = addFrame("f2").setLength(1000)
+                equal(hand, smooth(f2, smooth(f1, s1.center(), average(s1.center(), s1.ul())),
+                                     average(s1.center(), s1.lr())))
             }
+            splash.advance()
 
 
           </script>
@@ -360,8 +369,6 @@ with (fig) {
             <ul>
             <li><a href="https://courses.cs.cornell.edu/cs2112/2021fa/lectures/lecture.html?id=objects">
                 Object diagrams</a></li>
-            <li><a href="https://andrewcmyers.github.io/constrain/examples/pythagoras.html">
-                Interactive Pythagorean theorem</a></li>
             <li><a href="https://andrewcmyers.github.io/constrain/examples/triangles.html">
                 Triangle geometry</a>
             </ul>
