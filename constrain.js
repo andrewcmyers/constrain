@@ -18,7 +18,8 @@ const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
       CHECK_NAN = true,
-      COMPARE_GRADIENTS = false
+      COMPARE_GRADIENTS = false,
+      TINY = 1e-17
 
 let DEBUG = false
 
@@ -37,7 +38,8 @@ const Figure_defaults = {
     SUBSCRIPT_OFFSET : -0.16,
     SCRIPTSIZE : 0.80,
     LARGE_SPAN : 10000.0,
-    HYPHEN_COST : 100000
+    HYPHEN_COST : 100000,
+    CONNECTION_STYLE : 'magnet'
 }
 
 // There is a set of Variables that can be adjusted to minimize an objective
@@ -97,6 +99,7 @@ class Figure {
         this.font = new Font()
         this.lineSpacing = Figure_defaults.LINE_SPACING
         this.arrowSize = Figure_defaults.ARROW_SIZE
+        this.connectionStyle = Figure_defaults.CONNECTION_STYLE
         this.repeat = false
         this.animatedSolving = false
         this.solverCallbacks = []
@@ -702,6 +705,13 @@ class Figure {
         this.lineSpacing = s
         return this
     }
+
+    setConnectionStyle(s) {
+        this.connectionStyle = s
+        return this
+    }
+
+
 
 // ---- utility functions for creating constraints ----
 
@@ -2415,8 +2425,8 @@ class TemporalFilter extends Temporal {
     installHolder(figure, holder, child) {
         this.obj.installHolder(figure, holder, child)
     }
-    bestConnectionPt(px, py, valuation) {
-        return this.obj.bestConnectionPt(px, py, valuation)
+    bestMagnetPt(px, py, valuation) {
+        return this.obj.bestMagnetPt(px, py, valuation)
     }
     backprop(valuation) { this.obj.backprop(valuation) }
     addToTask(task) { this.obj.addToTask(task) }
@@ -2646,7 +2656,7 @@ class LayoutObject extends Expression {
                 new Point(this.x(), this.y1())
                ]
     }
-    bestConnectionPt(px, py, valuation) {
+    bestMagnetPt(px, py, valuation) {
         let [x,y] = evaluate([this.x(), this.y()], valuation)
         const scs = evaluate(this.connectionPts(), valuation),
               scdirs = scs.map(p => {
@@ -2663,6 +2673,28 @@ class LayoutObject extends Expression {
         }
         return best
     }
+    // Return the intersection of the line from (x,y) to to this
+    // shape with the shape's boundary.
+    intersectionPt(x, y, valuation) {
+        let [xc, yc] = evaluate([this.x(), this.y()], valuation)
+        let [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
+                                         this.x1(), this.y1()], valuation)
+        if (Math.abs(x - xc) < TINY) {
+            return [x, (y < yc) ? y0 : y1]
+        }
+        let slope = (y - yc)/(x - xc)
+        let [xh, yh] = (x > xc)
+            ? [x1, slope * (x1 - xc)]
+            : [x0, slope * (x0 - xc)]
+        if (yh < y1 && yh > y0) return [xh, yh]
+        if (Math.abs(slope) < TINY) {
+            return [ (x > xc) ? x1 : x0, y]
+        }
+        return (y > yc)
+            ? [ xc + (y1 - yc)/slope, y1 ]
+            : [ xc + (y0 - yc)/slope, y0 ]
+    }
+
     // Return a range [x0, x1] that lies inside this object for the entirety of
     // the y range [y0, y1]. This is used to decide how to format text inside a shape.
     // Default is the full range [x0, x1]
@@ -3111,7 +3143,7 @@ const Paths = {
                   dy = p2[1]-p1[1],
                   d2 = dx*dx + dy*dy,
                   d = Math.sqrt(d2)
-            if (d <= 1e-17) return p1
+            if (d <= TINY) return p1
             if (d < 2*r) {
                 return [(p1[0] + p2[0])/2, (p1[1] + p2[1])/2]
             }
@@ -3264,7 +3296,7 @@ class Ellipse extends GraphicalObject {
             this.text.renderIn(this.figure, this)
         }
     }
-    bestConnectionPt(px, py, valuation) {
+    bestMagnetPt(px, py, valuation) {
         const x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation),
               pdx = px - x,
@@ -3290,7 +3322,7 @@ class Circle extends Ellipse {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
         figure.equal(this.h(), this.w())
     }
-    bestConnectionPt(px, py, valuation) {
+    bestMagnetPt(px, py, valuation) {
         const x = evaluate(this.x(), valuation),
               y = evaluate(this.y(), valuation),
               r = evaluate(this.h(), valuation)/2,
@@ -3688,6 +3720,17 @@ class Connector extends GraphicalObject {
         this.objects = flattenGraphicalObjects(objects)
         this.labels = []
         this.arrowSize = figure.arrowSize
+        this.connectionStyle = figure.connectionStyle
+    }
+    setConnectionStyle(s) {
+        switch(s) {
+            case 'magnet':
+            case 'intersection':
+                this.connectionStyle = s
+            default:
+                console.error(`Illegal connection style: "${s}"`)
+        }
+        return this
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
@@ -3697,8 +3740,20 @@ class Connector extends GraphicalObject {
             [ evaluate(o.x(), valuation),
               evaluate(o.y(), valuation) ]);
 
-        [ pts[0][0], pts[0][1] ] = objs[0].bestConnectionPt(pts[1][0], pts[1][1], valuation);
-        [ pts[m][0], pts[m][1] ] = objs[m].bestConnectionPt(pts[m-1][0], pts[m-1][1], valuation);
+        switch (this.connectionStyle) {
+            case 'magnet':
+                [ pts[0][0], pts[0][1] ] = objs[0].bestMagnetPt(pts[1][0],
+                                                    pts[1][1], valuation);
+                [ pts[m][0], pts[m][1] ] = objs[m].bestMagnetPt(pts[m-1][0],
+                                                    pts[m-1][1], valuation);
+                break
+            case 'intersection':
+                [ pts[0][0], pts[0][1] ] = objs[0].intersectionPt(pts[1][0],
+                                                    pts[1][1], valuation);
+                [ pts[m][0], pts[m][1] ] = objs[m].intersectionPt(pts[m-1][0],
+                                                    pts[m-1][1], valuation);
+                break
+        }
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         ctx.setLineDash(this.lineDash || [])
