@@ -3502,6 +3502,26 @@ function drawArrowhead(ctx, x0, y0, x1, y1, s) {
     ctx.restore()
 }
 
+// Draw a curved arrowhead of size s in the current style,
+// based at x0,y0 and heading toward x1, y1
+function drawCurvedArrowhead(ctx, x0, y0, x1, y1, s) {
+    const dx = x1 - x0, dy = y1 - y0
+    ctx.save()
+    ctx.translate(x1, y1)
+    ctx.rotate(Math.atan2(dy, dx))
+
+    ctx.beginPath()
+    ctx.moveTo(0,0)
+    ctx.bezierCurveTo(-0.5*s, -0.1*s, -0.5*s, -0.1*s, -s, -0.4 * s)
+    ctx.lineTo(-s, 0.4 * s)
+    ctx.bezierCurveTo(-0.5*s, 0.1*s, -0.5*s, 0.1*s, 0, 0)
+    ctx.closePath()
+    ctx.fill()
+
+    ctx.restore()
+}
+
+
 // Bezier constant for a circular arc: (4/3) tan(theta/4)
 function circularArcConstant(degrees) {
     return (4/3) * Math.tan(degrees * Math.PI / 180 / 4)
@@ -3528,7 +3548,8 @@ function drawBulletHead(ctx, x0, y0, x1, y1, s) {
 
 const arrows = {
     arrow: drawArrowhead,
-    bullet: drawBulletHead
+    bullet: drawBulletHead,
+    curvedArrow: drawCurvedArrowhead,
 }
 
 // Draw an arrowhead for a line or curve endpoint at (x,y)
