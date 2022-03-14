@@ -319,16 +319,20 @@ like B-splines (which are smoother) in the middle.
 <script>
   with (new Constrain.Figure("connector_ex_fig")) {
     let c1 = circle().setW(30).at(point(30, 100)),
-        c2 = circle().setW(30).at(c1.toRight(100))
-    polygon(c2, average(c1, c2).toBottom(40), c1,
-                average(c1, c2).toTop(20))
+        c2 = circle().setW(30).at(c1.toRight(100)),
+        t = average(c1, c2).toTop(20),
+        b = average(c1, c2).toBottom(40),
+        h = handle()
+    polygon(c2, t, c1, b)
         .setFillStyle(null)
         .setLineDash([4,4])
         .setStrokeStyle("#888")
-    connector(c1, average(c1, c2).toTop(20), c2)
+    connector(c1, t, c2)
         .setEndArrow("arrow")
-    connector(c2, average(c1, c2).toBottom(40), c1)
+    connector(c2, b, c1)
         .setEndArrow("arrow")
+    connector(c2, h, c1, c2).setLineWidth(3)
+        .setEndArrow("curved")
   }
 </script>
 </div>
@@ -1103,7 +1107,7 @@ ala TeX.
 <h4>setStartArrow(style), setEndArrow(style)</h4>
 By default, lines and connectors do not have arrowheads or other terminators.
 These methods allow overriding this behavior to add some kind of terminator.
-The legal choices of <code>style</code> are currently just "arrow" and "bullet".
+The legal choices of <code>style</code> are "arrow", "bullet", and "curved".
 
 <h4>setArrowSize(s)</h4>
 <p>

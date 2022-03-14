@@ -3311,6 +3311,10 @@ class Ellipse extends GraphicalObject {
         const d = Math.sqrt(pdy*pdy*xr*xr + pdx*pdx*yr*yr)
         return [x + pdx*xr*yr/d, y + pdy*xr*yr/d]
     }
+    intersectionPt(px, py, valuation) {
+        return this.bestMagnetPt(px, py, valuation)
+    }
+
     xSpan(y0, y1, valuation) {
         const [x,y,w,h] = evaluate([this.x(), this.y(), this.w(), this.h()], valuation)
         const y2 = Math.max(Math.abs(y - y0), Math.abs(y - y1))
