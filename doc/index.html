@@ -336,6 +336,22 @@ like B-splines (which are smoother) in the middle.
     show_example("connector_ex_code", "connector_ex")
 </script>
 
+<p>
+Connectors connect to the objects at the beginning and end of the path using
+one of two algorithms, set using the <code>setConnectionStyle()</code> method.
+Its argument may be one of the following:
+<ul>
+<li><code>"magnet"</code>: attach to one of several magnet points defined
+    by the object
+<li><code>"intersection"</code>: attach to the point where the path would
+intersect the object if connecting to the center.
+</ul>
+<p>
+  The default connection style is initially <code>"magnet"</code> but can be
+  changed by calling the <code>setConnectionStyle()</code> on the figure
+  itself.
+</p>
+
 <h3>Text</h3>
 
 <p>
@@ -634,7 +650,9 @@ figure, taking the same arguments as the corresponding methods on graphical obje
     setTextStyle(style)<br>
     setLineWidth(w)<br>
     setFontSize(s)<br>
-    setFontName(n)</h4>
+    setFontName(n)<br>
+    setConnectionStyle(s)<br>
+    </h4>
 
 <h2>Constraints</h2>
 

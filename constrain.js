@@ -2684,8 +2684,8 @@ class LayoutObject extends Expression {
         }
         let slope = (y - yc)/(x - xc)
         let [xh, yh] = (x > xc)
-            ? [x1, slope * (x1 - xc)]
-            : [x0, slope * (x0 - xc)]
+            ? [x1, yc + slope * (x1 - xc)]
+            : [x0, yc + slope * (x0 - xc)]
         if (yh < y1 && yh > y0) return [xh, yh]
         if (Math.abs(slope) < TINY) {
             return [ (x > xc) ? x1 : x0, y]
@@ -2753,20 +2753,24 @@ class LayoutObject extends Expression {
     }
     inset(v) {
         v = legalExpr(v)
-        const r = new LayoutObject()
+        const r = new GraphicalObject(this.figure)
+        const me = this
         r.x = () => this.x()
         r.y = () => this.y()
         r.w = () => new Minus(this.w(), new Times(2, v))
         r.h = () => new Minus(this.h(), new Times(2, v))
+        r.variables = () => me.variables().concat(exprVariables(v))
         return r
     }
     expand(v) {
         v = legalExpr(v)
-        const r = new LayoutObject()
+        const r = new GraphicalObject(this.figure)
+        const me = this
         r.x = () => this.x()
         r.y = () => this.y()
         r.w = () => new Plus(this.w(), new Times(2, v))
         r.h = () => new Plus(this.h(), new Times(2, v))
+        r.variables = () => me.variables().concat(exprVariables(v))
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -3549,7 +3553,7 @@ function drawBulletHead(ctx, x0, y0, x1, y1, s) {
 const arrows = {
     arrow: drawArrowhead,
     bullet: drawBulletHead,
-    curvedArrow: drawCurvedArrowhead,
+    curved: drawCurvedArrowhead,
 }
 
 // Draw an arrowhead for a line or curve endpoint at (x,y)
