@@ -573,7 +573,15 @@ graphics onto regular web page content, as demonstrated in
 <h4>canvasRect()</h4>
 <p>
 A box exactly filling the canvas the figure is drawn in, which is useful for
-positioning objects relative to the canvas.
+positioning objects relative to the canvas. See also 
+</p>
+
+<h4>margin(), margin(d)</h4>
+<p>
+A box representing the canvas margin, which is the full box returned by
+<code>canvasRect()</code>, but inset either explicitly by <code>d</code> pixels
+or, if the margin width is not specified, by the default canvas line width so
+that objects aligned against the margin do not overflow outside the canvas.
 </p>
 
 <h4>group(...objects)</h4>

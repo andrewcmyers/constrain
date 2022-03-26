@@ -917,6 +917,9 @@ class Figure {
     canvasRect() {
         return new CanvasRect(this.figure)
     }
+    margin(n) {
+        return new CanvasRect(this.figure).inset(n === undefined ? this.lineWidth : n)
+    }
     rectangle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
         return new Rectangle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint)
     }
@@ -3213,33 +3216,34 @@ const Paths = {
                 return
             case 4:
                 ctx.bezierCurveTo(pts[1][0], pts[1][1],
-                                pts[2][0], pts[2][1],
-                                pts[3][0], pts[3][1])
+                                  pts[2][0], pts[2][1],
+                                  pts[3][0], pts[3][1])
                 ctx.stroke()
                 return
             default: break
         }
-        const bk = bezier_k
-        const k1 = 0.5*(1 - bk), k2 = 1 - k1
+        const bk = bezier_k, bk_ = 1 - bk
+        // const k1 = 0.5*(1 - bk), k1_ = 1 - k1
+        const k1 = 0.13, k1_ = 1 - k1
         for (let i = 0; i < n - 2; i++) {
             let p1=[], p2=[], p3=[]
             if (i == 0) {
-                p1[0] = pts[i][0]*(1-bk) + pts[i+1][0]*bk
-                p1[1] = pts[i][1]*(1-bk) + pts[i+1][1]*bk
+                p1[0] = pts[i][0]*bk_ + pts[i+1][0]*bk
+                p1[1] = pts[i][1]*bk_ + pts[i+1][1]*bk
             } else {
-                p1[0] = pts[i][0]*k1 + pts[i+1][0]*k2
-                p1[1] = pts[i][1]*k1 + pts[i+1][1]*k2
+                p1[0] = pts[i][0]*k1 + pts[i+1][0]*k1_
+                p1[1] = pts[i][1]*k1 + pts[i+1][1]*k1_
             }
             if (i == n-3) {
-                p2[0] = pts[i+1][0]*bk + pts[i+2][0]*(1-bk)
-                p2[1] = pts[i+1][1]*bk + pts[i+2][1]*(1-bk)
+                p2[0] = pts[i+1][0]*bk + pts[i+2][0]*bk_
+                p2[1] = pts[i+1][1]*bk + pts[i+2][1]*bk_
                 p3 = pts[i+2]
             } else {
-                p2[0] = pts[i+1][0]*k2 + pts[i+2][0]*k1
-                p2[1] = pts[i+1][1]*k2 + pts[i+2][1]*k1
+                p2[0] = pts[i+1][0]*k1_ + pts[i+2][0]*k1
+                p2[1] = pts[i+1][1]*k1_ + pts[i+2][1]*k1
 
-                p3[0] = pts[i+1][0]*bk + pts[i+2][0]*(1-bk)
-                p3[1] = pts[i+1][1]*bk + pts[i+2][1]*(1-bk)
+                p3[0] = pts[i+1][0]*bk + pts[i+2][0]*bk_
+                p3[1] = pts[i+1][1]*bk + pts[i+2][1]*bk_
             }
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
         }
@@ -3253,14 +3257,15 @@ const Paths = {
               y0 = pts[0][1]*0.5 + pts[1][1]*0.5
         ctx.moveTo(x0, y0)
         let p1=[], p2=[], p3=[]
-        const k1 = 0.5*(1 - bezier_k), k2 = 1-k1
+        // const k1 = 0.5*(1 - bezier_k), k1_ = 1-k1
+        const k1 = 0.15, k1_ = 1-k1
         for (let i = 0; i < n; i++) {
             let i0 = i, i1 = (i+1)%n, i2 = (i+2)%n
 
-            p1[0] = pts[i0][0]*k1 + pts[i1][0]*k2
-            p1[1] = pts[i0][1]*k1 + pts[i1][1]*k2
-            p2[0] = pts[i1][0]*k2 + pts[i2][0]*k1
-            p2[1] = pts[i1][1]*k2 + pts[i2][1]*k1
+            p1[0] = pts[i0][0]*k1 + pts[i1][0]*k1_
+            p1[1] = pts[i0][1]*k1 + pts[i1][1]*k1_
+            p2[0] = pts[i1][0]*k1_ + pts[i2][0]*k1
+            p2[1] = pts[i1][1]*k1_ + pts[i2][1]*k1
             p3[0] = pts[i1][0]*0.5 + pts[i2][0]*0.5
             p3[1] = pts[i1][1]*0.5 + pts[i2][1]*0.5
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
