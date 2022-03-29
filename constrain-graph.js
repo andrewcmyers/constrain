@@ -3,7 +3,7 @@ Constrain.Graph = function() {
 const {
     Loss, Minus, CanvasRect, Min, Max, Times, Distance, Plus, Divide, Sqrt,
     Conditional, LayoutObject, Variable, evaluate, Expression, exprVariables,
-    Global, DebugExpr, SolverCallback
+    Global, DebugExpr, SolverCallback, Average
 } = Constrain
 
 // How strongly graph constraints are enforced, by default. << 1 because these are supposed to
@@ -28,6 +28,9 @@ const LARGE_DIM_COST = 1000000
 // cost of partially squeezed dimensions
 const DIM_COST = 100
 
+// Distance between nodes below which the repulsion force is clamped
+const REPULSION_CLAMP_DIST = 0.001
+
 // A NodePos computes a higher-dimensional position in which
 // the first two coordinates are the (x,y) position of the object
 // and the remaining coordinates are the "extra dimensions" specified
@@ -46,6 +49,7 @@ class NodePos extends LayoutObject {
             }
         }
     }
+    toString() { return "NodePos(" + this.obj + ")" }
     object() {
         return this.obj
     }
@@ -105,6 +109,9 @@ class NodePos extends LayoutObject {
         }
         return result
     }
+    toString() {
+        return "NodePos(" + this.obj + ")"
+    }
 }
 
 var graphIndex = 0
@@ -146,26 +153,36 @@ class Graph {
     }
     // The NodePos associated with graphical object g. One is created if
     // none exists yet in this graph.
-    addNode(g) {
+    addNode(...objs) {
+        if (objs.length > 1) {
+            objs.forEach(o => addNode(o))
+            return
+        }
+        let g = objs[0]
         const fig = this.figure
         for (let i = 0; i < this.nodes.length; i++) {
-            // if (g === this.nodes[i])
-            if (g === this.nodes[i].object()) 
-            {
+            if (g === this.nodes[i].object()) {
                 return this.nodes[i]
             }
         }
         g = new NodePos(g, this)
         // nodes would like to be far apart
-        const cr = fig.canvasRect().inset(2),
+        const cr = fig.canvasRect(),
               sz = fig.min(cr.w(), cr.h()),
               n = this.numExtraDims + 2
         for (let i = 0; i < this.nodes.length; i++) {
             let g2 = this.nodes[i],
-                dist = fig.distance(g2, g, n), cr = new CanvasRect(this.figure),
-                bdist = new Min(new Max(dist, 1), cr.w(), cr.h()),
-                   // repulsion cuts off below 1 pixel and at canvas size
-                potential = fig.divide(this.repulsion * this.sparsity, bdist)
+                dist = fig.distance(g2, g, n),
+                // dist = fig.sq(fig.minus(g2, g)),
+                clamped_dist = new Conditional(new Minus(dist, REPULSION_CLAMP_DIST),
+                    dist,
+                    new Average(dist, REPULSION_CLAMP_DIST)),
+                bdist = new Min(clamped_dist, cr.w(), cr.h()),
+                   // repulsion cuts off at canvas size
+                potential = fig.divide(this.repulsion * this.sparsity,
+                                clamped_dist
+                                // new DebugExpr("bdist(" + g + "," + g2 +")", bdist)
+                            )
             // potential = new DebugExpr("potential between " + g + " and " + g2, potential)
             fig.costEqual(this.cost, potential, 0)
         }
