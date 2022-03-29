@@ -831,6 +831,13 @@ possible to compute the average of two points.</p>
 <h4>min(a, b, ...)</h4>
 <p>The minimum of the arguments, which must all be scalars.</p>
 
+<h4>conditional(cond, epos, eneg)</h4>
+<p>If the value of the conditional expression is positive, the value of this
+expression is the value of <code>epos</code>. Otherwise, it is <code>eneg</code>.
+For best behavior, <code>epos</code> and <code>eneg</code> should have the
+same value when <code>cond</code> is zero.
+</p>
+
 <h4>linear(frame, a, b)</h4>
 <p>An expression (class <code>Linear</code>) whose value is the value of expression <code>a</code> before the
 specified frame, and the value of <code>b</code> after that frame. During the
