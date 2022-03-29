@@ -1157,8 +1157,6 @@ class Figure {
             dy = new Point(new Neg(new Projection(dx, 1, 2)), new Projection(dx, 0, 2)),
             pos = this.plus(a, new Times(x, dx), new Times(y, dy))
         return this.point(new Projection(pos, 0, 2), new Projection(pos, 1, 2))
-       // a + (b-a) * x = (ax, ay) + (x*(bx - ax), x * (by - ay)) = (ax*(1-x) + bx*x, ay*(1-x) + by*x)
-       // (y*(ay - by), y(bx - ax))
     }
 }
 
