@@ -1068,7 +1068,7 @@ class Figure {
             case 0: return 0
             case 1: return args[0]
             case 2: return new Plus(...args)
-            default: return new Plus(args[0], ...args.slice(1))
+            default: return new Plus(args[0], this.plus(...args.slice(1)))
         }
     }
     minus(x, y) {
@@ -1094,6 +1094,9 @@ class Figure {
     min(...args) {
         args = args.flat().map(a => legalExpr(a))
         return new Min(...args)
+    }
+    conditional(cond, epos, eneg) {
+        return new Conditional(cond, epos, eneg)
     }
     sqrt(x) { return new Sqrt(legalExpr(x)) }
     sqr(x) { return new Sq(legalExpr(x)) }
@@ -1144,6 +1147,18 @@ class Figure {
         return this.equal(
           this.times(this.minus(p1.y(), p0.y()), this.minus(p3.x(), p2.x())),
           this.times(this.minus(p3.y(), p2.y()), this.minus(p1.x(), p0.x())))
+    }
+
+    // The position (x,y) in a coordinate system in which
+    // a is the origin and b is (1,0)
+    relative(x, y, a, b) {
+        x = legalExpr(x); y = legalExpr(y); a = legalExpr(a); b = legalExpr(b)
+        let dx = this.minus(b, a),
+            dy = new Point(new Neg(new Projection(dx, 1, 2)), new Projection(dx, 0, 2)),
+            pos = this.plus(a, new Times(x, dx), new Times(y, dy))
+        return this.point(new Projection(pos, 0, 2), new Projection(pos, 1, 2))
+       // a + (b-a) * x = (ax, ay) + (x*(bx - ax), x * (by - ay)) = (ax*(1-x) + bx*x, ay*(1-x) + by*x)
+       // (y*(ay - by), y(bx - ax))
     }
 }
 
@@ -1657,19 +1672,6 @@ function exprVariables(e) {
 // If doGrad is true, it returns an array [v, g] where is the value of the expression and
 // g is its gradient with respect to all the variables.
 function evaluate(expr, valuation, doGrad) {
-    // alert("evaluating " + expr)
-    /*
-    if (expr === undefined) {
-        console.error("undefined expr")
-    }
-    if (valuation === undefined) {
-        console.error("undefined valuation")
-    }
-    if (CACHE_ALL_EVALUATIONS && expr.checkCache) {
-        const v = expr.checkCache(valuation, doGrad)
-        if (v) return v
-    }
-    */
     switch (typeof expr) {
         case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
@@ -1679,13 +1681,14 @@ function evaluate(expr, valuation, doGrad) {
             if (Array.isArray(expr)) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
             } else {
-                if (CACHE_ALL_EVALUATIONS) {
-                    return expr.currentValue = expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
-                } else {
-                    const r = expr.evaluate(valuation, doGrad)
-                    expr.currentValue = r
-                    return r
+                const r = CACHE_ALL_EVALUATIONS
+                    ? expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
+                    : expr.evaluate(valuation, doGrad)
+                if (CHECK_NAN && checkNaNResult(r)) {
+                    console.error("result is NaN")
                 }
+                expr.currentValue = r
+                return r
             }
     }
 }
@@ -1881,7 +1884,7 @@ class Average extends BinaryExpression {
 // An expression x * y
 class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
-    operation(a, b) { return a * b }
+    operation(a, b) { return numeric.mul(a, b) }
     gradop(a, b, da, db) {
         return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
@@ -2003,8 +2006,10 @@ class Max extends NaryExpression {
     toString() { return "max(" + this.args + ")" }
 }
 
-// The distance between two points
+// The distance between two points.
 class Distance extends Expression {
+    // The distance between two points.
+    // The dimensionality of the points is dim (default: 2)
     constructor(p1, p2, dim) {
         super()
         this.p1 = p1
@@ -2340,7 +2345,7 @@ class Projection extends Expression {
         } else {
             if (v.constructor != Array)
                 console.error("Projection expects its expression to have an array value: " + this.expr)
-            if (i >= v.length)
+            if (i < 0 || i >= v.length)
                 console.error("Attempt to project out a nonexistent element")
             return v[i]
         }
@@ -2756,24 +2761,26 @@ class LayoutObject extends Expression {
     }
     inset(v) {
         v = legalExpr(v)
-        const r = new GraphicalObject(this.figure)
+        const r = new Box(this.figure)
         const me = this
         r.x = () => this.x()
         r.y = () => this.y()
         r.w = () => new Minus(this.w(), new Times(2, v))
         r.h = () => new Minus(this.h(), new Times(2, v))
         r.variables = () => me.variables().concat(exprVariables(v))
+        r.render = () => { console.error("Attempt to render an inset") }
         return r
     }
     expand(v) {
         v = legalExpr(v)
-        const r = new GraphicalObject(this.figure)
+        const r = new Box(this.figure)
         const me = this
         r.x = () => this.x()
         r.y = () => this.y()
         r.w = () => new Plus(this.w(), new Times(2, v))
         r.h = () => new Plus(this.h(), new Times(2, v))
         r.variables = () => me.variables().concat(exprVariables(v))
+        r.render = () => { console.error("Attempt to render an expand") }
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -2983,6 +2990,12 @@ class GraphicalObject extends Box {
             figure.GraphicalObjects.push(holder)
         }
     }
+    className() {
+        return "GraphicalObject"
+    }
+    toString() {
+        return this.className
+    }
 }
 
 // A Point acts like a graphical object wrt layout but does not generate new variables (unlike Box).
@@ -3054,6 +3067,9 @@ class Group extends GraphicalObject {
         this.y1 = () => object.y1()
         return this
     }
+    toString() {
+        return "Group(" + (this.objects ? this.objects.join(",") : "") + ")"
+    }
 }
 
 // A TextFrame is a graphical object that doesn't have any rendering but does
@@ -3070,6 +3086,9 @@ class TextFrame extends GraphicalObject {
         if (this.text) {
             this.text.renderIn(this.figure, this)
         }
+    }
+    toString() {
+        return "TextFrame" + this.text + ")"
     }
 }
 
@@ -3124,6 +3143,9 @@ class Rectangle extends GraphicalObject {
     setCornerRadius(r) {
         this.cornerRadius = legalExpr(r)
         return this
+    }
+    toString() {
+        return "Rectangle(" + this.x() + "," + this.y() + ")"
     }
 }
 
@@ -3327,6 +3349,9 @@ class Ellipse extends GraphicalObject {
         const t = Math.min(1, 2*y2/h),
               d = 0.5 * w * Math.sqrt(1 - t*t)
         return [x - d, x + d]
+    }
+    toString() {
+        return "Ellipse(" + this.x() + "," + this.y()
     }
 }
 
@@ -3835,6 +3860,12 @@ class Connector extends GraphicalObject {
             r = r.concat(exprVariables(o)))
         return r
     }
+    className() {
+        return "Connector"
+    }
+    toString() {
+        return this.className() + "(" + (this.objects ? this.objects.join(',') : "") + ")"
+    }
 }
 
 // Horizontal space.
@@ -4176,6 +4207,10 @@ class Label extends GraphicalObject {
     setFontStyle(n) {
         this.font.setStyle(n)
         return this
+    }
+
+    toString() {
+        return "Label(" + this.text + ")"
     }
 }
 
@@ -5045,6 +5080,18 @@ class DebugExpr extends Expression {
     }
     toString() {
         return "debug(" + this.expr + ")"
+    }
+    x() {
+        return this.expr.x()
+    }
+    y() {
+        return this.expr.y()
+    }
+    w() {
+        return this.expr.w()
+    }
+    h() {
+        return this.expr.h()
     }
 }
 
