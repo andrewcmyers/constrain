@@ -3478,58 +3478,85 @@ function drawLineLabels(figure, pts, labels, startAdj, endAdj) {
         n = pts.length
     if (startAdj === undefined) startAdj = 0
     if (endAdj === undefined) endAdj = 0
-    if (labels && labels.length > 0) {
-      let total_d = -startAdj, cdists = [total_d], dists = []
-      for (let i = 0; i < n - 1; i++) {
-        let d = norm2d(pts[i+1][0] - pts[i][0],
-                       pts[i+1][1] - pts[i][1])
-        dists[i] = d
-        total_d += d
-        cdists[i+1] = total_d
-      }
-      if (startAdj) {
-        dists[0] += startAdj
-        total_d += startAdj
-      }
-      if (endAdj) {
-        dists[n-2] += endAdj
-        cdists[n-1] += endAdj
-        total_d += endAdj
-      }
-
-      labels.forEach(linelabel => {
-        let pos = evaluate(linelabel.position,
-                              figure.currentValuation),
-            offset = evaluate(linelabel.offset,
-                              figure.currentValuation),
-            dpos = pos * total_d
-        let i = 0
-        for (i = 0; i < n - 1; i++) {
-            if (cdists[i+1] > dpos) break
-        }
-        let x1 = pts[i][0],
-            y1 = pts[i][1],
-            x2 = pts[i+1][0],
-            y2 = pts[i+1][1],
-            d = norm2d(x2-x1, y2-y1),
-            dx = (x2 - x1)/d,
-            dy = (y2 - y1)/d
-        if (i == 0) {
-            x1 -= startAdj * dx
-            y1 -= startAdj * dy
-            d += startAdj
-        }
-        if (i == n-2) {
-            x2 += endAdj * dx
-            y2 += endAdj * dy
-            d += endAdj
-        }
-        let f = (dpos - cdists[i])/d,
-            x = x1 + (x2 - x1) * f + dy * offset,
-            y = y1 + (y2 - y1) * f - dx * offset
-        linelabel.drawAt(ctx, x, y)
-      })
+    if (!labels || labels.length == 0) return
+    let total_d = -startAdj, cdists = [total_d], dists = []
+    for (let i = 0; i < n - 1; i++) {
+      let d = norm2d(pts[i+1][0] - pts[i][0],
+                     pts[i+1][1] - pts[i][1])
+      dists[i] = d
+      total_d += d
+      cdists[i+1] = total_d
     }
+    if (startAdj) {
+      dists[0] += startAdj
+      total_d += startAdj
+    }
+    if (endAdj) {
+      dists[n-2] += endAdj
+      cdists[n-1] += endAdj
+      total_d += endAdj
+    }
+
+    labels.forEach(linelabel => {
+      let pos = evaluate(linelabel.position,
+                            figure.currentValuation),
+          offset = evaluate(linelabel.offset,
+                            figure.currentValuation),
+          dpos = pos * total_d
+      let i = 0
+      for (i = 0; i < n - 1; i++) {
+          if (cdists[i+1] > dpos) break
+      }
+      let x1 = pts[i][0],
+          y1 = pts[i][1],
+          x2 = pts[i+1][0],
+          y2 = pts[i+1][1],
+          f = (dpos - cdists[i])/(cdists[i+1] - cdists[i]),
+          d = norm2d(x2-x1, y2-y1),
+          dx12 = (x2 - x1)/d,
+          dy12 = (y2 - y1)/d,
+          dx, dy
+      if (f < 0.0 || f > 1.0) {
+        console.error("line label position is impossible")
+      }
+      if (f < 0.5) { // blend normal with previous normal
+        let dx01 = dx12, dy01 = dy12
+        if (i > 0) {
+          let x0 = pts[i-1][0],
+              y0 = pts[i-1][1],
+              d01 = norm2d(x1-x0, y1-y0)
+          dx01 = (x1 - x0)/d01
+          dy01 = (x1 - x0)/d01
+        }
+        dx = (f + 0.5) * dx12 + (0.5 - f) * dx01
+        dy = (f + 0.5) * dy12 + (0.5 - f) * dy01
+      } else { // blend normal with next normal
+        let dx23 = dx12, dy23 = dy12
+        if (i < n-2) {
+          let x3 = pts[i+2][0],
+              y3 = pts[i+2][1],
+              d23 = norm2d(x3 - x2, y3 - y2)
+          dx23 = (x3 - x2)/d23
+          dy23 = (y3 - y2)/d23
+        }
+        dx = (1.5 - f)*dx12 + (f - 0.5)*dx23
+        dy = (1.5 - f)*dy12 + (f - 0.5)*dy23
+      }
+      if (i == 0) {
+          x1 -= startAdj * dx
+          y1 -= startAdj * dy
+          d += startAdj
+      }
+      if (i == n-2) {
+          x2 += endAdj * dx
+          y2 += endAdj * dy
+          d += endAdj
+      }
+      let f1 = (dpos - cdists[i])/d,
+          x = x1 + (x2 - x1) * f1 + dy * offset,
+          y = y1 + (y2 - y1) * f1 - dx * offset
+      linelabel.drawAt(ctx, x, y)
+    })
 }
 
 // Draw an arrowhead of size s in the current style,
