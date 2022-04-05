@@ -832,6 +832,9 @@ class Figure {
                     result.push(this.geq(objlist[i].x0(), objlist[i-1].x1()))
                 }
                 break
+            default:
+                console.error("Unrecognized horizontal alignment: " + horizontal)
+                break
         }
         switch (vertical) {
             case "none": break
@@ -868,6 +871,9 @@ class Figure {
                     result.push(this.equal(new Minus(objlist[i].y0(), objlist[i-1].y1()), d))
                     result.push(this.geq(objlist[i].y0(), objlist[i-1].y1()))
                 }
+                break
+            default:
+                console.error("Unrecognized vertical alignment: " + horizontal)
                 break
         }
         return result
@@ -998,6 +1004,9 @@ class Figure {
     whitespace() {
         return new Whitespace()
     }
+    negspace(offset) {
+        return new NegSpace(offset)
+    }
     textContext(f, ...t) {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
@@ -1009,6 +1018,8 @@ class Figure {
         return new Label(this, text, fontSize, fontName, fillStyle)
     }
     lineLabel(string, position, offset) {
+        if (string && string.constructor != String && string.constructor != ContainedText)
+            string = new ContainedText(this, string)
         return new LineLabel(this, string, position, offset)
     }
     handle(style) {
@@ -1060,6 +1071,7 @@ class Figure {
         this.Graphs.push(g)
         return g
     }
+
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
@@ -3836,8 +3848,11 @@ class Connector extends GraphicalObject {
     insert(object, pos) {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
     }
-    addLabel(obj) {
-        this.labels.push(obj)
+    addLabel(obj, pos, offset, margin) {
+        if (arguments.length == 1)
+            this.labels.push(obj)
+        else
+            this.labels.push(this.figure.lineLabel(obj, pos, offset, margin))
         return this
     }
     setStartArrow(style) {
@@ -4086,8 +4101,9 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
+        // this.text is either a string or a ContainedText object
         if (text.layout) {
-            this.text = new ContainedText(figure, text) // either a String or a TextItem
+            this.text = new ContainedText(figure, text)
             this.font = new Font(figure)
             if (fillStyle != null) {
                 this.fillStyle = this.text.fillStyle = fillStyle
@@ -4164,28 +4180,10 @@ class Label extends GraphicalObject {
         if (this.text.constructor == String) {
             this.computedWidth = ctx.measureText(this.text).width
         } else {
-            const tc = new TextContext(null, figure)
-            tc.setAll({font: this.font, verticalAlign: "center",
-              justification: "center", lineSpacing: 0, inset: 0,
-              layoutAlgorithm: "greedy",
-              fillStyle: this.fillStyle,
-              strokeStyle: null, baseline: 0,
-              forceLayout: false, container: this
-            })
-            const layout = findLayout(this.figure, [{item: this.text.text, context: tc}], 1,
-                                      0, 0, 0, Figure_defaults.LARGE_SPAN, 0)
-
-            if (!layout.success) {
-                console.error("Could not lay out a label")
-                return 0
-            }
-            let w = 0, items = layout.lines[0].items
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i]
-                w += item.width
-            }
+            let [w, h] = this.text.minimumSize()
             this.computedWidth = w
         }
+        return this.computedWidth
     }
 
     // Set font size
@@ -4221,19 +4219,49 @@ class Label extends GraphicalObject {
 // the connector.
 class LineLabel {
     constructor(figure, text, position, offset) {
+        this.figure = figure
         this.text = text
         this.position = position
         this.offset = offset || figure.font.getSize()
-        this.strokeStyle = figure.strokeStyle
-        this.fillStyle = figure.textStyle || "#000000"
+        this.strokeStyle = null
+        this.textStyle = figure.textStyle || "#000000"
         this.font = new Font(figure)
+    }
+    computeSize() {
+        const ctx = this.figure.ctx
+        if (this.text.constructor == String) {
+            this.font.setContextFont(ctx)
+            this.computedHeight = this.font.getSize()
+            this.computedWidth = ctx.measureText(this.text).width
+        } else {
+            let [w, h] = this.text.minimumSize()
+            this.computedHeight = h
+            this.computedWidth = w
+        }
     }
     drawAt(ctx, x, y) {
         this.font.setContextFont(ctx)
-        ctx.fillStyle = this.fillStyle
-        x -= ctx.measureText(this.text).width / 2
-        y += this.font.getSize()/2
-        ctx.fillText(this.text, x, y)
+        ctx.fillStyle = this.textStyle
+        this.computeSize()
+        let w = this.computedWidth, h = this.computedHeight
+
+        if (this.strokeStyle) {
+            ctx.strokeStyle = this.strokeStyle
+            ctx.beginPath()
+            ctx.rect(x - w/2, y - h/2, w, h)
+            ctx.stroke()
+        }
+
+        if (this.text.constructor == String) {
+            ctx.fillText(this.text, x - w/2, y + h/2)
+        } else {
+            const box = new LayoutObject()
+            box.x = () => x
+            box.y = () => y
+            box.w = () => w
+            box.h = () => h
+            this.text.renderIn(this.figure, box)
+        }
     }
     setFillStyle(s) { this.fillStyle = s; return this }
     setStrokeStyle(s) { this.strokeStyle = s; return this }
@@ -4314,6 +4342,41 @@ class ContainedText {
     setLayoutAlgorithm(a) {
         this.layoutAlgorithm = a
         return this
+    }
+
+    // Return [w, h] where w and h are the width and height of the smallest rectangle
+    // that contains the text when formatted in the smallest possible number of lines.
+    minimumSize() {
+        const tc = new TextContext(null, figure),
+            font = this.font,
+            lineSpacing = font.getSize() *
+                (typeof this.lineSpacing == "number" ? this.lineSpacing : 1)
+        tc.setAll({font, verticalAlign: "center",
+            justification: "left", lineSpacing, inset: 0,
+            layoutAlgorithm: "greedy",
+            fillStyle: this.fillStyle,
+            strokeStyle: null, baseline: 0,
+            forceLayout: false, container: this
+        })
+        const layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,
+                                  0, 0, 0, Figure_defaults.LARGE_SPAN, Figure_defaults.LARGE_SPAN)
+
+        if (!layout.success) {
+            console.error("Could not lay out a label")
+            return 0
+        }
+        let w = 0, h = 0
+        for (let l = 0; l < layout.lines.length; l++) {
+            let lw = 0, items = layout.lines[l].items
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                lw += item.width
+            }
+            if (lw > w) w = lw
+            h = Math.max(h, layout.lines[l].y)
+        }
+        const padding = 2 * this.inset
+        return [w + padding, h + lineSpacing + padding]
     }
 
     // Draw this text inside a graphical object (container)
@@ -4549,16 +4612,20 @@ class WordText extends TextItem {
         this.text = t
     }
     toString() { return `[WordText ${this.text}]` }
-
-    // See TextItem.layout
-    layout(figure, tc, x, y, x0, x1, ymax) {
-        const ctx = figure.ctx,
-              font = tc.get("font")
+    getWidth(ctx, font) {
         let width = this.width
         if (!width) {
             font.setContextFont(ctx)
             this.width = width = ctx.measureText(this.text).width
         }
+        return width
+    }
+
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const ctx = figure.ctx,
+              font = tc.get("font"),
+              width = this.getWidth(ctx, font)
         if (x + width > x1) {
             return { success: false }
         }
@@ -4590,13 +4657,13 @@ var ws_counter = 0
 var EMPTY_IMMUTABLE_ARRAY = []
 
 class Whitespace extends TextItem {
-    constructor(figure) {
-        super(figure)
+    constructor() {
+        super()
         this.index = ws_counter++
     }
     toString() { return `[Whitespace ${this.index}]` }
     // See TextItem.layout
-    layout(figure, tc, x, y, x0, x1, ymax) {
+    getWidth() {
         let space = this.width
         if (!space) {
               const font = tc.get("font")
@@ -4604,6 +4671,10 @@ class Whitespace extends TextItem {
               space = figure.ctx.measureText(" ").width
               this.width = space
         }
+        return space
+    }
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const space = this.getWidth()
         const positions = []
         if (x + space <= x1) {
             positions.push( { newLine: false,
@@ -4631,6 +4702,18 @@ class Whitespace extends TextItem {
         delete this.width 
         delete this.cache
     }
+}
+
+// Create a negative space for text
+class NegSpace extends WordText {
+    constructor(size) {
+        super()
+        this.offset = -size
+    }
+    getWidth(ctx, font) {
+        return this.offset
+    }
+    render(ctx, x, y) {}
 }
 
 class ConcatText extends TextItem {
