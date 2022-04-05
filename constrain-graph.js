@@ -155,7 +155,7 @@ class Graph {
     // none exists yet in this graph.
     addNode(...objs) {
         if (objs.length > 1) {
-            objs.forEach(o => addNode(o))
+            objs.forEach(o => this.addNode(o))
             return
         }
         let g = objs[0]
