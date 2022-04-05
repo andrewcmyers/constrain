@@ -36,6 +36,7 @@ const Figure_defaults = {
     LINE_SPACING : 1.3,
     SUPERSCRIPT_OFFSET : 0.44,
     SUBSCRIPT_OFFSET : -0.16,
+    LINELABEL_INSET : 2,
     SCRIPTSIZE : 0.80,
     LARGE_SPAN : 10000.0,
     HYPHEN_COST : 100000,
@@ -98,6 +99,7 @@ class Figure {
         this.setLineWidth(Figure_defaults.LINEWIDTH)
         this.font = new Font()
         this.lineSpacing = Figure_defaults.LINE_SPACING
+        this.lineLabelInset = Figure_defaults.LINELABEL_INSET
         this.arrowSize = Figure_defaults.ARROW_SIZE
         this.connectionStyle = Figure_defaults.CONNECTION_STYLE
         this.repeat = false
@@ -3473,9 +3475,10 @@ class ClosedCurve extends Polygon {
     }
 }
 
-function drawLineLabels(figure, pts, labels, startAdj, endAdj) {
+function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
     let ctx = figure.ctx,
-        n = pts.length
+        n = pts.length,
+        result = []
     if (startAdj === undefined) startAdj = 0
     if (endAdj === undefined) endAdj = 0
     if (!labels || labels.length == 0) return
@@ -3555,8 +3558,27 @@ function drawLineLabels(figure, pts, labels, startAdj, endAdj) {
       let f1 = (dpos - cdists[i])/d,
           x = x1 + (x2 - x1) * f1 + dy * offset,
           y = y1 + (y2 - y1) * f1 - dx * offset
-      linelabel.drawAt(ctx, x, y)
+      let [w, h] = linelabel.computeSize()
+      result.push([x, y, w, h])
     })
+    return result
+}
+
+function setupClipRegion(figure, boxes, inset) {
+    const ctx = figure.ctx
+    ctx.beginPath()
+    ctx.rect(0, 0, figure.width, figure.height)
+    boxes.forEach(box =>
+        {
+            const [x,y,w,h] = box
+            const w2 = w/2 + inset, h2 = h/2 + inset
+            ctx.moveTo(x - w2, y - h2)
+            ctx.lineTo(x + w2, y - h2)
+            ctx.lineTo(x + w2, y + h2)
+            ctx.lineTo(x - w2, y + h2)
+            ctx.closePath()
+        })
+    ctx.clip("evenodd")
 }
 
 // Draw an arrowhead of size s in the current style,
@@ -3817,6 +3839,7 @@ class Connector extends GraphicalObject {
         this.labels = []
         this.arrowSize = figure.arrowSize
         this.connectionStyle = figure.connectionStyle
+        this.lineLabelInset = figure.lineLabelInset
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -3835,6 +3858,13 @@ class Connector extends GraphicalObject {
         const pts = objs.map(o => 
             [ evaluate(o.x(), valuation),
               evaluate(o.y(), valuation) ]);
+        const labelPosns = (this.labels && this.labels.length > 0)
+            ? positionLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
+                              this.endArrowStyle ? this.arrowSize : 0)
+            : null
+
+        ctx.save()
+        if (labelPosns) setupClipRegion(figure, labelPosns, this.lineLabelInset)
 
         switch (this.connectionStyle) {
             case 'magnet':
@@ -3868,9 +3898,15 @@ class Connector extends GraphicalObject {
         ctx.strokeStyle = this.strokeStyle
         Paths.bsplines(ctx, pts)
         ctx.stroke()
-        if (this.labels && this.labels.length > 0)
-            drawLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
-                            this.endArrowStyle ? this.arrowSize : 0)
+        ctx.restore()
+
+        if (labelPosns) {
+            for (let i = 0; i < this.labels.length; i++) {
+                const box = labelPosns[i]
+                this.labels[i].drawAt(ctx, ...box)
+                console.log("Drawing label at ", box)
+            }
+        }
     }
     insert(object, pos) {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
@@ -3881,6 +3917,9 @@ class Connector extends GraphicalObject {
         else
             this.labels.push(this.figure.lineLabel(obj, pos, offset, margin))
         return this
+    }
+    setLabelInset(inset) {
+        this.lineLabelInset = inset
     }
     setStartArrow(style) {
         this.startArrowStyle = style
@@ -4265,6 +4304,7 @@ class LineLabel {
             this.computedHeight = h
             this.computedWidth = w
         }
+        return [this.computedWidth, this.computedHeight]
     }
     drawAt(ctx, x, y) {
         this.font.setContextFont(ctx)
@@ -4294,6 +4334,8 @@ class LineLabel {
     setStrokeStyle(s) { this.strokeStyle = s; return this }
     setFontName(n) { this.font.setName(n); return this }
     setFontSize(s) { this.font.setSize(s); return this }
+    setPosition(p) { this.position = p; return this }
+    setOffset(o) { this.offset = o; return this }
 }
 
 function countItems(ly) {
