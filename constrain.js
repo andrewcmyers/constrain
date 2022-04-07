@@ -4600,6 +4600,9 @@ class TextItem {
     // Default: do nothing
     render(ctx, x, y) {}
 
+    // Report the width of this item in the given context and font choice.
+    getWidth(ctx, font) { return 0 }
+
     // Erase any cached information specific to a given layout task
     resetCaches() {}
     toString() { return "[TextItem]" }
@@ -4732,18 +4735,17 @@ class Whitespace extends TextItem {
     }
     toString() { return `[Whitespace ${this.index}]` }
     // See TextItem.layout
-    getWidth() {
+    getWidth(ctx, font) {
         let space = this.width
         if (!space) {
-              const font = tc.get("font")
-              font.setContextFont(figure.ctx)
-              space = figure.ctx.measureText(" ").width
+              font.setContextFont(ctx)
+              space = ctx.measureText(" ").width
               this.width = space
         }
         return space
     }
     layout(figure, tc, x, y, x0, x1, ymax) {
-        const space = this.getWidth()
+        const space = this.getWidth(figure.ctx, tc.get("font"))
         const positions = []
         if (x + space <= x1) {
             positions.push( { newLine: false,
