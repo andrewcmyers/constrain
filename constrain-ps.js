@@ -525,6 +525,17 @@ class PrintContext {
     fillRect(x, y, w, h) {
         this.append(`${this.pt(x,y-h)} ${w} ${h} rectfill`)
     }
+    rect(x, y, w, h) {
+        this.append(`${this.pt(x,y)} moveto ${w} 0 rlineto ` +
+                    `${0} ${-h} rlineto  ${-w} 0 rlineto  closepath`)
+    }
+    clip(rule) {
+        if (rule == "evenodd") {
+            this.append('eoclip')
+        } else {
+            this.append('clip')
+        }
+    }
     getOutput() {
         return this.output.join("") + "\nshowpage\n%%EOF\n"
     }
