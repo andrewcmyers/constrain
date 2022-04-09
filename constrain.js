@@ -36,7 +36,7 @@ const Figure_defaults = {
     LINE_SPACING : 1.3,
     SUPERSCRIPT_OFFSET : 0.44,
     SUBSCRIPT_OFFSET : -0.16,
-    LINELABEL_INSET : 2,
+    LINELABEL_INSET : null,
     SCRIPTSIZE : 0.80,
     LARGE_SPAN : 10000.0,
     HYPHEN_COST : 100000,
@@ -3565,6 +3565,7 @@ function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
 }
 
 function setupClipRegion(figure, boxes, inset) {
+    if (inset == null) return
     const ctx = figure.ctx
     ctx.beginPath()
     ctx.rect(0, 0, figure.width, figure.height)
@@ -3839,7 +3840,7 @@ class Connector extends GraphicalObject {
         this.labels = []
         this.arrowSize = figure.arrowSize
         this.connectionStyle = figure.connectionStyle
-        this.lineLabelInset = figure.lineLabelInset
+        this.lineLabelInset = figure.lineLabelInset // may be null
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -3904,7 +3905,6 @@ class Connector extends GraphicalObject {
             for (let i = 0; i < this.labels.length; i++) {
                 const box = labelPosns[i]
                 this.labels[i].drawAt(ctx, ...box)
-                console.log("Drawing label at ", box)
             }
         }
     }
