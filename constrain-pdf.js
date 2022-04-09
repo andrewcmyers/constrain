@@ -292,6 +292,20 @@ function override_jsPDF(jspdf, ctx, figure) {
         this.path.push({ type: "close" })
         this.ctx.lastPoint = new Point(pathBegin.x, pathBegin.y)
     }
+    prototype.rect = function(x, y, w, h) {
+        if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
+        console.error("jsPDF.context2d.rect: Invalid arguments", arguments)
+        throw new Error("Invalid arguments passed to jsPDF.context2d.rect")
+        }
+        this.moveTo(x, y)
+        this.lineTo(x + w, y)
+        this.lineTo(x + w, y + h)
+        this.lineTo(x, y + h)
+        this.closePath()
+    }
+    prototype.clip = function(rule) {
+        jspdf.clip(rule)
+    }
 }
 
 class PrintJob {
