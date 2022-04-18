@@ -946,14 +946,14 @@ class Figure {
     closedCurve(...points) {
         return new ClosedCurve(this, points)
     }
-    line(strokeStyle, lineWidth, start, end) {
-        return new Line(this, strokeStyle, lineWidth, start, end)
+    line(start, end, strokeStyle, lineWidth) {
+        return new Line(this, start, end, strokeStyle, lineWidth)
     }
-    horzLine(strokeStyle, lineWidth, start, end) {
-        return new HorzLine(this, strokeStyle, lineWidth, start, end)
+    horzLine(start, end, strokeStyle, lineWidth) {
+        return new HorzLine(this, start, end, strokeStyle, lineWidth)
     }
-    vertLine(strokeStyle, lineWidth, start, end) {
-        return new VertLine(this, strokeStyle, lineWidth, start, end)
+    vertLine(start, end, strokeStyle, lineWidth) {
+        return new VertLine(this, start, end, strokeStyle, lineWidth)
     }
     hspace(w) {
         const r = new HSpace(this, w)
@@ -3681,7 +3681,7 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
 // A straight line
 class Line extends GraphicalObject {
     // create a line from p1 to p2 (optionally specified)
-    constructor(figure, strokeStyle, lineWidth, p1, p2) {
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, undefined, strokeStyle, lineWidth)
         this.p1 = p1 || new Point(figure.variable("p1x"), figure.variable("p1y"))
         this.p2 = p2 || new Point(figure.variable("p2x"), figure.variable("p2y"))
@@ -3769,10 +3769,10 @@ class Line extends GraphicalObject {
     }
 }
 
-// A horizontal line.
+// A horizontal line, oriented left-to-right
 class HorzLine extends Line {
-    constructor(figure, strokeStyle, lineWidth, p1, p2) {
-        super(figure, strokeStyle, lineWidth, p1, p2)
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
+        super(figure, p1, p2, strokeStyle, lineWidth)
         figure.equal(this.start().y(), this.end().y())
         // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().x(), this.end().x())
@@ -3785,10 +3785,10 @@ class HorzLine extends Line {
     }
 }
 
-// A vertical line.
+// A vertical line, oriented downward
 class VertLine extends Line {
-    constructor(figure, strokeStyle, lineWidth, p1, p2) {
-        super(figure, strokeStyle, lineWidth, p1, p2)
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
+        super(figure, p1, p2, strokeStyle, lineWidth)
         figure.equal(this.start().x(), this.end().x())
         // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().y(), this.end().y())

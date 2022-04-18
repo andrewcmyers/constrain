@@ -285,20 +285,22 @@ Control points can be repeated to introduce sharp vertices in the curve.
 
 <h3>Lines</h3>
 
-<h4>line([strokeStyle], [lineWidth])</h4>
+<h4>line([start], [end], [strokeStyle], [lineWidth])</h4>
 <p>
 Creates a straight line whose appearance can be overridden with optional
-parameters (class <code>Line</code>).  Its position is defined by adding constraints on the points
-returned by its <code>start()</code> and <code>end()</code> methods. It can also be
-given arrowheads.
+parameters (class <code>Line</code>). The line goes from the point <code>start</code>
+to the point <code>end</code>, which if not specified are initialized to new points.
+The start and end of the line can be accessed using its <code>start()</code> and
+<code>end()</code> methods, and constraints can be applied to them.
+A line can also be given arrowheads.
 </p>
 
-<h4>horzLine([strokeStyle], [lineWidth])</h4>
+<h4>horzLine([start], [end], [strokeStyle], [lineWidth])</h4>
 <p>
 Creates a straight horizontal line that goes from left to right (class <code>HorzLine</code>).
 </p>
 
-<h4>vertLine([strokeStyle], [lineWidth])</h4>
+<h4>vertLine([start], [end], [strokeStyle], [lineWidth])</h4>
 <p>
 Creates a straight vertical line that goes from the top to the bottom (class <code>VertLine</code>).
 </p>
