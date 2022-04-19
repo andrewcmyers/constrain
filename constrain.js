@@ -1074,6 +1074,12 @@ class Figure {
         return g
     }
 
+    arrObjects(n, f) {
+        const result = []
+        for (let i = 0; i < n; i++) result.push(f(i))
+        return result
+    }
+
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
@@ -4268,6 +4274,12 @@ class Label extends GraphicalObject {
     // Set font style
     setFontStyle(n) {
         this.font.setStyle(n)
+        return this
+    }
+
+    // set text color etc.
+    setTextStyle(s) {
+        this.fillStyle = s
         return this
     }
 
