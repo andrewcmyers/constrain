@@ -797,7 +797,7 @@ class Figure {
     align(horizontal, vertical, objlist) {
         const result = []
         if (!Array.isArray(objlist))
-            objlist = argsToArray(arguments, 2)
+            objlist = flattenGraphicalObjects(argsToArray(arguments, 2))
         switch (horizontal) {
             case "none": break
             case "center": 

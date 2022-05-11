@@ -140,6 +140,7 @@ class Graph {
     }
     setExtraDims(d) {
         this.numExtraDims = d
+        return this
     }
     // Define the effective dimensionality of points as a function f
     // that returns the effective dimensionality when queried. This
@@ -250,7 +251,7 @@ class Graph {
         return fig.connector(g1.object(), g2.object())
     }
     // Add an directed edge between objects g1 and g2, adding the objects as nodes if necessary.
-    // Constraints are added to order them top-to-bottom or left-to-right, depending on the the figure's
+    // Constraints are added to order them top-to-bottom or left-to-right, depending on the graph's
     // horizontalLayout property.
     // Return the (straight) connector between the objects.
     dedge(g1, g2) {
