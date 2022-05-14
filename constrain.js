@@ -1765,7 +1765,7 @@ class BackPropagation {
         for (let i = es.length - 1; i >= 0; i--) {
             const e = es[i]
             if (e.currentValue === undefined) {
-                console.error("Has an undefined value: " + e)
+                console.log("Has an undefined value: " + e)
                 console.log("trying again: ", evaluate(e, valuation))
             }
             if (e.bpDiff == 0) continue
@@ -2730,6 +2730,7 @@ class LayoutObject extends Expression {
     render() {
         console.log("Attempted to render an object that has no rendering defined.")
     }
+    renderIfVisible() { }
     variables() {
         return []
     }
@@ -2780,25 +2781,19 @@ class LayoutObject extends Expression {
     inset(v) {
         v = legalExpr(v)
         const r = new Box(this.figure)
-        const me = this
-        r.x = () => this.x()
-        r.y = () => this.y()
-        r.w = () => new Minus(this.w(), new Times(2, v))
-        r.h = () => new Minus(this.h(), new Times(2, v))
-        r.variables = () => me.variables().concat(exprVariables(v))
-        r.render = () => { console.error("Attempt to render an inset") }
+        this.figure.equal(r.x(), this.x())
+        this.figure.equal(r.y(), this.y())
+        this.figure.equal(r.w(), new Minus(this.w(), new Times(2, v)))
+        this.figure.equal(r.h(), new Minus(this.h(), new Times(2, v)))
         return r
     }
     expand(v) {
         v = legalExpr(v)
         const r = new Box(this.figure)
-        const me = this
-        r.x = () => this.x()
-        r.y = () => this.y()
-        r.w = () => new Plus(this.w(), new Times(2, v))
-        r.h = () => new Plus(this.h(), new Times(2, v))
-        r.variables = () => me.variables().concat(exprVariables(v))
-        r.render = () => { console.error("Attempt to render an expand") }
+        this.figure.equal(r.x(), this.x())
+        this.figure.equal(r.y(), this.y())
+        this.figure.equal(r.w(), new Plus(this.w(), new Times(2, v)))
+        this.figure.equal(r.h(), new Plus(this.h(), new Times(2, v)))
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -2813,11 +2808,12 @@ class LayoutObject extends Expression {
         } else if (arguments.length == 1) {
             const p = legalExpr(arguments[0])
             if (p.constructor == Array) {
-                this.figure.equal(this.x(), p[0])
-                this.figure.equal(this.y(), p[1])
+                this.figure.equal(this.x(), legalExpr(p[0]))
+                this.figure.equal(this.y(), legalExpr(p[1]))
             } else {
-                this.figure.equal(this.x(), new Projection(p, 0, 2))
-                this.figure.equal(this.y(), new Projection(p, 1, 2))
+                const o = legalPoint(p)
+                this.figure.equal(this.x(), new Projection(o, 0, 2))
+                this.figure.equal(this.y(), new Projection(o, 1, 2))
             }
         }
         return this
@@ -2844,6 +2840,12 @@ function legalLayoutObject(o) {
     return new Point()
 }
 
+function legalPoint(p) {
+    if (p.x && p.y) return p
+    console.error("Not a legal point: " + p)
+    return p
+}
+
 // A Box is a layout object with a width and height. It does not necessarily
 // render but is useful for positioning other objects, because it can be used
 // with functions that expect graphical objects, such as align().
@@ -2862,7 +2864,7 @@ class Box extends LayoutObject {
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
-        return [this.x(), this.y(), this.w(), this.h()]
+        return [this.x_, this.y_, this.w_, this.h_]
     }
 // convenience methods for positioning (by adding constraints)
 
@@ -3049,7 +3051,9 @@ class Group extends GraphicalObject {
     constructor(figure, ...objects) {
         super(figure)
         this.objects = flattenGraphicalObjects(objects).map(o => legalLayoutObject(o))
-        this.objects.forEach(o => { o.parent = this })
+        this.objects.forEach(o => {
+            o.parent = this
+        })
     }
     variables() {
         const result = [], g = this
