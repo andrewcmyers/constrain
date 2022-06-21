@@ -631,6 +631,14 @@ telling each one to start:
 
 <p>Destroys the figure and removes it from the list of figures (<code>Constrain.Figures</code>).</p>
 
+<h4>freeze()</h4>
+
+<p>
+Add a new stage to the figure, freezing all previously created
+objects in place. See <a href="#staged_solving">Staged solving</a> for
+more explanation.
+</p>
+
 <h3>Other figure control operations</h3>
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
 <p>
@@ -1266,6 +1274,28 @@ varying continuously over the duration.
 <p>
 If invoked on a frame with <code>true</code>, the frame automatically advances
 to the following frame once its duration is over.
+</p>
+
+<h2 id="staged_solving">Staged solving</h2>
+<p>
+For complex diagrams, it may be too hard for the solver to find a stable solution
+with all the constraints and variables at once. Often this limitation can be
+worked around by breaking the solving process into a series of <em>stages</em>.
+In each stage, some set of the variables are solved for. Variables associated with
+later stages have no value until that stage is reached; variables in earlier stages
+have already been solved and their values cannot change.
+</p>
+<p>
+To introduce stages to a diagram, the method <code>freeze()</code>
+advances the figure to the next stage. Any constraints and variables created
+will be associated with the (new) current stage. Calling <code>freeze()</code>
+effectively freezes all previously created objects in place, with their positions
+determined only by the constraints created up to this point.
+</p>
+<p>
+Note that stages have nothing to do with animation frames; the same stages
+exist for all frames. Stages simply define the order in which solving will be
+done for any frame.
 </p>
 
 <h2>Generating printable diagrams</h2>
