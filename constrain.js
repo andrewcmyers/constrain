@@ -338,7 +338,7 @@ class Figure {
         this.activeStage = stage
         this.numberVariables(stage)
         this.resetValuation(stage)
-        console.log("Solving stage " + stage + ", " + this.activeVariables.length + " variables")
+        // console.log("Solving stage " + stage + ", " + this.activeVariables.length + " variables")
         solution = this.solveConstraints(this.currentValuation, tol)
       }
       return solution
@@ -1668,12 +1668,7 @@ class Variable extends Expression {
     }
     evaluate(valuation, doGrad) {
         if (this.index === undefined) {
-            if (this.currentValue == undefined) {
-                console.error("Can't evaluate a variable that has not been solved for")
-                return 0
-            } else {
-                return this.currentValue
-            }
+            return this.currentValue || this.hint || (console.log("undefined variable??"), 0)
         }
         if (doGrad) {
             let g = this.grad, n = valuation.length
@@ -2671,7 +2666,7 @@ function constraintsCost(a, valuation, doGrad) {
     }
 }
 
-// A group of constraints that is treated as a single constraint.
+// A group of constraints that acts like a single constraint.
 class ConstraintGroup extends Constraint {
     constructor(figure, ...constraints) {
         super(figure)
@@ -2696,10 +2691,15 @@ class ConstraintGroup extends Constraint {
     addToTask(task) {
         this.constraints.forEach(c => c.addToTask(task))
     }
+    changeCost(x) {
+        this.constraints.forEach(c => c.changeCost(x))
+        return this
+    }
 }
 
 // A LayoutObject does not support rendering and does not necessarily
-// know what figure it is part of. Its size is 0 by default.
+// know what figure it is part of. It does not introduce any variables by
+// default. Its size is 0 by default.
 class LayoutObject extends Expression {
     constructor() { super() }
     toString() {
@@ -3043,6 +3043,37 @@ class GraphicalObject extends Box {
         return this
     }
 // rendering control
+
+    // Make this object appear immediately underneath the named object
+    placeUnder(obj) {
+        let objects = this.figure.GraphicalObjects
+        let new_objects = []
+        for (const o of objects) {
+            if (o == obj) {
+                new_objects.push(this)
+                new_objects.push(o)
+            } else if (o != this) {
+                new_objects.push(o)
+            }
+        }
+        this.figure.GraphicalObjects = new_objects
+        return this
+    }
+    // Make this object appear immediately over the named object
+    placeOver(obj) {
+        let objects = this.figure.GraphicalObjects
+        let new_objects = []
+        for (const o of objects) {
+            if (o == obj) {
+                new_objects.push(o)
+                new_objects.push(this)
+            } else if (o != this) {
+                new_objects.push(o)
+            }
+        }
+        this.figure.GraphicalObjects = new_objects
+        return this
+    }
     active() { return true }
     visible() { return true }
     renderIfVisible() {
@@ -5167,6 +5198,8 @@ class Handle extends InteractiveObject {
         }
         this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 10)
         this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 10)
+        this.xcon.stage = 0
+        this.ycon.stage = 0
         if (!this.figure.renderNeeded) {
             this.figure.renderNeeded = true
             setTimeout(() => this.figure.renderIfDirty(true), 0) // collapse multiple renders
@@ -5175,6 +5208,7 @@ class Handle extends InteractiveObject {
     active() { return true }
     visible() { return true }
     toString() { return "Handle" }
+    variables() { return [this.x_, this.y_] }
 }
 
 class Button extends InteractiveObject {

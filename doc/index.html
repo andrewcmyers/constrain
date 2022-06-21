@@ -739,7 +739,8 @@ Adds and returns a constraint that the expression <code>e</code> is greater than
 
 <h4>leq(...e)</h4>
 <p>
-Adds and returns a constraint that each expression in the list <code>e</code> is less than or equal to the next.
+Adds and returns a constraint that each expression in the list <code>e</code>
+is less than or equal to the next.
 </p>
 
 <h4>pin(...o)</h4>
@@ -786,6 +787,16 @@ return this element.</p>
 <h4>setH(h)</h4>
 <p>Constrain the height of this element to be <code>w</code> and
 return this element.</p>
+
+<h4>placeUnder(obj), placeOver(obj)</h4>
+<p>
+These method do not affect the positioning of graphical objects, but they affect the
+order in which objects are rendered. They respectively cause the receiver object to 
+be rendered immediately before or immediately after the specified object. Note that
+by default, graphical objects are rendered in exactly the order they are created, so
+this method allows objects to be defined out of order with respect to the rendering
+order.
+</p>
 
 <h3>Costs</h3>
 <p>
@@ -916,8 +927,9 @@ solutions. The call returns the expression <code>e</code>.
 <p>
 The class <code>Global</code> represents an expression whose value may change but which is
 not affected by any variables that are solved for. Its value is provided by a function <code>f</code>
-passed to the constructor. It is useful for interfacing Constrain diagrams with external data
-sources.
+passed to the constructor. The function is expected to return a number or array of numbers.
+This class is used to interface Constrain diagrams with external data sources such as the user
+interface.
 </p>
 
 <h4>new DebugExpr(e)</h4>
@@ -1042,9 +1054,9 @@ These methods each return a point that is the center of one of the edges of the
 bounding box of the object.
 </p>
 <h4>toTop(d), toBottom(d), toRight(d), toLeft(d)</h4>
-<p> These methods can be used to nudge the position of a point or object in the
-specified direction by distance <code>d</code>, returning the resulting point.
-When applied to a graphical object, the starting position is respectively, the
+<p> These methods can be used to nudge the position of a point in the
+specified direction by distance <code>d</code>, returning the new resulting point.
+When applied to a graphical object, the starting position is respectively the
 result of <code>uc()</code>, <code>lc()</code>, <code>cr()</code>, or
 <code>cl()</code>. It is possible for the nudge distance to be negative, which is useful
 for nudging a point into the interior of a graphical object.
@@ -1057,7 +1069,7 @@ object, except moved outward by distance <code>d</code>.
 </p>
 
 <h3>Line positioning methods</h3>
-<h4>p1(), p2()</h4>
+<h4>start(), end()</h4>
 <p>
 These methods return the points corresponding to the start and end of the line.
 </p>
@@ -1318,6 +1330,17 @@ help resolve the problem.
 One possibility is that your constraints are actually unsolvable, so the solver is doing
 the best it can by balancing multiple unsolved constraints. Another possibility is that 
 the solver is getting stuck in a local minimum.
+</p>
+<h3>Debugging unsolvable constraints</h3>
+<ul>
+<li>
+</ul>
+<h3>Escaping local minima</h3>
+<ul>
+<li>Hints
+<li>Staging
+<li>Changing constraint costs
+</ul>
 
 <h2>Generating printable diagrams</h2>
 <p>
