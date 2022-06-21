@@ -95,7 +95,6 @@ with (figure) {
         let inscribed = circle("#ffe")
         inscribed.placeOver(triangle)
         let incenter = inscribed.center()
-        if (centroid && !incenter.x().currentValue) hint(incenter, centroid)
         keepInside(inscribed, triangle).changeCost(10)
         new Array(h1, p2, p3).forEach(p => 
             line().setStart(p).setEnd(incenter).setLineDash([2,6]).setStrokeStyle("#800")
@@ -103,16 +102,17 @@ with (figure) {
         dot().at(incenter)
         align("abut", "center", incenter, hspace(7), label("incenter"))
         const ip1 = point(), ip2 = point(), ip3 = point()
-        between(ip1, h1, p2)
-        between(ip2, p2, p3)
-        between(ip3, p3, h1)
+        between(ip1, h1, p2).changeCost(1000)
+        between(ip2, p2, p3).changeCost(1000)
+        between(ip3, p3, h1).changeCost(1000)
+
         perpendicular(incenter, ip1, h1, p2)
         perpendicular(incenter, ip2, p2, p3)
         perpendicular(incenter, ip3, p3, h1)
         const di1 = distance(ip1, incenter),
               di2 = distance(ip2, incenter),
               di3 = distance(ip3, incenter)
-        equal(di1, di2, di3, times(0.5, inscribed.w()))
+        equal(times(0.5, inscribed.w()), di1, di2, di3)
     }
 
     if (ORTHOCENTER) {
@@ -138,6 +138,7 @@ with (figure) {
 
     updateValuation()
     removeConstraints(temp1, temp2)
+
 
     start()
 }

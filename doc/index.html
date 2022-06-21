@@ -1315,6 +1315,26 @@ effectively freezes all previously created objects in place, with their position
 determined only by the constraints created up to this point.
 </p>
 <p>
+For example, the following code declares a square with no constraints on its
+size or position, but solving the subsequent constraints on the circle
+does not move the square even though the square is unconstrained.
+</p>
+<pre class=code id="freeze_code_ex"></pre>
+<div id="freeze_ex" style="margin: 1em">
+<canvas id=freeze_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("freeze_ex_fig")) {
+    const s = square().setFillStyle("#edf")
+    freeze()
+    const c = circle().setW(7)
+    equal(50, distance(c, s.ul()), distance(c, s.ll()))
+  }
+</script>
+</div>
+<script>
+  show_example("freeze_code_ex", "freeze_ex")
+</script>
+<p>
 Note that stages have nothing to do with animation frames; the same stages
 exist for all frames. Stages simply define the order in which solving will be
 done for any frame.
@@ -1323,7 +1343,8 @@ done for any frame.
 <h2>Tips and Tricks</h2>
 <p>
 Sometimes you create a set of constraints and the solver just seems to refuse to find the
-right solution, or it is not consistent about finding the right solution. A few tips may
+right solution, or it is not consistent about finding the right solution. Automation
+is great when it works but frustrating when it doesn't!  A few tips may
 help resolve the problem.
 </p>
 <p>
@@ -1333,13 +1354,35 @@ the solver is getting stuck in a local minimum.
 </p>
 <h3>Debugging unsolvable constraints</h3>
 <ul>
-<li>
+<li>Try commenting out constraints until you figure out which constraints are causing
+trouble.
 </ul>
+</li>
 <h3>Escaping local minima</h3>
 <ul>
-<li>Hints
-<li>Staging
-<li>Changing constraint costs
+<li><b>Keep constraints simple</b>. It's always better to express constraints in a
+simple way rather than adding complexity for the solver. For example, if you are expressing
+horizontal or vertical distance constraints, it's better to write constraints directly on
+the coordinates rather than using <code>distance()</code>. If you use <code>equal()</code>
+to set several things equal to each other, make sure the simplest expression comes first
+in the list, since it is the one that will be set equal to the rest.
+<li><b>Bounding constraints.</b> Constraints that keep the solution reasonable are often
+handy. Methods like <code>keepInside</code> and <code>between</code> are useful for this
+task, as are the humble <code>leq()</code> and <code>geq</code>.
+</li>
+<li><b>Hints.</b> The solver works by changing the values of variables to minimize
+  loss, which is the difference between a perfect solution and the current solution.
+  A perfectly solved constraint has zero cost and causes zero loss.
+  The initial values of variables can make a big difference in which solution is found
+  or how fast. Variables can be given a hinted value that defines the initial conditions
+                  of the constraint solver, using the <code>setHint()</code> method.
+<li><b>Staging.</b> The figure's <code>freeze()</code> can be used to break solving into
+      multiple stages, simplifying the solver's task in each stage.
+<li><b>Changing constraint costs.</b> If some constraints are being violated — especially
+bounding constraints — try increasing the cost of violating them using the <code>changeCost</code>
+method. Increasing cost will cause the solver to prioritize solving those constraints.
+An order-of-magnitude increase in cost in a constraint is usually
+sufficient to prevent other constraints from overriding it.
 </ul>
 
 <h2>Generating printable diagrams</h2>
@@ -1397,8 +1440,9 @@ dimensions become point dimensions. The figure therefore becomes
 correspondingly larger, although since PostScript and PDF are resolution-independent
 page descriptions, the generated figures are easily rescaled.
 </p>
-<p>The support for PDF depends on the jsPDF package, so HTML documents using PDF
-should include thas package, with a line like the following:
+<p>Support for PDF depends on
+<a href="https://github.com/parallax/jsPDF">the jsPDF package</a>, so HTML documents using PDF
+should include this package, with a line like the following:
 <pre>
     &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"&gt;&lt;/script&gt;
 </pre>

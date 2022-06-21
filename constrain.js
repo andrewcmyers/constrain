@@ -204,6 +204,7 @@ class Figure {
             if (v.currentValue != null) result[i] = v.currentValue
             else if (v.hint != null) result[i] = v.hint
             else result[i] = 100
+            v.currentValue = result[i]
         }
         return result
     }
@@ -696,7 +697,7 @@ class Figure {
         if (t) {
             let counter = 0
             this.registerCallback(new SolverCallback("animateSolving",
-                () => { console.log("counter=" + counter); counter++; return counter < 1000; }))
+                () => { counter++; return counter < 1000; }))
         } else {
             this.unregisterCallback("animateSolving")
         }
@@ -1682,7 +1683,7 @@ class Variable extends Expression {
             }
             return [valuation[this.index], g]
         } else {
-            return valuation[this.index]
+            return valuation[this.index] || 0
         }
     }
     backprop(valuation, d) {}
@@ -3252,9 +3253,6 @@ class Rectangle extends GraphicalObject {
     setCornerRadius(r) {
         this.cornerRadius = legalExpr(r)
         return this
-    }
-    toString() {
-        return "Rectangle(" + this.x() + "," + this.y() + ")"
     }
 }
 
