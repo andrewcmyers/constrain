@@ -455,6 +455,13 @@ the font size.
 Create a text object for whitespace that is an allowed position for a line break.
 </p>
 
+<h4>numericText(expr, precision)</h4>
+<p>
+Create a text object containing the value of the expression <code>expr</code>,
+which can solved for.  The optional parameter <code>precision</code> specifies
+the number of digits of precision, which is 2 by default.
+</p>
+
 <h3>Interactive objects</h3>
 
 <h4>handle(style)</h4>
@@ -787,10 +794,13 @@ minimize a total cost over all constraints. Every constraint has an associated c
 that is equal to 1 by default. Usually this does not need to be changed, but it can be useful
 to change the cost of some constraints to make them softer or harder constraints relative to
 other constraints.
+</p>
 <h4>changeCost(c)</h4>
 <p>
 This method can be invoked on <code>Constraint</code> objects to multiply the current cost by
-the factor <code>c</code>
+the factor <code>c</code>. This method can be very helpful for getting the solver out of local
+minima, for example by using <code>leq</code> or <code>geq</code> with a high cost to pull
+variables and points forcibly to the correct side of a diagram.
 </p>
 <h3>Expressions</h3>
 <p>
@@ -1297,6 +1307,17 @@ Note that stages have nothing to do with animation frames; the same stages
 exist for all frames. Stages simply define the order in which solving will be
 done for any frame.
 </p>
+
+<h2>Tips and Tricks</h2>
+<p>
+Sometimes you create a set of constraints and the solver just seems to refuse to find the
+right solution, or it is not consistent about finding the right solution. A few tips may
+help resolve the problem.
+</p>
+<p>
+One possibility is that your constraints are actually unsolvable, so the solver is doing
+the best it can by balancing multiple unsolved constraints. Another possibility is that 
+the solver is getting stuck in a local minimum.
 
 <h2>Generating printable diagrams</h2>
 <p>
