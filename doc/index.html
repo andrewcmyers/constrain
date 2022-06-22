@@ -1423,11 +1423,11 @@ with (fig) {
                     .addText("Square")
                     .setFontName("Palatino")
   handle().at(s.lr())
-  align("left", "top", s, canvasRect().inset(2))
+  align("left", "top", s, margin(2))
   align("abut", "bottom",
     new Constrain.PS.PrintButton(fig), hspace(8),
     new Constrain.PDF.PrintButton(fig),
-    canvasRect().inset(2).lr())
+        margin().lr())
 }
 </script>
 </div>
