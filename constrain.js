@@ -5118,6 +5118,8 @@ class InteractiveObject extends LayoutObject {
 }
 InteractiveObject.prototype.renderIfVisible = GraphicalObject.prototype.renderIfVisible
 InteractiveObject.prototype.visible = GraphicalObject.prototype.visible
+InteractiveObject.prototype.placeOver = GraphicalObject.prototype.placeOver
+InteractiveObject.prototype.placeUnder = GraphicalObject.prototype.placeUnder
 
 // A handle that can be dragged interactively.
 class Handle extends InteractiveObject {

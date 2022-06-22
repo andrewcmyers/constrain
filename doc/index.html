@@ -250,7 +250,8 @@ length.
     equal(p2.y(), p3.y())
     setFillStyle("#dfd")
     polygon(p1, p2, p3).at(canvasRect())
-                       .setCornerRadius(10)
+                       .setCornerRadius(10);
+    [p1, p2, p3].map(p => circle().setW(2).at(p))
   }
 </script>
 </div>
@@ -269,7 +270,7 @@ Control points can be repeated to introduce sharp vertices in the curve.
 <canvas id=curve_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("curve_ex_fig")) {
-    const c = canvasRect()
+    const c = margin()
     align("LR", "TB", rectangle().setFillStyle(null)
                                  .setLineDash([6,6]),
                       c)
@@ -324,7 +325,7 @@ like B-splines (which are smoother) in the middle.
         c2 = circle().setW(30).at(c1.toRight(100)),
         t = average(c1, c2).toTop(20),
         b = average(c1, c2).toBottom(40),
-        h = handle()
+        h = handle().setStrokeStyle("red")
     polygon(c2, t, c1, b)
         .setFillStyle(null)
         .setLineDash([4,4])
@@ -333,8 +334,9 @@ like B-splines (which are smoother) in the middle.
         .setEndArrow("arrow")
     connector(c2, b, c1)
         .setEndArrow("arrow")
-    connector(c2, h, c1, c2).setLineWidth(3)
-        .setEndArrow("curved")
+    h.placeOver(
+      connector(c2, h, c1, c2).setLineWidth(3)
+        .setEndArrow("curved"))
   }
 </script>
 </div>
