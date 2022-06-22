@@ -16,7 +16,7 @@ const Figures = []
 // Various switches and constants control the default appearance of figures.
 
 const USE_BACKPROPAGATION = true,
-      CACHE_ALL_EVALUATIONS = false,
+      CACHE_ALL_EVALUATIONS = true,
       CHECK_NAN = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17

@@ -1340,7 +1340,7 @@ exist for all frames. Stages simply define the order in which solving will be
 done for any frame.
 </p>
 
-<h2>Tips and Tricks</h2>
+<h2>Debugging Tips</h2>
 <p>
 Sometimes you create a set of constraints and the solver just seems to refuse to find the
 right solution, or it is not consistent about finding the right solution. Automation
@@ -1355,7 +1355,11 @@ the solver is getting stuck in a local minimum.
 <h3>Debugging unsolvable constraints</h3>
 <ul>
 <li>Try commenting out constraints until you figure out which constraints are causing
-trouble.
+trouble. Then add constraints back in gradually.
+<li>
+If you're trying to understand what is happening with some variable or expression,
+wrap it in a <code>DebugExpr</code>, which will cause its value during solving
+to be logged to the console.
 </ul>
 </li>
 <h3>Escaping local minima</h3>
