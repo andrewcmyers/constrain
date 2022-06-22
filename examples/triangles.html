@@ -128,9 +128,12 @@ with (figure) {
         perpendicular(h1, p2, p3, op1)
         perpendicular(p2, p3, h1, op2)
         perpendicular(p3, h1, p2, op3)
-        line().setStart(p3).setEnd(op1).setLineDash([2, 6, 4, 6])
-        line().setStart(h1).setEnd(op2).setLineDash([2, 6, 4, 6])
-        line().setStart(p2).setEnd(op3).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op1).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op2).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op3).setLineDash([2, 6, 4, 6])
+        line().setStart(p3).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        line().setStart(h1).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        line().setStart(p2).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
         if (CIRCUMCENTER && ORTHOCENTER) {
             line().setLineWidth(1).setStart(circum).setEnd(orthocenter)
         }
