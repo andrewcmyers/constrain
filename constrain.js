@@ -17,6 +17,7 @@ const Figures = []
 
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = true,
+      PROFILE_EVALUATIONS = true,
       CHECK_NAN = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
@@ -367,13 +368,12 @@ class Figure {
     }
     updateValuation(tol) {
       let solution, figure = this
-      evaluations = 0
+      if (PROFILE_EVALUATIONS) evaluations = 0
       for (let stage = 0; stage < this.numStages; stage++) {
         this.activeStage = stage
         this.numberVariables(stage)
         const stageVariables = this.activeVariables
         delete this.activeComponent
-        // console.log("Solving stage " + stage + ", " + stageVariables.length + " variables")
         const components = this.computeComponents(stage)
         for (const component of components) {
             this.activeComponent = component
@@ -386,10 +386,15 @@ class Figure {
             this.activeConstraints = activeConstraints
             console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
             solution = this.solveConstraints(this.currentValuation, tol)
-            console.log("  evaluations = " + evaluations)
+            if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
         }
       }
-      console.log("Total evaluations: " + evaluations)
+      if (PROFILE_EVALUATIONS) {
+        console.log("Total evaluations: " + evaluations)
+        for (const [k, v] of evaluationCounts.entries()) {
+            console.log("  expr: " + k + ", evaluations: " + v)
+        }
+      }
       return solution
     }
     // Register a callback to be invoked at every solver step
@@ -1793,13 +1798,17 @@ function exprVariables(e) {
     return e.cachedVariables
 }
 
-let evaluations = 0
+let evaluations = 0,
+    evaluationCounts = new Map()
 
 // The value of expression expr in the given valuation (an array of variable values).
 // If doGrad is true, it returns an array [v, g] where is the value of the expression and
 // g is its gradient with respect to all the variables.
 function evaluate(expr, valuation, doGrad) {
-    evaluations++
+    if (PROFILE_EVALUATIONS) {
+        evaluations++
+        evaluationCounts.set(expr, 1 + (evaluationCounts.get(expr) || 0))
+    }
     switch (typeof expr) {
         case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
