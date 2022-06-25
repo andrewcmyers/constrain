@@ -1,4 +1,4 @@
-# [Constrain](https://andrewcmyers.github.io/constrain/) - a JS (ES6) library for responsive, animated figures, based on declarative constraint solving
+# [Constrain](https://andrewcmyers.github.io/constrain/) - a JS (ES6) library for animated, interactive figures, based on declarative constraint solving
 ![Triangle image](images/triangle.png)
 - Responsive, animated figures embedded in web pages
 - Figures implemented declaratively with time-dependent constraints on graphical objects
@@ -19,7 +19,7 @@ Cornell University course notes using Constrain for embedded figures: [CS 2112](
 
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
-[Animated solving of triangle constraints](https://andrewcmyers.github.io/constrain/examples/triangles.html)
+[Interactively computing centers of a triangle](https://andrewcmyers.github.io/constrain/examples/triangles.html)
 
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
