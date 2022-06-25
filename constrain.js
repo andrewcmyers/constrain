@@ -391,8 +391,13 @@ class Figure {
       }
       if (PROFILE_EVALUATIONS) {
         console.log("Total evaluations: " + evaluations)
-        for (const [k, v] of evaluationCounts.entries()) {
-            console.log("  expr: " + k + ", evaluations: " + v)
+        const entries = []
+        for (const e of evaluationCounts.entries()) {
+            entries.push(e)
+        }
+        const sorted = entries.sort((a, b) => b[1] - a[1])
+        for (let i = 0; i < sorted.length; i++) {
+            console.log("  expr: " + sorted[i][0] + ", evaluations: " + sorted[i][1])
         }
       }
       return solution
