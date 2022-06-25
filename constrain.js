@@ -85,6 +85,7 @@ class Figure {
         this.figure = this
         if (typeof canvas == OBJECT_STR && canvas.constructor == HTMLCanvasElement) {
             this.canvas = canvas
+            this.name = canvas.id
         } else if (typeof canvas == "string") {
             const c = document.getElementById(canvas)
             if (c) {
@@ -212,7 +213,7 @@ class Figure {
         if (!valuation) valuation = this.currentValuation
         return evaluate(e, valuation, doGrad)
     }
-    numberVariables(stage) {
+    numberVariables(stage, component) {
         let i = 0
         const a = [], frame = this.currentFrame
         this.Variables.forEach(v => v.removeIndex())
@@ -222,6 +223,7 @@ class Figure {
                 return
             }
             if (v.index !== undefined) return
+            if (component && v.variableComponent() !== component) return
             if (v.constructor != Variable) console.error("not a variable: " + v)
             v.setIndex(i)
             a.push(v)
@@ -238,8 +240,7 @@ class Figure {
         })
         this.activeVariables = a
     }
-    resetValuation(stage) {
-        this.numberVariables(stage)
+    resetValuation() {
         this.currentValuation = this.initialValuation()
     }
     // Add one or more constraints that should be satisfied
@@ -303,10 +304,14 @@ class Figure {
     }
 
     setupBackPropagation(task) {
+        let n = 0
         this.Constraints.forEach(con => {
             if (!this.isActiveConstraint(con)) return
+            n++
+            // console.log("  active constraint: " + con)
             con.addToTask(task)
         })
+        // console.log(`Created backpropagation task with ${task.exprs.length} expressions from ${n} active constraints`)
     }
 
     // Compute the total cost of the constraints, and the gradient of
@@ -314,8 +319,7 @@ class Figure {
     // symbolic differentiation.
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
-        this.Constraints.forEach(con => {
-            if (!this.isActiveConstraint(con)) return
+        this.activeConstraints.forEach(con => {
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -333,14 +337,56 @@ class Figure {
             return [cost, dcost]
         }
     }
+    computeComponents(stage) {
+        for (const v of this.activeVariables) {
+            delete v.component
+        }
+        this.Constraints.forEach(c => {
+            if (c.active())
+                c.variables().forEach(v1 => {
+                    if (v1.stage != stage) return
+                    const v1c = v1.variableComponent()
+                    c.variables().forEach(v2 => {
+                        if (v2.stage != stage) return
+                        const v2c = v2.variableComponent()
+                        if (v1c !== v2c) {
+                        v1c.component = v2c
+                        }
+                    })
+                })
+        })
+        const components = []
+        for (const v of this.activeVariables) {
+            const c = v.variableComponent()
+            c.component = c
+            if (!components.includes(c)) {
+                components.push(c)
+            }
+        }
+        // console.log(this.name + ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+        return components
+    }
     updateValuation(tol) {
-      let solution
+      let solution, figure = this
       for (let stage = 0; stage < this.numStages; stage++) {
         this.activeStage = stage
         this.numberVariables(stage)
-        this.resetValuation(stage)
-        // console.log("Solving stage " + stage + ", " + this.activeVariables.length + " variables")
-        solution = this.solveConstraints(this.currentValuation, tol)
+        const stageVariables = this.activeVariables
+        delete this.activeComponent
+        // console.log("Solving stage " + stage + ", " + stageVariables.length + " variables")
+        const components = this.computeComponents(stage)
+        for (const component of components) {
+            this.activeComponent = component
+            this.numberVariables(stage, component)
+            this.resetValuation()
+            const activeConstraints = []
+            this.Constraints.forEach(con => {
+                if (figure.isActiveConstraint(con)) activeConstraints.push(con)
+            })
+            this.activeConstraints = activeConstraints
+            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables`)
+            solution = this.solveConstraints(this.currentValuation, tol)
+        }
       }
       return solution
     }
@@ -501,7 +547,7 @@ class Figure {
             console.log("Document is ready, starting first frame")
             this.startCurrentFrame()
         } else {
-            console.log("Document is not ready, starting listener")
+            // console.log("Document is not ready, starting listener")
             window.addEventListener('load', () => {
                 console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
@@ -1617,7 +1663,7 @@ class Expression {
         this.cachedResult = result
         return result
     }
-    variables() { return [] }
+    variables() { return new Set() }
     initDiff() { this.bpDiff = 0 }
     // actually propagate differentials backward to dependencies
     backprop(task) {
@@ -1669,7 +1715,9 @@ class Variable extends Expression {
     }
     evaluate(valuation, doGrad) {
         if (this.index === undefined) {
-            return this.currentValue || this.hint || (console.log("undefined variable??"), 0)
+            return this.currentValue
+                || this.hint
+                || (console.error("undefined variable??"), 0)
         }
         if (doGrad) {
             let g = this.grad, n = valuation.length
@@ -1701,7 +1749,15 @@ class Variable extends Expression {
     toString() {
         return this.basename
     }
-    variables() { return [this] }
+    variables() { return new Set().add(this) }
+    variableComponent() {
+        if (this.component !== undefined && this.component != this) {
+            const v = this.component.variableComponent()
+            this.component = v
+            return v
+        }
+        return this
+    }
 }
 
 // This variable caches an array of zeros of the appropriate length
@@ -1725,12 +1781,14 @@ function statistics() {
 
 // The variables used by expression e.
 function exprVariables(e) {
+    if (e.cachedVariables) return e.cachedVariables
     if (e === undefined)
         console.error("undefined expr")
-    if (typeof e === NUMBER || e.constructor == Array) return []
+    if (typeof e === NUMBER || e.constructor == Array) return new Set()
     if (!e.variables)
         console.error("no variables method")
-    return e.variables()
+    e.cachedVariables = e.variables()
+    return e.cachedVariables
 }
 
 // The value of expression expr in the given valuation (an array of variable values).
@@ -1870,6 +1928,13 @@ class BackPropagation {
     }
 }
 
+function union(s1, s2) {
+    const result = new Set()
+    for (const e of s1) result.add(e)
+    for (const e of s2) result.add(e)
+    return result
+}
+
 // A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
@@ -1898,7 +1963,7 @@ class BinaryExpression extends Expression {
         task.prepareBackProp(this.e2)
     }
     variables() {
-        return exprVariables(this.e1).concat(exprVariables(this.e2))
+       return union(exprVariables(this.e1), exprVariables(this.e2))
     }
 }
 
@@ -1998,8 +2063,8 @@ class NaryExpression extends Expression {
         else return this.operation(vals)
     }
     variables() {
-        let result = []
-        this.args.forEach(e => { result = result.concat(exprVariables(e)) })
+        let result = new Set()
+        this.args.forEach(e => { result = union(result, exprVariables(e)) })
         return result
     }
     backprop(task) { // for ops like min and max that depend on only on argument this.which
@@ -2140,7 +2205,7 @@ class Distance extends Expression {
         task.prepareBackProp(this.p2)
     }
     variables() {
-        return exprVariables(this.p1).concat(exprVariables(this.p2))
+        return union(exprVariables(this.p1), exprVariables(this.p2))
     }
     toString() { return "distance(" + this.p1 + "," + this.p2 + ")" }
 }
@@ -2274,9 +2339,8 @@ class Conditional extends Expression {
         this.bpDiff = 0
     }
     variables() {
-        return exprVariables(this.cond)
-               .concat(exprVariables(this.epos))
-               .concat(exprVariables(this.eneg))
+        return union(union(exprVariables(this.cond), exprVariables(this.epos)),
+                     exprVariables(this.eneg))
     }
     backprop(task) {
         const cond = this.cond.currentValue
@@ -2303,7 +2367,7 @@ class Time extends Expression {
         const t = this.figure.animationTime
         return doGrad ? [t, getZeros(valuation.length)] : t
     }
-    variables() { return [] }
+    variables() { return new Set() }
     backprop(task) {}
     toString() {
         return "Time"
@@ -2355,6 +2419,9 @@ class Linear extends Expression {
     x() { return new Projection(this, 0, 2) }
     y() { return new Projection(this, 1, 2) }
 
+    variables() {
+        return union(exprVariables(this.e1), exprVariables(this.e2))
+    }
     backprop(task) {
       const b = this.interp(this.figure.animationTime), a = 1-b,
             figure = this.figure
@@ -2439,7 +2506,6 @@ class Temporal {
         this.figure = figure
     }
     active() { return true }
-
     // Is this object visible in frame f?
     visible() { return true }
 
@@ -2494,7 +2560,7 @@ class TemporalFilter extends Temporal {
     }
     variables() {
         if (this.active()) return this.obj.variables() 
-        else return []
+        else return new Set()
     }
     installHolder(figure, holder, child) {
         this.obj.installHolder(figure, holder, child)
@@ -2587,7 +2653,7 @@ class Constraint extends Temporal {
         console.error("No addToTask function defined for this constraint " + this.constructor)
         return
     }
-    variables() { return [] }
+    variables() { return new Set() }
     installHolder(figure, holder, child) {
         if (child.parent !== undefined) {
             console.error("Child Constraint already has a parent")
@@ -2608,8 +2674,21 @@ class Constraint extends Temporal {
         this.cost *= cost
         return this
     }
+    // Does this constraint need to be solved for in the specified stage, for
+    // component c? If c is omitted, checks for the whole stage
     active() {
-        return this.stage <= this.figure.activeStage
+        if (this.stage > this.figure.activeStage) return false
+        const c = this.figure.activeComponent
+        if (c === undefined) return true
+        const vars = this.variables()
+        let result = false
+        vars.forEach(v => {
+            if (v.variableComponent() === c) result = true
+        })
+        return result
+    }
+    toString() {
+        return "Constraint"
     }
 }
 
@@ -2635,6 +2714,9 @@ class Loss extends Constraint {
     }
     variables() {
         return exprVariables(this.expr)
+    }
+    toString() {
+        return "Loss"
     }
 }
 
@@ -2683,9 +2765,9 @@ class ConstraintGroup extends Constraint {
         // return constraintsCost(this.constraints, valuation, doGrad)
     }
     variables() {
-        let r = []
+        let r = new Set()
         this.constraints.forEach(c => {
-            r = r.concat(c.variables())
+            r = union(r, c.variables())
         })
         return r
     }
@@ -2695,6 +2777,9 @@ class ConstraintGroup extends Constraint {
     changeCost(x) {
         this.constraints.forEach(c => c.changeCost(x))
         return this
+    }
+    toString() {
+        return "ConstraintGroup[" + this.constraints.toString() + "]"
     }
 }
 
@@ -2729,7 +2814,7 @@ class LayoutObject extends Expression {
     height() { return this.h() }
     w() { return 0 }
     h() { return 0 }
-    variables() { return [] }
+    variables() { return new Set() }
     connectionPts() {
         return [
                 new Point(this.x(), this.y()),
@@ -2789,7 +2874,7 @@ class LayoutObject extends Expression {
     }
     renderIfVisible() { }
     variables() {
-        return []
+        return new Set()
     }
     // Any LayoutObject can be used as an expression, in which case it represents
     // its (x,y) position. By default, LayoutObjects cache their results.
@@ -2921,7 +3006,7 @@ class Box extends LayoutObject {
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
-        return [this.x_, this.y_, this.w_, this.h_]
+        return new Set().add(this.x_).add(this.y_).add(this.w_).add(this.h_)
     }
 // convenience methods for positioning (by adding constraints)
 
@@ -3122,7 +3207,7 @@ class Point extends LayoutObject {
     x() { return this.x_ }
     y() { return this.y_ }
     variables() {
-        return exprVariables(this.x()).concat(exprVariables(this.y()))
+        return union(exprVariables(this.x()), exprVariables(this.y()))
     }
     toString() {
         return "Point(" + this.x_ + "," + this.y_ + ")"
@@ -3144,10 +3229,10 @@ class Group extends GraphicalObject {
         })
     }
     variables() {
-        const result = [], g = this
+        const result = new Set(), g = this
         this.objects.forEach(o => {
             o.variables().forEach(v => {
-                result.push(v)
+                result.add(v)
             })
         })
         return result
@@ -3530,7 +3615,7 @@ class Polygon extends GraphicalObject {
     variables() {
         let result = GraphicalObject.prototype.variables.call(this)
         this.points.forEach(p => {
-            result = result.concat(exprVariables(p))
+            result = union(result, exprVariables(p))
         })
         return result
     }
@@ -3857,7 +3942,7 @@ class Line extends GraphicalObject {
         return new Average(this.p1, this.p2)
     }
     variables() {
-        return exprVariables(this.p1).concat(exprVariables(this.p2))
+        return union(exprVariables(this.p1), exprVariables(this.p2))
     }
 }
 
@@ -4026,9 +4111,9 @@ class Connector extends GraphicalObject {
         return this
     }
     variables() {
-        let r = []
+        let r = new Set()
         this.objects.forEach(o =>
-            r = r.concat(exprVariables(o)))
+            r = union(r, exprVariables(o)))
         return r
     }
     className() {
@@ -5208,7 +5293,7 @@ class Handle extends InteractiveObject {
     active() { return true }
     visible() { return true }
     toString() { return "Handle" }
-    variables() { return [this.x_, this.y_] }
+    variables() { return new Set().add(this.x_).add(this.y_) }
 }
 
 class Button extends InteractiveObject {
