@@ -18,6 +18,7 @@ const Figures = []
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = true,
+      REPORT_EVALUATED_EXPRESSIONS = false,
       CHECK_NAN = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
@@ -391,6 +392,7 @@ class Figure {
       }
       if (PROFILE_EVALUATIONS) {
         console.log("Total evaluations: " + evaluations)
+        if (REPORT_EVALUATED_EXPRESSIONS) {
         const entries = []
         for (const e of evaluationCounts.entries()) {
             entries.push(e)
@@ -398,6 +400,7 @@ class Figure {
         const sorted = entries.sort((a, b) => b[1] - a[1])
         for (let i = 0; i < sorted.length; i++) {
             console.log("  expr: " + sorted[i][0] + ", evaluations: " + sorted[i][1])
+        }
         }
       }
       return solution
