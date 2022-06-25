@@ -17,7 +17,7 @@ const Figures = []
 
 const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = true,
-      PROFILE_EVALUATIONS = true,
+      PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
       CHECK_NAN = true,
       COMPARE_GRADIENTS = false,
@@ -312,7 +312,7 @@ class Figure {
             // console.log("  active constraint: " + con)
             con.addToTask(task)
         })
-        console.log(`Created backpropagation task with ${task.exprs.length} expressions from ${n} active constraints`)
+        // console.log(`Created backpropagation task with ${task.exprs.length} expressions from ${n} active constraints`)
     }
 
     // Compute the total cost of the constraints, and the gradient of
@@ -376,7 +376,7 @@ class Figure {
         this.numberVariables(stage)
         const stageVariables = this.activeVariables
         const components = this.computeComponents(stage)
-        console.log(`Stage ${stage}: ${components.length} components`)
+        // console.log(`Stage ${stage}: ${components.length} components`)
         for (const component of components) {
             this.activeComponent = component
             this.numberVariables(stage, component)
@@ -386,8 +386,9 @@ class Figure {
                 if (figure.isActiveConstraint(con)) activeConstraints.push(con)
             })
             this.activeConstraints = activeConstraints
-            console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
-            solution = this.solveConstraints(this.currentValuation, tol)
+            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
+            solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
+            component.invHessian = solution[2]
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
         }
       }
@@ -424,7 +425,9 @@ class Figure {
             }
         }
     }
-    solveConstraints(valuation, tol) {
+    // Run the minimization-based solver. The parameter invHessian is optional, useful
+    // for incrementally solving from a previous solution.
+    solveConstraints(valuation, tol, invHessian) {
         let doGrad = true, fig = this
         if (valuation === undefined) {
             console.error("Need initial valuation")
@@ -443,9 +446,8 @@ class Figure {
                 return false
             }
         }
-        if (this.invHessian && this.invHessian.length != valuation.length) this.invHessian = undefined
         const minimizationOptions = this.minimizationOptions
-        const uncmin_options = {Hinv: this.invHessian,
+        const uncmin_options = {Hinv: invHessian,
                                 stepSize: minimizationOptions.UNCMIN_STEPSIZE,
                                 overshoot: minimizationOptions.UNCMIN_OVERSHOOT,
                                 maxit: minimizationOptions.UNCMIN_MAXIT}
@@ -458,10 +460,9 @@ class Figure {
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
-        console.log(result)
-        this.invHessian = result.invHessian
+        // console.log(result)
         // if (result.message != CALLBACK_RETURNED_TRUE) console.log(result.message)
-        return [result.solution, result.message != CALLBACK_RETURNED_TRUE]
+        return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian]
     }
 
 // Rendering
