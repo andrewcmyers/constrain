@@ -1804,14 +1804,21 @@ function evaluate(expr, valuation, doGrad) {
             if (Array.isArray(expr)) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
             } else {
-                const r = CACHE_ALL_EVALUATIONS
-                    ? expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
-                    : expr.evaluate(valuation, doGrad)
-                if (CHECK_NAN && checkNaNResult(r)) {
-                    console.error("result is NaN")
+                if (CACHE_ALL_EVALUATIONS) {
+                    const result1 = expr.checkCache(valuation, doGrad)
+                    if (result1) return result1
+                    const result2 = expr.evaluate(valuation, doGrad)
+                    if (CHECK_NAN && checkNaNResult(result2)) {
+                        console.error("result is NaN")
+                    }
+                    expr.recordCache(valuation, doGrad, result2)
+                    expr.currentValue = result2
+                    return result2
+                } else {
+                    const r = expr.evaluate(valuation, doGrad)
+                    expr.currentValue = r
+                    return r
                 }
-                expr.currentValue = r
-                return r
             }
     }
 }
