@@ -305,8 +305,7 @@ class Figure {
 
     setupBackPropagation(task) {
         let n = 0
-        this.Constraints.forEach(con => {
-            if (!this.isActiveConstraint(con)) return
+        this.activeConstraints.forEach(con => {
             n++
             // console.log("  active constraint: " + con)
             con.addToTask(task)
@@ -387,6 +386,7 @@ class Figure {
             this.activeConstraints = activeConstraints
             console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
             solution = this.solveConstraints(this.currentValuation, tol)
+            console.log("  evaluations = " + evaluations)
         }
       }
       console.log("Total evaluations: " + evaluations)
