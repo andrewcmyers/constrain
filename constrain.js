@@ -384,7 +384,7 @@ class Figure {
                 if (figure.isActiveConstraint(con)) activeConstraints.push(con)
             })
             this.activeConstraints = activeConstraints
-            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables`)
+            console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
             solution = this.solveConstraints(this.currentValuation, tol)
         }
       }
