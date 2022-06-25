@@ -339,6 +339,7 @@ class Figure {
         }
     }
     computeComponents(stage) {
+        delete this.activeComponent
         for (const v of this.activeVariables) {
             delete v.component
         }
@@ -374,8 +375,8 @@ class Figure {
         this.activeStage = stage
         this.numberVariables(stage)
         const stageVariables = this.activeVariables
-        delete this.activeComponent
         const components = this.computeComponents(stage)
+        console.log(`Stage ${stage}: ${components.length} components`)
         for (const component of components) {
             this.activeComponent = component
             this.numberVariables(stage, component)
