@@ -368,6 +368,7 @@ class Figure {
     }
     updateValuation(tol) {
       let solution, figure = this
+      evaluations = 0
       for (let stage = 0; stage < this.numStages; stage++) {
         this.activeStage = stage
         this.numberVariables(stage)
@@ -388,6 +389,7 @@ class Figure {
             solution = this.solveConstraints(this.currentValuation, tol)
         }
       }
+      console.log("Total evaluations: " + evaluations)
       return solution
     }
     // Register a callback to be invoked at every solver step
@@ -1791,10 +1793,13 @@ function exprVariables(e) {
     return e.cachedVariables
 }
 
+let evaluations = 0
+
 // The value of expression expr in the given valuation (an array of variable values).
 // If doGrad is true, it returns an array [v, g] where is the value of the expression and
 // g is its gradient with respect to all the variables.
 function evaluate(expr, valuation, doGrad) {
+    evaluations++
     switch (typeof expr) {
         case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
