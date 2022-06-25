@@ -458,7 +458,7 @@ class Figure {
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
-        // console.log(result)
+        console.log(result)
         this.invHessian = result.invHessian
         // if (result.message != CALLBACK_RETURNED_TRUE) console.log(result.message)
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE]
