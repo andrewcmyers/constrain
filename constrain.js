@@ -312,7 +312,7 @@ class Figure {
             // console.log("  active constraint: " + con)
             con.addToTask(task)
         })
-        // console.log(`Created backpropagation task with ${task.exprs.length} expressions from ${n} active constraints`)
+        console.log(`Created backpropagation task with ${task.exprs.length} expressions from ${n} active constraints`)
     }
 
     // Compute the total cost of the constraints, and the gradient of
