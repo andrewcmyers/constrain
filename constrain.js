@@ -219,6 +219,8 @@ class Figure {
         let i = 0
         const a = [], frame = this.currentFrame
         this.Variables.forEach(v => v.removeIndex())
+        const activeConstraints = new Set()
+        this.activeConstraints = activeConstraints
         function activate(v) {
             if (v.stage != stage) {
                 // console.log(`Skipping activation of stage-${v.stage} variable ${v} in stage ${stage} `)
@@ -237,8 +239,10 @@ class Figure {
             }
         })
         this.Constraints.forEach(c => {
-            if (c.active())
+            if (c.active()) {
                 c.variables().forEach(activate)
+                activeConstraints.add(c)
+            }
         })
         this.activeVariables = a
     }
@@ -381,11 +385,6 @@ class Figure {
             this.activeComponent = component
             this.numberVariables(stage, component)
             this.resetValuation()
-            const activeConstraints = []
-            this.Constraints.forEach(con => {
-                if (figure.isActiveConstraint(con)) activeConstraints.push(con)
-            })
-            this.activeConstraints = activeConstraints
             // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
