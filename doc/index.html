@@ -385,14 +385,14 @@ or a text object created using <code>text()</code>.
 <canvas id=label_ex_fig style="height: 200px">
 </canvas>
 <script>
-  with (new Constrain.Figure("label_ex_fig")) {
-    align("left", "abut", margin(5).ul(),
-        label("The quick fox jumps"),
-        label("over the lazy", 18, "Times"), vspace(8),
-        label(fontSize(24,
-                 text(bold("brown"), " dog.",
-                      negspace(8), superscript("1")))))
-  }
+with (new Constrain.Figure("label_ex_fig")) {
+  align("left", "abut", margin(5).ul(),
+    label("The quick fox jumps").setTextStyle("blue"),
+    label("over the lazy", 18, "Times"), vspace(8),
+    label(fontSize(24,
+            text(bold("brown"), " dog.",
+                 negspace(8), superscript("1")))))
+}
 </script>
 </div>
 <script>
