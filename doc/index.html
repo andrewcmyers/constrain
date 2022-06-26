@@ -380,6 +380,25 @@ Creates a graphical object that is a simple line of text. The text may either be
 or a text object created using <code>text()</code>.
 </p>
 
+<pre id="label_ex_code" class=code></pre>
+<div id="label_ex">
+<canvas id=label_ex_fig style="height: 200px">
+</canvas>
+<script>
+  with (new Constrain.Figure("label_ex_fig")) {
+    align("left", "abut", margin(5).ul(),
+        label("The quick fox jumps"),
+        label("over the lazy", 18, "Times"), vspace(8),
+        label(fontSize(24,
+                 text(bold("brown"), " dog.",
+                      negspace(8), superscript("1")))))
+  }
+</script>
+</div>
+<script>
+    show_example("label_ex_code", "label_ex")
+</script>
+
 <h4>textFrame(text, [fillStyle])</h4>
 <p>
 Creates a graphical object that is a box containing text. The text is automatically reformatted
@@ -389,7 +408,7 @@ support adding text with similar formatting capability.
 
 <pre id="textFrame_ex_code" class=code></pre>
 <div id="textFrame_ex">
-<canvas id=textFrame_ex_fig style="height: 260px">
+<canvas id=textFrame_ex_fig>
 </canvas>
 <script>
   with (new Constrain.Figure("textFrame_ex_fig")) {
@@ -479,7 +498,8 @@ you can drag the diamond-shaped handle to change the figure.
 <canvas id=handle_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("handle_ex_fig")) {
-    let c = circle("#def"), h1 = handle(),
+    let c = circle("#def"),
+        h1 = handle().setStrokeStyle("red"),
         p2 = point(150, 150), p3 = point(50, 150)
     hint(h1, [100, 20])
     polygon([h1, p2, p3])
@@ -600,10 +620,10 @@ that objects aligned against the margin do not overflow outside the canvas.
 A box containing a set of objects. The box is just large enough to surround all the objects.
 </p>
 
-<h3>User-defined graphical objects</h3>
+<h3 id=UserDefined>User-defined graphical objects</h3>
 <p>
 The class <code>UserDefined</code> provides a template for building new graphical objects.
-By default, a user-defined object is drawn as a plain gray square.
+By default, a user-defined object is drawn as a plain gray rectangle.
 It is the responsibility of the user to define a subclass of <code>UserDefined</code>, in
 which the following method is overridden:
 
@@ -1382,13 +1402,22 @@ task, as are the humble <code>leq()</code> and <code>geq</code>.
   The initial values of variables can make a big difference in which solution is found
   or how fast. Variables can be given a hinted value that defines the initial conditions
                   of the constraint solver, using the <code>setHint()</code> method.
+</li>
 <li><b>Staging.</b> The figure's <code>freeze()</code> can be used to break solving into
       multiple stages, simplifying the solver's task in each stage.
+</li>
 <li><b>Changing constraint costs.</b> If some constraints are being violated — especially
 bounding constraints — try increasing the cost of violating them using the <code>changeCost</code>
 method. Increasing cost will cause the solver to prioritize solving those constraints.
 An order-of-magnitude increase in cost in a constraint is usually
 sufficient to prevent other constraints from overriding it.
+</li>
+<li>
+<b>User-defined objects</b>. For complex diagrams, it will be easier for the constraint solver
+and sometimes just as convenient for the user to describe some of the diagram as a user-defined
+rendering task, rather than encoding it into constraints. You can subclass <code>Constrain.UserDefined</code>
+to specify how to render a complex graphical object, <a href="#UserDefined">as described above</a>.
+</li>
 </ul>
 
 <h2>Generating printable diagrams</h2>
