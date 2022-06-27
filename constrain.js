@@ -222,10 +222,7 @@ class Figure {
         const activeConstraints = new Set()
         this.activeConstraints = activeConstraints
         function activate(v) {
-            if (v.stage != stage) {
-                // console.log(`Skipping activation of stage-${v.stage} variable ${v} in stage ${stage} `)
-                return
-            }
+            if (v.stage != stage) return
             if (v.index !== undefined) return
             if (component && v.variableComponent() !== component) return
             if (v.constructor != Variable) console.error("not a variable: " + v)
@@ -385,7 +382,7 @@ class Figure {
             this.activeComponent = component
             this.numberVariables(stage, component)
             this.resetValuation()
-            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.length} constraints`)
+            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.size} constraints`)
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
