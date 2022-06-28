@@ -502,15 +502,19 @@ you can drag the diamond-shaped handle to change the figure.
 <canvas id=handle_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("handle_ex_fig")) {
-    let c = circle("#def"),
-        h1 = handle().setStrokeStyle("red"),
+    let h1 = handle().setStrokeStyle("red"),
         p2 = point(150, 150), p3 = point(50, 150)
-    hint(h1, [100, 20])
-    polygon([h1, p2, p3])
+    const triangle = polygon(h1, p2, p3)
+    // freeze()
+    c = circle("#def").placeUnder(triangle)
+    hint(c, average(p2, p3))
     equal(distance(c, h1), distance(c, p2),
           distance(c, p3))
-    c.setW(times(2, distance(c, h1)))
-    geq(minus(p3.y(), h1.y()), 10) // ensure solvable!
+    c.setW(times(2, distance(c, p2)))
+    // geq(minus(p3.y(), h1.y()), 10) // ensure solvable!
+    setStrokeStyle("gray")
+    line(h1, average(p2, p3); line(c, p2); line(c, p3)
+    leq(distance(c, h1), 5000)
   }
 </script>
 </div>
