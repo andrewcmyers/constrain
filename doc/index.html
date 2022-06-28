@@ -494,28 +494,25 @@ the number of digits of precision, which is 2 by default.
 A handle (class <code>Handle</code>) is an object that can be moved using the mouse,
 affecting any constraints that depend on its position. The following example constrains
 distances to dynamically circumscribe a triangle;
-you can drag the diamond-shaped handle to change the figure.
+you can drag the red diamond to change the figure.
 </p>
 
-<pre id="handle_ex_code" class=code></pre>
-<div id="handle_ex">
+<pre id=handle_ex_code class=code></pre>
+<div id=handle_ex>
 <canvas id=handle_ex_fig></canvas>
 <script>
-  with (new Constrain.Figure("handle_ex_fig")) {
-    let h1 = handle().setStrokeStyle("red"),
-        p2 = point(150, 150), p3 = point(50, 150)
-    const triangle = polygon(h1, p2, p3)
-    // freeze()
-    c = circle("#def").placeUnder(triangle)
-    hint(c, average(p2, p3))
-    equal(distance(c, h1), distance(c, p2),
-          distance(c, p3))
-    c.setW(times(2, distance(c, p2)))
-    // geq(minus(p3.y(), h1.y()), 10) // ensure solvable!
-    setStrokeStyle("gray")
-    line(h1, average(p2, p3); line(c, p2); line(c, p3)
-    leq(distance(c, h1), 5000)
-  }
+with (new Constrain.Figure("handle_ex_fig")) {
+  let h1 = handle().setStrokeStyle("red"),
+      p2 = point(150, 150), p3 = point(50, 150)
+  const triangle = polygon(h1, p2, p3); freeze()
+  c = circle("#def").placeUnder(triangle)
+  hint(h1, [0,0]); leq(distance(c, h1), 5000)
+  equal(times(0.5, c.width()), distance(c, h1),
+        distance(c, p2), distance(c, p3))
+  setStrokeStyle("gray")
+  line(c, average(p2, p3)); line(c, average(h1, p2))
+  line(c, average(h1, p3));
+}
 </script>
 </div>
 <script>
