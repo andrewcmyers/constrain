@@ -1441,9 +1441,7 @@ as handles and buttons, are not rendered.
 <p>
 The function <code>Constrain.PS.print</code> can be called on a figure to
 generate PostScript output. For PDF output, the class
-<code>Constrain.PDF.PrintJob</code> allows more control. Fonts can be made
-available to the PDF renderer using its <code>addFont</code> and
-<code>addFontFile</code> methods.
+<code>Constrain.PDF.PrintJob</code> allows more control.
 </p>
 <p>
 To make it easier to generate printable output on demand, the classes
@@ -1486,6 +1484,18 @@ should include this package, with a line like the following:
 <pre>
     &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"&gt;&lt;/script&gt;
 </pre>
+
+<h3>Embedding fonts</h3>
+<p>
+If you use fonts outside the standard set of PostScript fonts, they will not be automatically embedded
+into the generated file. There are various ways to make this happen. One option
+is to use Adobe Acrobat to re-export the PDF output with fonts embedded. Another option is to make
+the font data available to the PDF renderer using its <code>addFont</code> and
+<code>addFontFile</code> methods, which are supported both by the Constrain <code>PrintJob</code> and
+<code>PrintButton</code> methods. TTF font files can be re-encoded 
+into JavaScript using <a href="https://peckconsulting.s3.amazonaws.com/fontconverter/fontconverter.html">a publicly available web service</a>. The file <kbd>fig2c.html</kbd> in the examples directory demonstrates how
+to embed fonts directly using a JavaScript-encoded font file.
+</p>
 
 <h2>Graphs</h2>
 <p>

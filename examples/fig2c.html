@@ -1,0 +1,80 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <script src="../constrain-pdf.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"></script>
+    <script src="LinLibertine_R.js"></script>
+    <style>
+      body, canvas {background-color: white}
+      body { margin: 0}
+      canvas {width: 400px; height: 150px}
+    </style>
+</head>
+<body>
+    <canvas id="fig2c" style="width:600px; height: 400px"></canvas>
+    <script>
+      with (new Constrain.Figure("fig2c")) {
+        setFontSize(14)
+        setFontName("LinLibertine_R, serif")
+        function arrow(p1, p2) {
+            return connector(p1, p2).setEndArrow("arrow")
+        }
+
+        const lr = handle().setStrokeStyle("red"),
+              m = margin(10)
+        const alice_line = vertLine(),
+              bob_line = vertLine(),
+              mpc_line = vertLine(),
+              alice = label("Alice"),
+              bob = label("Bob")
+        const mpc1 = point(), mpc2 = point(),
+              a1 = point(), a2 = point(), a3=point()
+              b1 = point(), b2 = point(), b3=point()
+        function IO(t) {
+          return rectangle().addText(t).setW(8*t.length).setH(20)
+        }
+        const a_input = IO("input a"), b_input = IO("input b")
+              a_output = IO("output x"), b_output = IO("output x")
+
+        align("distribute", "TB", alice_line, mpc_line, bob_line)
+        align("left", "none", m, a_output)
+        align("right", "none", lr, bob)
+        align("none", "bottom", lr, bob_line)
+        align("none", "abut", m.uc(), alice)
+        align("center", "abut", alice, alice_line)
+        align("center", "abut", bob, bob_line)
+        align("center", "abut", label("MPC(Alice, Bob)"), mpc_line)
+        align("none", "distribute",
+            mpc_line.uc(), a_input, a1, mpc1, point(), mpc2, a2, a_output, a3,
+            b3, b_output, mpc_line.lc())
+        align("center", "none", mpc_line.start(), mpc1, mpc2)
+        align("center", "none", alice_line, a_input, a1, a2, a_output, a3)
+        align("center", "none", bob_line, b_input, b1, b2, b3, b_output)
+
+        arrow(a1, mpc1).addLabel("a", 0.5, 0)
+        arrow(b1, mpc1).addLabel("b", 0.5, -12)
+        arrow(mpc2, a2).addLabel("a < b", 0.5, -14)
+        arrow(mpc2, b2).addLabel("a < b", 0.5, 0)
+        arrow(a3, b3).addLabel("sync", 0.3, 0)
+
+        align("none", "center", a1, b1)
+        align("none", "center", a2, b2)
+        align("none", "center", a_input, b_input)
+
+        let pb = new Constrain.PDF.PrintButton(figure)
+                    .addFontFile('LinLibertine_R.ttf', window.font_data_LinLibertine_R)
+                    .addFont('LinLibertine_R.ttf', 'LinLibertine_R', 'normal')
+        align("right", "bottom", pb, m)
+        start()
+      }
+    </script>
+
+<p>
+    You will need the Linux Libertine font on your system to see this figure
+    properly in the browser.  Drag the diamond handle to reposition figure
+    elements.
+</p>
+</body>
+</html>
