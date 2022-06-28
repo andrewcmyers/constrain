@@ -67,8 +67,7 @@
   web-based presentations. It has some advantages over
   alternative ways to generate diagrams:
   <ul>
-    <li>Constrain supports animated figures in which displayed objects move and change
-        their appearance smoothly or discontinuously. To make animations smooth,
+    <li>Constrain supports animated figures in which displayed objects move and change their appearance smoothly or discontinuously. To make animations smooth,
         it uses a fast solver based on backpropagation, with each animation frame's
         solution used as a starting point for solving the next one.</li>
     <li>Figures can be interactive: the reader can change their appearance.</li>
@@ -94,11 +93,11 @@
   deserve more explanation.
 </p>
 <p>
-<a href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html">
-Heydon and Nelson wrote in 1994</a>, “thirty years after Sketchpad, the sad
-fact is that constraints have so far been more promising than useful”.
-It has now been more than fifty years, but Constrain does seem to make
-constraints useful for graphics.
+Heydon and Nelson wrote in their introduction to the Juno 2 constraint-based drawing editor in 1994,
+“thirty years after Sketchpad, the sad
+fact is that constraints have so far been more promising than useful” <a href="#juno_2_ref">[1]</a>.
+It has now been more than fifty years since Sketchpad <a href="#sketchpad_ref">[2]</a>,
+but Constrain does seem to make constraints useful for graphics.
 </p>
 
 <h2>Overview</h2>
@@ -1367,6 +1366,32 @@ exist for all frames. Stages simply define the order in which solving will be
 done for any frame.
 </p>
 
+<h2>The Constrain Solver</h2>
+<p>
+Constrain acts like a constraint solver, but it is actually based on minimizing
+loss. This choice makes it more robust in the fact of constraints that cannot
+be solved, and means that it is also possible to add minimization goals to the
+problem it is solving.
+</p>
+<p>
+Constraints are converted into loss terms whose value is always nonnegative and
+is zero when the constraint is solved. The constraints are then converted into
+a minimization problem that is passed to the well-known BFGS algorithm. If the
+constraints can be decomposed into independently solvable subsets, this is done
+automatically. In addition, each call to <code>freeze()</code> partitions the
+set of variables and constraints into a series of stages that are decomposed
+and solved independently.
+</p>
+<p>
+Once a solution is found, any new instance of the minimization problem is
+passed the previous solution values, along with the approximate inverse
+Hessians computed during the BFGS algorithm, as an initial condition for the
+new solver run. This reuse of the previous solution is critical for allowing
+new solutions to be found quickly during the animated sequences that Constrain
+supports, reducing the number of loss-function evaluations by orders of magnitude
+in practice.
+</p>
+
 <h2>Debugging Tips</h2>
 <p>
 Sometimes you create a set of constraints and the solver just seems to refuse to find the
@@ -1570,8 +1595,22 @@ Constrain.
 Constrain was designed and implemented by Andrew Myers. Its design draws on
 several previous systems, notably the <a
 href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html"> Juno-2
-constraint-based drawing editor</a> by Greg Nelson and Allan Heydon.
+constraint-based drawing editor</a> by Allan Heydon and Greg Nelson.
 </p>
+
+<h2>
+References
+</h2>
+<ol>
+<li id=juno_2_ref>
+Allan Heydon and Greg Nelson. <a href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html">
+The Juno-2 Constraint-Based Drawing Editor.</a>
+HP Labs Technical Report SRC-RR-131A, Dec. 1994.
+</li>
+<li id=sketchpad_ref>
+Ivan E. Sutherland. <a href="https://journals.sagepub.com/doi/pdf/10.1177/003754976400200514?casa_token=lVb6FYwFvaUAAAAA:r1puPgv_qABGNn3HKCmNYith6ZRkVSEgEiv2fmnY2_QMIaILWDgWD3V8ghK5eUm6fai2PT3Y6CLh">Sketchpad: A Man–Machine Graphical Communication System.</a> Simulation 2.5 (1964): R-3.
+</li>
+</ol>
 
 </div>
 
