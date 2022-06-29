@@ -918,9 +918,11 @@ or, as in the following example, arrays.</p>
   with (new Constrain.Figure("smooth_ex_fig")) {
     let frame1 = addFrame(),
         frame2 = addFrame().setLength(1000),
-        CR = canvasRect().inset(20)
-    square().setW(20).setLineWidth(4)
-            .at(smooth(frame2, CR.cl(), CR.cr()))
+        CR = canvasRect().inset(20),
+        s = square().setW(20).setLineWidth(4)
+                   .setFillStyle("white")
+                   .setOpacity(smooth(frame2, 1, 0))
+                   .at(linear(frame2, CR.cl(), CR.cr()))
     align("right", "bottom", advanceButton(),
           CR.lr().toRight(20))
   }

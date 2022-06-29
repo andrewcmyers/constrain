@@ -1818,8 +1818,7 @@ function evaluate(expr, valuation, doGrad) {
     switch (typeof expr) {
         case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
-            console.error("Tried to evaluate a function ${expr}. Did you forget to invoke a property using ()?")
-            return 0
+            return (expr)(valuation)
         default:
             if (Array.isArray(expr)) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
@@ -3085,16 +3084,19 @@ class GraphicalObject extends Box {
     }
     // Fill the current graphics context appropriately based on the fill style and opacity
     fill() {
-        const ctx = this.figure.ctx
-        if (this.fillStyle) {
-            ctx.fillStyle = this.fillStyle
-            if (this.opacity) {
-                ctx.globalAlpha = this.opacity
-                ctx.fill()
-                ctx.globalAlpha = 1
-            } else {
-                ctx.fill()
-            }
+        const ctx = this.figure.ctx,
+              f = this.fillStyle
+        if (f) {
+            ctx.fillStyle = f
+            ctx.fill()
+        }
+    }
+    stroke() {
+        const ctx = this.figure.ctx,
+              s = this.strokeStyle
+        if (s) {
+            ctx.strokeStyle = s
+            ctx.stroke()
         }
     }
 // control contained text
@@ -3339,11 +3341,14 @@ class Rectangle extends GraphicalObject {
             Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
         }
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        if (this.opacity) {
+            ctx.globalAlpha = evaluate(this.opacity, this.figure.currentValuation)
+        }
         this.fill()
         if (this.strokeStyle != null) {
             ctx.strokeStyle = this.strokeStyle
             ctx.setLineDash(this.lineDash || [])
-            ctx.stroke()
+            this.stroke()
         }
         ctx.restore()
         if (this.text) {
