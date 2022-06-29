@@ -1,0 +1,40 @@
+<html>
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        background-color: #eee;
+        max-width: 100%; width: 400px; height: 400px
+    }
+    h1 {
+        font-family: sans-serif
+    }
+</style>
+  
+</head>
+<body>
+<h1>Label formatting test</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+var figure = new Constrain.Figure(canvas)
+
+with (figure) {
+    let cr = margin()
+    figure.lineLabelInset = 2
+
+    label("hello").at(50,50)
+    label(text("x", superscript("2"))).at(100,50)
+    connector(cr.uc(), cr.lr()).addLabel(lineLabel("label1", 0.5, 0, 1).setStrokeStyle("black"))
+    connector(cr.lr(), cr.cl()).addLabel(text("label", subscript("2")), 0.5, 0, 1)
+}
+
+</script>
+</body>
+<script>
+    Constrain.autoResize()
+    figure.start()
+</script>
+</html>

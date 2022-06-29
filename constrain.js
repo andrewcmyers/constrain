@@ -16,7 +16,9 @@ const Figures = []
 // Various switches and constants control the default appearance of figures.
 
 const USE_BACKPROPAGATION = true,
-      CACHE_ALL_EVALUATIONS = false,
+      CACHE_ALL_EVALUATIONS = true,
+      PROFILE_EVALUATIONS = false,
+      REPORT_EVALUATED_EXPRESSIONS = false,
       CHECK_NAN = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
@@ -36,10 +38,28 @@ const Figure_defaults = {
     LINE_SPACING : 1.3,
     SUPERSCRIPT_OFFSET : 0.44,
     SUBSCRIPT_OFFSET : -0.16,
+    LINELABEL_INSET : null,
     SCRIPTSIZE : 0.80,
     LARGE_SPAN : 10000.0,
     HYPHEN_COST : 100000,
     CONNECTION_STYLE : 'magnet'
+}
+
+const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4
+const algorithm = UNCMIN_BFGS
+
+const CALLBACK_RETURNED_TRUE = "Callback returned true",
+      BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
+      BAD_GRADIENT = "Gradient has Infinity or NaN"
+
+const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPSILON = 1e-8
+const RANDOM_GRADIENT_SCALING = 0.001
+
+const defaultMinimizationOptions = {
+    UNCMIN_MAXIT : 1000,
+    UNCMIN_OVERSHOOT : 0.1,
+    UNCMIN_STEPSIZE : 1,
+    UNCMIN_LBFGS_M : 10,
 }
 
 // There is a set of Variables that can be adjusted to minimize an objective
@@ -67,6 +87,7 @@ class Figure {
         this.figure = this
         if (typeof canvas == OBJECT_STR && canvas instanceof HTMLCanvasElement) {
             this.canvas = canvas
+            this.name = canvas.id
         } else if (typeof canvas == "string") {
             const c = document.getElementById(canvas)
             if (c) {
@@ -91,6 +112,8 @@ class Figure {
         this.Frames = []
         this.wrapFrames = false // does advancing from last frame go back to first
         this.frameIndex = []
+        this.currentStage = 0
+        this.numStages = 1
     // default styles
         this.setFillStyle("white")
         this.setStrokeStyle("black")
@@ -98,11 +121,13 @@ class Figure {
         this.setLineWidth(Figure_defaults.LINEWIDTH)
         this.font = new Font()
         this.lineSpacing = Figure_defaults.LINE_SPACING
+        this.lineLabelInset = Figure_defaults.LINELABEL_INSET
         this.arrowSize = Figure_defaults.ARROW_SIZE
         this.connectionStyle = Figure_defaults.CONNECTION_STYLE
         this.repeat = false
         this.animatedSolving = false
         this.solverCallbacks = []
+        this.minimizationOptions = {...defaultMinimizationOptions}
         this.fadeColor = 'white'
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
@@ -182,6 +207,7 @@ class Figure {
             if (v.currentValue != null) result[i] = v.currentValue
             else if (v.hint != null) result[i] = v.hint
             else result[i] = 100
+            v.currentValue = result[i]
         }
         return result
     }
@@ -189,13 +215,17 @@ class Figure {
         if (!valuation) valuation = this.currentValuation
         return evaluate(e, valuation, doGrad)
     }
-    numberVariables() {
-        let i = 0, a = [], frame = this.currentFrame
+    numberVariables(stage, component) {
+        let i = 0
+        const a = [], frame = this.currentFrame
         this.Variables.forEach(v => v.removeIndex())
+        const activeConstraints = new Set()
+        this.activeConstraints = activeConstraints
         function activate(v) {
+            if (v.stage != stage) return
             if (v.index !== undefined) return
-            if (!(v instanceof Variable))
-                console.error("not a variable")
+            if (component && v.variableComponent() !== component) return
+            if (!(v instanceof Variable)) console.error("not a variable: " + v)
             v.setIndex(i)
             a.push(v)
             i++
@@ -206,13 +236,14 @@ class Figure {
             }
         })
         this.Constraints.forEach(c => {
-            if (c.active())
+            if (c.active()) {
                 c.variables().forEach(activate)
+                activeConstraints.add(c)
+            }
         })
         this.activeVariables = a
     }
     resetValuation() {
-        this.numberVariables()
         this.currentValuation = this.initialValuation()
     }
     // Add one or more constraints that should be satisfied
@@ -276,10 +307,13 @@ class Figure {
     }
 
     setupBackPropagation(task) {
-        this.Constraints.forEach(con => {
-            if (!this.isActiveConstraint(con)) return
+        let n = 0
+        this.activeConstraints.forEach(con => {
+            n++
+            // console.log("  active constraint: " + con)
             con.addToTask(task)
         })
+        // console.log(`Created backpropagation task with ${task.exprs.length} expressions from ${n} active constraints`)
     }
 
     // Compute the total cost of the constraints, and the gradient of
@@ -287,8 +321,7 @@ class Figure {
     // symbolic differentiation.
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
-        this.Constraints.forEach(con => {
-            if (!this.isActiveConstraint(con)) return
+        this.activeConstraints.forEach(con => {
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -306,13 +339,69 @@ class Figure {
             return [cost, dcost]
         }
     }
+    computeComponents(stage) {
+        delete this.activeComponent
+        for (const v of this.activeVariables) {
+            delete v.component
+        }
+        this.Constraints.forEach(c => {
+            if (c.active())
+                c.variables().forEach(v1 => {
+                    if (v1.stage != stage) return
+                    const v1c = v1.variableComponent()
+                    c.variables().forEach(v2 => {
+                        if (v2.stage != stage) return
+                        const v2c = v2.variableComponent()
+                        if (v1c !== v2c) {
+                        v1c.component = v2c
+                        }
+                    })
+                })
+        })
+        const components = []
+        for (const v of this.activeVariables) {
+            const c = v.variableComponent()
+            c.component = c
+            if (!components.includes(c)) {
+                components.push(c)
+            }
+        }
+        // console.log(this.name + ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+        return components
+    }
     updateValuation(tol) {
-        this.numberVariables()
-        if (this.currentValuation === undefined || this.currentValuation.length < this.activeVariables.length)
+      let solution, figure = this
+      if (PROFILE_EVALUATIONS) evaluations = 0
+      for (let stage = 0; stage < this.numStages; stage++) {
+        this.activeStage = stage
+        this.numberVariables(stage)
+        const stageVariables = this.activeVariables
+        const components = this.computeComponents(stage)
+        // console.log(`Stage ${stage}: ${components.length} components`)
+        for (const component of components) {
+            this.activeComponent = component
+            this.numberVariables(stage, component)
             this.resetValuation()
-        if (this.currentValuation.length > this.activeVariables.length)
-            this.currentValuation = this.currentValuation.slice(0, this.activeVariables.length)
-        return this.solveConstraints(this.currentValuation, tol)
+            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.size} constraints`)
+            solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
+            component.invHessian = solution[2]
+            if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
+        }
+      }
+      if (PROFILE_EVALUATIONS) {
+        console.log("Total evaluations: " + evaluations)
+        if (REPORT_EVALUATED_EXPRESSIONS) {
+        const entries = []
+        for (const e of evaluationCounts.entries()) {
+            entries.push(e)
+        }
+        const sorted = entries.sort((a, b) => b[1] - a[1])
+        for (let i = 0; i < sorted.length; i++) {
+            console.log("  expr: " + sorted[i][0] + ", evaluations: " + sorted[i][1])
+        }
+        }
+      }
+      return solution
     }
     // Register a callback to be invoked at every solver step
     registerCallback(cb) {
@@ -332,7 +421,9 @@ class Figure {
             }
         }
     }
-    solveConstraints(valuation, tol) {
+    // Run the minimization-based solver. The parameter invHessian is optional, useful
+    // for incrementally solving from a previous solution.
+    solveConstraints(valuation, tol, invHessian) {
         let doGrad = true, fig = this
         if (valuation === undefined) {
             console.error("Need initial valuation")
@@ -351,10 +442,11 @@ class Figure {
                 return false
             }
         }
-        if (this.invHessian && this.invHessian.length != valuation.length) this.invHessian = undefined
-        const uncmin_options = {Hinv: this.invHessian,
-                                stepSize: UNCMIN_STEPSIZE,
-                                overshoot: UNCMIN_OVERSHOOT}
+        const minimizationOptions = this.minimizationOptions
+        const uncmin_options = {Hinv: invHessian,
+                                stepSize: minimizationOptions.UNCMIN_STEPSIZE,
+                                overshoot: minimizationOptions.UNCMIN_OVERSHOOT,
+                                maxit: minimizationOptions.UNCMIN_MAXIT}
         if (doGrad) { if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
                                 valuation, tol, maxit, callback, uncmin_options)
@@ -365,9 +457,8 @@ class Figure {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
         // console.log(result)
-        this.invHessian = result.invHessian
         // if (result.message != CALLBACK_RETURNED_TRUE) console.log(result.message)
-        return [result.solution, result.message != CALLBACK_RETURNED_TRUE]
+        return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian]
     }
 
 // Rendering
@@ -408,10 +499,12 @@ class Figure {
         })
     }
 
-// Frame management
+// Frame management. A figure can have multiple frames, each possibly with a
+// duration.  Figures can be manually advanced to the next frame, or frames can
+// be marked to automatically advance.
 
-    // create one or more new frames, returning either the
-    // single new frame or an array of the new frames.
+    // Create one or more new frames, returning either the single new frame or
+    // an array of the new frames.
     addFrame(...names) {
         if (names.length > 1) {
             return names.flat().map(n => new Frame(this, n))
@@ -423,6 +516,23 @@ class Figure {
     getFrame(i) {
         return this.Frames[i]
     }
+
+// Stage management. The constraint problem of a figure is broken into a
+// sequence of one or more stages. By default there is only a single stage.
+// Variables and constraints are associated with a stage. A constraint is only
+// solved only in its stage and later stages. Variables are solved in their
+// stage and are treated as fixed in later stages. Stages are not associated
+// with frames; the same stages exist in every frame.
+
+    // Add a new stage to the figure and change the current stage to that new
+    // stage.  All constraints and variables created after this point will be
+    // associated with the new stage. This has the effect of freezing the position
+    // of everything created so far.
+    freeze() {
+        this.currentStage++
+        this.numStages = this.currentStage + 1
+    }
+
 
     // Mark this figure as being ready for rendering.
     // Create an initial frame if no frames have been created yet.
@@ -450,7 +560,7 @@ class Figure {
             console.log("Document is ready, starting first frame")
             this.startCurrentFrame()
         } else {
-            console.log("Document is not ready, starting listener")
+            // console.log("Document is not ready, starting listener")
             window.addEventListener('load', () => {
                 console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
@@ -795,7 +905,7 @@ class Figure {
     align(horizontal, vertical, objlist) {
         const result = []
         if (!Array.isArray(objlist))
-            objlist = argsToArray(arguments, 2)
+            objlist = flattenGraphicalObjects(argsToArray(arguments, 2))
         switch (horizontal) {
             case "none": break
             case "center": 
@@ -831,6 +941,9 @@ class Figure {
                     result.push(this.equal(new Minus(objlist[i].x0(), objlist[i-1].x1()), d))
                     result.push(this.geq(objlist[i].x0(), objlist[i-1].x1()))
                 }
+                break
+            default:
+                console.error("Unrecognized horizontal alignment: " + horizontal)
                 break
         }
         switch (vertical) {
@@ -868,6 +981,9 @@ class Figure {
                     result.push(this.equal(new Minus(objlist[i].y0(), objlist[i-1].y1()), d))
                     result.push(this.geq(objlist[i].y0(), objlist[i-1].y1()))
                 }
+                break
+            default:
+                console.error("Unrecognized vertical alignment: " + horizontal)
                 break
         }
         return result
@@ -917,6 +1033,9 @@ class Figure {
     canvasRect() {
         return new CanvasRect(this.figure)
     }
+    margin(n) {
+        return new CanvasRect(this.figure).inset(n === undefined ? this.lineWidth : n)
+    }
     rectangle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
         return new Rectangle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint)
     }
@@ -935,14 +1054,14 @@ class Figure {
     closedCurve(...points) {
         return new ClosedCurve(this, points)
     }
-    line(strokeStyle, lineWidth, start, end) {
-        return new Line(this, strokeStyle, lineWidth, start, end)
+    line(start, end, strokeStyle, lineWidth) {
+        return new Line(this, start, end, strokeStyle, lineWidth)
     }
-    horzLine(strokeStyle, lineWidth, start, end) {
-        return new HorzLine(this, strokeStyle, lineWidth, start, end)
+    horzLine(start, end, strokeStyle, lineWidth) {
+        return new HorzLine(this, start, end, strokeStyle, lineWidth)
     }
-    vertLine(strokeStyle, lineWidth, start, end) {
-        return new VertLine(this, strokeStyle, lineWidth, start, end)
+    vertLine(start, end, strokeStyle, lineWidth) {
+        return new VertLine(this, start, end, strokeStyle, lineWidth)
     }
     hspace(w) {
         const r = new HSpace(this, w)
@@ -965,6 +1084,14 @@ class Figure {
     }
     bold(...t) {
         return new BoldText(createText(...t))
+    }
+    numericText(e, digits) {
+        if (digits === undefined) digits = 2
+        const fig = this
+        return new ComputedText(() =>
+                        fig.currentValuation
+                            ?  createText(fig.evaluate(e).toFixed(digits))
+                            :  createText("###"))
     }
     fontName(name, ...t) {
         return this.textContext(tc => {
@@ -995,6 +1122,9 @@ class Figure {
     whitespace() {
         return new Whitespace()
     }
+    negspace(offset) {
+        return new NegSpace(offset)
+    }
     textContext(f, ...t) {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
@@ -1006,6 +1136,8 @@ class Figure {
         return new Label(this, text, fontSize, fontName, fillStyle)
     }
     lineLabel(string, position, offset) {
+        if (string && string.constructor != String && string.constructor != ContainedText)
+            string = new ContainedText(this, string)
         return new LineLabel(this, string, position, offset)
     }
     handle(style) {
@@ -1041,7 +1173,7 @@ class Figure {
             if (arguments.length != 0) {
                 console.error("point(...) expects 0 or 2 arguments")
             }
-            const x = new Variable(this, "px"), y = new Variable(this, "py")
+            const x = this.variable("px"), y = this.variable("py")
             return new Point(x, y)
         }
     }
@@ -1057,6 +1189,13 @@ class Figure {
         this.Graphs.push(g)
         return g
     }
+
+    arrObjects(n, f) {
+        const result = []
+        for (let i = 0; i < n; i++) result.push(f(i))
+        return result
+    }
+
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
@@ -1065,7 +1204,7 @@ class Figure {
             case 0: return 0
             case 1: return args[0]
             case 2: return new Plus(...args)
-            default: return new Plus(args[0], ...args.slice(1))
+            default: return new Plus(args[0], this.plus(...args.slice(1)))
         }
     }
     minus(x, y) {
@@ -1091,6 +1230,9 @@ class Figure {
     min(...args) {
         args = args.flat().map(a => legalExpr(a))
         return new Min(...args)
+    }
+    conditional(cond, epos, eneg) {
+        return new Conditional(cond, epos, eneg)
     }
     sqrt(x) { return new Sqrt(legalExpr(x)) }
     sqr(x) { return new Sq(legalExpr(x)) }
@@ -1141,6 +1283,16 @@ class Figure {
         return this.equal(
           this.times(this.minus(p1.y(), p0.y()), this.minus(p3.x(), p2.x())),
           this.times(this.minus(p3.y(), p2.y()), this.minus(p1.x(), p0.x())))
+    }
+
+    // The position (x,y) in a coordinate system in which
+    // a is the origin and b is (1,0)
+    relative(x, y, a, b) {
+        x = legalExpr(x); y = legalExpr(y); a = legalExpr(a); b = legalExpr(b)
+        let dx = this.minus(b, a),
+            dy = new Point(new Neg(new Projection(dx, 1, 2)), new Projection(dx, 0, 2)),
+            pos = this.plus(a, new Times(x, dx), new Times(y, dy))
+        return this.point(new Projection(pos, 0, 2), new Projection(pos, 1, 2))
     }
 }
 
@@ -1225,17 +1377,6 @@ function setupTouchListeners() {
             return figure.focused.mouseup(e)
         }, {passive: false})
 }
-
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4
-const algorithm = UNCMIN_BFGS
-
-const CALLBACK_RETURNED_TRUE = "Callback returned true",
-      BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
-      BAD_GRADIENT = "Gradient has Infinity or NaN"
-
-const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPSILON = 1e-8
-const UNCMIN_OVERSHOOT = 0.1, UNCMIN_STEPSIZE = 1
-const UNCMIN_LBFGS_M = 10
 
 function partition(a, l, r) {
     const p = a[l] // better: swap a[l] with random element first
@@ -1428,7 +1569,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                 y_hist.push(y)
                 rho.push(1/dot(y, s))
                 hist++
-                if (hist > UNCMIN_LBFGS_M) {
+                if (hist > minimizationOptions.UNCMIN_LBFGS_M) {
                     s_hist.shift()
                     y_hist.shift()
                     rho.shift()
@@ -1519,6 +1660,7 @@ class Expression {
     // reused expressions.
     checkCache(valuation, doGrad) {
         doGrad = doGrad ? true : false
+        if (valuation === undefined) return undefined
         if (this.cachedValuation !== valuation || doGrad > this.cachedDoGrad) {
             cacheMisses++
             return undefined
@@ -1534,7 +1676,7 @@ class Expression {
         this.cachedResult = result
         return result
     }
-    variables() { return [] }
+    variables() { return new Set() }
     initDiff() { this.bpDiff = 0 }
     // actually propagate differentials backward to dependencies
     backprop(task) {
@@ -1577,6 +1719,7 @@ class Variable extends Expression {
         this.basename = basename + "_" + figure.numVariables
         this.index = figure.numVariables // overridden later by numberVariables()
         this.figure = figure
+        this.stage = figure.currentStage
         figure.Variables.push(this)
         figure.numVariables++
         if (hint !== undefined) {
@@ -1585,8 +1728,9 @@ class Variable extends Expression {
     }
     evaluate(valuation, doGrad) {
         if (this.index === undefined) {
-            console.error("Can't evaluate a variable that has not been solved for")
-            return 0
+            return this.currentValue
+                || this.hint
+                || (console.error("undefined variable??"), 0)
         }
         if (doGrad) {
             let g = this.grad, n = valuation.length
@@ -1600,7 +1744,7 @@ class Variable extends Expression {
             }
             return [valuation[this.index], g]
         } else {
-            return valuation[this.index]
+            return valuation[this.index] || 0
         }
     }
     backprop(valuation, d) {}
@@ -1618,7 +1762,15 @@ class Variable extends Expression {
     toString() {
         return this.basename
     }
-    variables() { return [this] }
+    variables() { return new Set().add(this) }
+    variableComponent() {
+        if (this.component !== undefined && this.component != this) {
+            const v = this.component.variableComponent()
+            this.component = v
+            return v
+        }
+        return this
+    }
 }
 
 // This variable caches an array of zeros of the appropriate length
@@ -1642,42 +1794,45 @@ function statistics() {
 
 // The variables used by expression e.
 function exprVariables(e) {
+    if (e.cachedVariables) return e.cachedVariables
     if (e === undefined)
         console.error("undefined expr")
-    if (typeof e === NUMBER || Array.isArray(e) return []
+    if (typeof e === NUMBER || Array.isArray(e)) return new Set()
     if (!e.variables)
         console.error("no variables method")
-    return e.variables()
+    e.cachedVariables = e.variables()
+    return e.cachedVariables
 }
+
+let evaluations = 0,
+    evaluationCounts = new Map()
 
 // The value of expression expr in the given valuation (an array of variable values).
 // If doGrad is true, it returns an array [v, g] where is the value of the expression and
 // g is its gradient with respect to all the variables.
 function evaluate(expr, valuation, doGrad) {
-    // alert("evaluating " + expr)
-    /*
-    if (expr === undefined) {
-        console.error("undefined expr")
+    if (PROFILE_EVALUATIONS) {
+        evaluations++
+        evaluationCounts.set(expr, 1 + (evaluationCounts.get(expr) || 0))
     }
-    if (valuation === undefined) {
-        console.error("undefined valuation")
-    }
-    if (CACHE_ALL_EVALUATIONS && expr.checkCache) {
-        const v = expr.checkCache(valuation, doGrad)
-        if (v) return v
-    }
-    */
     switch (typeof expr) {
         case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
         case FUNCTION:
-            console.error("Tried to evaluate a function ${expr}. Did you forget to invoke a property using ()?")
-            return 0
+            return (expr)(valuation)
         default:
             if (Array.isArray(expr)) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
             } else {
                 if (CACHE_ALL_EVALUATIONS) {
-                    return expr.currentValue = expr.recordCache(valuation, doGrad, expr.evaluate(valuation, doGrad))
+                    const result1 = expr.checkCache(valuation, doGrad)
+                    if (result1) return result1
+                    const result2 = expr.evaluate(valuation, doGrad)
+                    if (CHECK_NAN && checkNaNResult(result2)) {
+                        console.error("result is NaN")
+                    }
+                    expr.recordCache(valuation, doGrad, result2)
+                    expr.currentValue = result2
+                    return result2
                 } else {
                     const r = expr.evaluate(valuation, doGrad)
                     expr.currentValue = r
@@ -1741,7 +1896,7 @@ class BackPropagation {
         for (let i = es.length - 1; i >= 0; i--) {
             const e = es[i]
             if (e.currentValue === undefined) {
-                console.error("Has an undefined value: " + e)
+                console.log("Has an undefined value: " + e)
                 console.log("trying again: ", evaluate(e, valuation))
             }
             if (e.bpDiff == 0) continue
@@ -1799,6 +1954,13 @@ class BackPropagation {
     }
 }
 
+function union(s1, s2) {
+    const result = new Set()
+    for (const e of s1) result.add(e)
+    for (const e of s2) result.add(e)
+    return result
+}
+
 // A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
@@ -1827,7 +1989,7 @@ class BinaryExpression extends Expression {
         task.prepareBackProp(this.e2)
     }
     variables() {
-        return exprVariables(this.e1).concat(exprVariables(this.e2))
+       return union(exprVariables(this.e1), exprVariables(this.e2))
     }
 }
 
@@ -1878,7 +2040,7 @@ class Average extends BinaryExpression {
 // An expression x * y
 class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
-    operation(a, b) { return a * b }
+    operation(a, b) { return numeric.mul(a, b) }
     gradop(a, b, da, db) {
         return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
@@ -1927,8 +2089,8 @@ class NaryExpression extends Expression {
         else return this.operation(vals)
     }
     variables() {
-        let result = []
-        this.args.forEach(e => { result = result.concat(exprVariables(e)) })
+        let result = new Set()
+        this.args.forEach(e => { result = union(result, exprVariables(e)) })
         return result
     }
     backprop(task) { // for ops like min and max that depend on only on argument this.which
@@ -2000,8 +2162,10 @@ class Max extends NaryExpression {
     toString() { return "max(" + this.args + ")" }
 }
 
-// The distance between two points
+// The distance between two points.
 class Distance extends Expression {
+    // The distance between two points.
+    // The dimensionality of the points is dim (default: 2)
     constructor(p1, p2, dim) {
         super()
         this.p1 = p1
@@ -2055,7 +2219,8 @@ class Distance extends Expression {
             console.log("Warning: zero distance between points, generating force at random angle")
 
             const ang = Math.random() * Math.PI * 2
-            dn = [ d * Math.cos(ang), d * Math.sin(ang) ]
+            dn = [ d * Math.cos(ang) * RANDOM_GRADIENT_SCALING,
+                   d * Math.sin(ang) * RANDOM_GRADIENT_SCALING ]
             for (let i = 2; i < this.dim; i++) dn.push(d * (Math.random() - 0.5))
         }
         task.propagate(this.p1, numeric.neg(dn))
@@ -2066,7 +2231,7 @@ class Distance extends Expression {
         task.prepareBackProp(this.p2)
     }
     variables() {
-        return exprVariables(this.p1).concat(exprVariables(this.p2))
+        return union(exprVariables(this.p1), exprVariables(this.p2))
     }
     toString() { return "distance(" + this.p1 + "," + this.p2 + ")" }
 }
@@ -2200,9 +2365,8 @@ class Conditional extends Expression {
         this.bpDiff = 0
     }
     variables() {
-        return exprVariables(this.cond)
-               .concat(exprVariables(this.epos))
-               .concat(exprVariables(this.eneg))
+        return union(union(exprVariables(this.cond), exprVariables(this.epos)),
+                     exprVariables(this.eneg))
     }
     backprop(task) {
         const cond = this.cond.currentValue
@@ -2229,7 +2393,7 @@ class Time extends Expression {
         const t = this.figure.animationTime
         return doGrad ? [t, getZeros(valuation.length)] : t
     }
-    variables() { return [] }
+    variables() { return new Set() }
     backprop(task) {}
     toString() {
         return "Time"
@@ -2281,6 +2445,9 @@ class Linear extends Expression {
     x() { return new Projection(this, 0, 2) }
     y() { return new Projection(this, 1, 2) }
 
+    variables() {
+        return union(exprVariables(this.e1), exprVariables(this.e2))
+    }
     backprop(task) {
       const b = this.interp(this.figure.animationTime), a = 1-b,
             figure = this.figure
@@ -2330,14 +2497,14 @@ class Projection extends Expression {
         }
     }
     evaluate(valuation, doGrad) {
-        const v = evaluate(this.expr, valuation, doGrad), i = this.index
+        const v = Constrain.evaluate(this.expr, valuation, doGrad), i = this.index
         if (doGrad) {
             const [x, dx] = v
             return [x[i], dx[i]]
         } else {
-            if (!(Array.isArray(v)) {
+            if (!Array.isArray(v))
                 console.error("Projection expects its expression to have an array value: " + this.expr)
-            if (i >= v.length)
+            if (i < 0 || i >= v.length)
                 console.error("Attempt to project out a nonexistent element")
             return v[i]
         }
@@ -2365,7 +2532,6 @@ class Temporal {
         this.figure = figure
     }
     active() { return true }
-
     // Is this object visible in frame f?
     visible() { return true }
 
@@ -2412,15 +2578,15 @@ class TemporalFilter extends Temporal {
         this.obj.renderIfVisible()
     }
     getCost(valuation, doGrad) {
-        if (this.active(this.figure.currentFrame)) {
+        if (this.active()) {
             return this.obj.getCost(valuation, doGrad)
         } else {
             return zeroCost(valuation, doGrad)
         }
     }
     variables() {
-        if (this.active(this.figure.currentFrame)) return this.obj.variables() 
-        else return []
+        if (this.active()) return this.obj.variables() 
+        else return new Set()
     }
     installHolder(figure, holder, child) {
         this.obj.installHolder(figure, holder, child)
@@ -2502,6 +2668,7 @@ class Constraint extends Temporal {
             throw "no"
         }
         this.figure = figure
+        this.stage = figure.currentStage
         figure.addConstraints(this)
     }
     getCost(valuation, doGrad) {
@@ -2512,7 +2679,7 @@ class Constraint extends Temporal {
         console.error("No addToTask function defined for this constraint " + this.constructor)
         return
     }
-    variables() { return [] }
+    variables() { return new Set() }
     installHolder(figure, holder, child) {
         if (child.parent !== undefined) {
             console.error("Child Constraint already has a parent")
@@ -2532,6 +2699,22 @@ class Constraint extends Temporal {
     changeCost(cost) {
         this.cost *= cost
         return this
+    }
+    // Does this constraint need to be solved for in the specified stage, for
+    // component c? If c is omitted, checks for the whole stage
+    active() {
+        if (this.stage > this.figure.activeStage) return false
+        const c = this.figure.activeComponent
+        if (c === undefined) return true
+        const vars = this.variables()
+        let result = false
+        vars.forEach(v => {
+            if (v.variableComponent() === c) result = true
+        })
+        return result
+    }
+    toString() {
+        return "Constraint"
     }
 }
 
@@ -2557,6 +2740,9 @@ class Loss extends Constraint {
     }
     variables() {
         return exprVariables(this.expr)
+    }
+    toString() {
+        return "Loss"
     }
 }
 
@@ -2589,7 +2775,7 @@ function constraintsCost(a, valuation, doGrad) {
     }
 }
 
-// A group of constraints that is treated as a single constraint.
+// A group of constraints that acts like a single constraint.
 class ConstraintGroup extends Constraint {
     constructor(figure, ...constraints) {
         super(figure)
@@ -2605,19 +2791,27 @@ class ConstraintGroup extends Constraint {
         // return constraintsCost(this.constraints, valuation, doGrad)
     }
     variables() {
-        let r = []
+        let r = new Set()
         this.constraints.forEach(c => {
-            r = r.concat(c.variables())
+            r = union(r, c.variables())
         })
         return r
     }
     addToTask(task) {
         this.constraints.forEach(c => c.addToTask(task))
     }
+    changeCost(x) {
+        this.constraints.forEach(c => c.changeCost(x))
+        return this
+    }
+    toString() {
+        return "ConstraintGroup[" + this.constraints.toString() + "]"
+    }
 }
 
 // A LayoutObject does not support rendering and does not necessarily
-// know what figure it is part of. Its size is 0 by default.
+// know what figure it is part of. It does not introduce any variables by
+// default. Its size is 0 by default.
 class LayoutObject extends Expression {
     constructor() { super() }
     toString() {
@@ -2646,7 +2840,7 @@ class LayoutObject extends Expression {
     height() { return this.h() }
     w() { return 0 }
     h() { return 0 }
-    variables() { return [] }
+    variables() { return new Set() }
     connectionPts() {
         return [
                 new Point(this.x(), this.y()),
@@ -2704,8 +2898,9 @@ class LayoutObject extends Expression {
     render() {
         console.log("Attempted to render an object that has no rendering defined.")
     }
+    renderIfVisible() { }
     variables() {
-        return []
+        return new Set()
     }
     // Any LayoutObject can be used as an expression, in which case it represents
     // its (x,y) position. By default, LayoutObjects cache their results.
@@ -2753,24 +2948,20 @@ class LayoutObject extends Expression {
     }
     inset(v) {
         v = legalExpr(v)
-        const r = new GraphicalObject(this.figure)
-        const me = this
-        r.x = () => this.x()
-        r.y = () => this.y()
-        r.w = () => new Minus(this.w(), new Times(2, v))
-        r.h = () => new Minus(this.h(), new Times(2, v))
-        r.variables = () => me.variables().concat(exprVariables(v))
+        const r = new Box(this.figure)
+        this.figure.equal(r.x(), this.x())
+        this.figure.equal(r.y(), this.y())
+        this.figure.equal(r.w(), new Minus(this.w(), new Times(2, v)))
+        this.figure.equal(r.h(), new Minus(this.h(), new Times(2, v)))
         return r
     }
     expand(v) {
         v = legalExpr(v)
-        const r = new GraphicalObject(this.figure)
-        const me = this
-        r.x = () => this.x()
-        r.y = () => this.y()
-        r.w = () => new Plus(this.w(), new Times(2, v))
-        r.h = () => new Plus(this.h(), new Times(2, v))
-        r.variables = () => me.variables().concat(exprVariables(v))
+        const r = new Box(this.figure)
+        this.figure.equal(r.x(), this.x())
+        this.figure.equal(r.y(), this.y())
+        this.figure.equal(r.w(), new Plus(this.w(), new Times(2, v)))
+        this.figure.equal(r.h(), new Plus(this.h(), new Times(2, v)))
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -2785,11 +2976,12 @@ class LayoutObject extends Expression {
         } else if (arguments.length == 1) {
             const p = legalExpr(arguments[0])
             if (Array.isArray(p)) {
-                this.figure.equal(this.x(), p[0])
-                this.figure.equal(this.y(), p[1])
+                this.figure.equal(this.x(), legalExpr(p[0]))
+                this.figure.equal(this.y(), legalExpr(p[1]))
             } else {
-                this.figure.equal(this.x(), new Projection(p, 0, 2))
-                this.figure.equal(this.y(), new Projection(p, 1, 2))
+                const o = legalPoint(p)
+                this.figure.equal(this.x(), new Projection(o, 0, 2))
+                this.figure.equal(this.y(), new Projection(o, 1, 2))
             }
         }
         return this
@@ -2816,6 +3008,12 @@ function legalLayoutObject(o) {
     return new Point()
 }
 
+function legalPoint(p) {
+    if (p.x && p.y) return p
+    console.error("Not a legal point: " + p)
+    return p
+}
+
 // A Box is a layout object with a width and height. It does not necessarily
 // render but is useful for positioning other objects, because it can be used
 // with functions that expect graphical objects, such as align().
@@ -2834,7 +3032,7 @@ class Box extends LayoutObject {
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
-        return [this.x(), this.y(), this.w(), this.h()]
+        return new Set().add(this.x_).add(this.y_).add(this.w_).add(this.h_)
     }
 // convenience methods for positioning (by adding constraints)
 
@@ -2886,16 +3084,19 @@ class GraphicalObject extends Box {
     }
     // Fill the current graphics context appropriately based on the fill style and opacity
     fill() {
-        const ctx = this.figure.ctx
-        if (this.fillStyle) {
-            ctx.fillStyle = this.fillStyle
-            if (this.opacity) {
-                ctx.globalAlpha = this.opacity
-                ctx.fill()
-                ctx.globalAlpha = 1
-            } else {
-                ctx.fill()
-            }
+        const ctx = this.figure.ctx,
+              f = this.fillStyle
+        if (f) {
+            ctx.fillStyle = f
+            ctx.fill()
+        }
+    }
+    stroke() {
+        const ctx = this.figure.ctx,
+              s = this.strokeStyle
+        if (s) {
+            ctx.strokeStyle = s
+            ctx.stroke()
         }
     }
 // control contained text
@@ -2957,6 +3158,37 @@ class GraphicalObject extends Box {
         return this
     }
 // rendering control
+
+    // Make this object appear immediately underneath the named object
+    placeUnder(obj) {
+        let objects = this.figure.GraphicalObjects
+        let new_objects = []
+        for (const o of objects) {
+            if (o == obj) {
+                new_objects.push(this)
+                new_objects.push(o)
+            } else if (o != this) {
+                new_objects.push(o)
+            }
+        }
+        this.figure.GraphicalObjects = new_objects
+        return this
+    }
+    // Make this object appear immediately over the named object
+    placeOver(obj) {
+        let objects = this.figure.GraphicalObjects
+        let new_objects = []
+        for (const o of objects) {
+            if (o == obj) {
+                new_objects.push(o)
+                new_objects.push(this)
+            } else if (o != this) {
+                new_objects.push(o)
+            }
+        }
+        this.figure.GraphicalObjects = new_objects
+        return this
+    }
     active() { return true }
     visible() { return true }
     renderIfVisible() {
@@ -2980,6 +3212,12 @@ class GraphicalObject extends Box {
             figure.GraphicalObjects.push(holder)
         }
     }
+    className() {
+        return "GraphicalObject"
+    }
+    toString() {
+        return this.constructor.name
+    }
 }
 
 // A Point acts like a graphical object wrt layout but does not generate new variables (unlike Box).
@@ -2998,7 +3236,7 @@ class Point extends LayoutObject {
     x() { return this.x_ }
     y() { return this.y_ }
     variables() {
-        return exprVariables(this.x()).concat(exprVariables(this.y()))
+        return union(exprVariables(this.x()), exprVariables(this.y()))
     }
     toString() {
         return "Point(" + this.x_ + "," + this.y_ + ")"
@@ -3015,13 +3253,15 @@ class Group extends GraphicalObject {
     constructor(figure, ...objects) {
         super(figure)
         this.objects = flattenGraphicalObjects(objects).map(o => legalLayoutObject(o))
-        this.objects.forEach(o => { o.parent = this })
+        this.objects.forEach(o => {
+            o.parent = this
+        })
     }
     variables() {
-        const result = [], g = this
+        const result = new Set(), g = this
         this.objects.forEach(o => {
             o.variables().forEach(v => {
-                result.push(v)
+                result.add(v)
             })
         })
         return result
@@ -3051,6 +3291,9 @@ class Group extends GraphicalObject {
         this.y1 = () => object.y1()
         return this
     }
+    toString() {
+        return "Group(" + (this.objects ? this.objects.join(",") : "") + ")"
+    }
 }
 
 // A TextFrame is a graphical object that doesn't have any rendering but does
@@ -3067,6 +3310,9 @@ class TextFrame extends GraphicalObject {
         if (this.text) {
             this.text.renderIn(this.figure, this)
         }
+    }
+    toString() {
+        return "TextFrame" + this.text + ")"
     }
 }
 
@@ -3095,11 +3341,14 @@ class Rectangle extends GraphicalObject {
             Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
         }
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        if (this.opacity) {
+            ctx.globalAlpha = evaluate(this.opacity, this.figure.currentValuation)
+        }
         this.fill()
         if (this.strokeStyle != null) {
             ctx.strokeStyle = this.strokeStyle
             ctx.setLineDash(this.lineDash || [])
-            ctx.stroke()
+            this.stroke()
         }
         ctx.restore()
         if (this.text) {
@@ -3213,33 +3462,34 @@ const Paths = {
                 return
             case 4:
                 ctx.bezierCurveTo(pts[1][0], pts[1][1],
-                                pts[2][0], pts[2][1],
-                                pts[3][0], pts[3][1])
+                                  pts[2][0], pts[2][1],
+                                  pts[3][0], pts[3][1])
                 ctx.stroke()
                 return
             default: break
         }
-        const bk = bezier_k
-        const k1 = 0.5*(1 - bk), k2 = 1 - k1
+        const bk = bezier_k, bk_ = 1 - bk
+        // const k1 = 0.5*(1 - bk), k1_ = 1 - k1
+        const k1 = 0.13, k1_ = 1 - k1
         for (let i = 0; i < n - 2; i++) {
             let p1=[], p2=[], p3=[]
             if (i == 0) {
-                p1[0] = pts[i][0]*(1-bk) + pts[i+1][0]*bk
-                p1[1] = pts[i][1]*(1-bk) + pts[i+1][1]*bk
+                p1[0] = pts[i][0]*bk_ + pts[i+1][0]*bk
+                p1[1] = pts[i][1]*bk_ + pts[i+1][1]*bk
             } else {
-                p1[0] = pts[i][0]*k1 + pts[i+1][0]*k2
-                p1[1] = pts[i][1]*k1 + pts[i+1][1]*k2
+                p1[0] = pts[i][0]*k1 + pts[i+1][0]*k1_
+                p1[1] = pts[i][1]*k1 + pts[i+1][1]*k1_
             }
             if (i == n-3) {
-                p2[0] = pts[i+1][0]*bk + pts[i+2][0]*(1-bk)
-                p2[1] = pts[i+1][1]*bk + pts[i+2][1]*(1-bk)
+                p2[0] = pts[i+1][0]*bk + pts[i+2][0]*bk_
+                p2[1] = pts[i+1][1]*bk + pts[i+2][1]*bk_
                 p3 = pts[i+2]
             } else {
-                p2[0] = pts[i+1][0]*k2 + pts[i+2][0]*k1
-                p2[1] = pts[i+1][1]*k2 + pts[i+2][1]*k1
+                p2[0] = pts[i+1][0]*k1_ + pts[i+2][0]*k1
+                p2[1] = pts[i+1][1]*k1_ + pts[i+2][1]*k1
 
-                p3[0] = pts[i+1][0]*bk + pts[i+2][0]*(1-bk)
-                p3[1] = pts[i+1][1]*bk + pts[i+2][1]*(1-bk)
+                p3[0] = pts[i+1][0]*bk + pts[i+2][0]*bk_
+                p3[1] = pts[i+1][1]*bk + pts[i+2][1]*bk_
             }
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
         }
@@ -3253,14 +3503,15 @@ const Paths = {
               y0 = pts[0][1]*0.5 + pts[1][1]*0.5
         ctx.moveTo(x0, y0)
         let p1=[], p2=[], p3=[]
-        const k1 = 0.5*(1 - bezier_k), k2 = 1-k1
+        // const k1 = 0.5*(1 - bezier_k), k1_ = 1-k1
+        const k1 = 0.15, k1_ = 1-k1
         for (let i = 0; i < n; i++) {
             let i0 = i, i1 = (i+1)%n, i2 = (i+2)%n
 
-            p1[0] = pts[i0][0]*k1 + pts[i1][0]*k2
-            p1[1] = pts[i0][1]*k1 + pts[i1][1]*k2
-            p2[0] = pts[i1][0]*k2 + pts[i2][0]*k1
-            p2[1] = pts[i1][1]*k2 + pts[i2][1]*k1
+            p1[0] = pts[i0][0]*k1 + pts[i1][0]*k1_
+            p1[1] = pts[i0][1]*k1 + pts[i1][1]*k1_
+            p2[0] = pts[i1][0]*k1_ + pts[i2][0]*k1
+            p2[1] = pts[i1][1]*k1_ + pts[i2][1]*k1
             p3[0] = pts[i1][0]*0.5 + pts[i2][0]*0.5
             p3[1] = pts[i1][1]*0.5 + pts[i2][1]*0.5
             ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1])
@@ -3396,7 +3647,7 @@ class Polygon extends GraphicalObject {
     variables() {
         let result = GraphicalObject.prototype.variables.call(this)
         this.points.forEach(p => {
-            result = result.concat(exprVariables(p))
+            result = union(result, exprVariables(p))
         })
         return result
     }
@@ -3433,63 +3684,111 @@ class ClosedCurve extends Polygon {
     }
 }
 
-function drawLineLabels(figure, pts, labels, startAdj, endAdj) {
+function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
     let ctx = figure.ctx,
-        n = pts.length
+        n = pts.length,
+        result = []
     if (startAdj === undefined) startAdj = 0
     if (endAdj === undefined) endAdj = 0
-    if (labels && labels.length > 0) {
-      let total_d = -startAdj, cdists = [total_d], dists = []
-      for (let i = 0; i < n - 1; i++) {
-        let d = norm2d(pts[i+1][0] - pts[i][0],
-                       pts[i+1][1] - pts[i][1])
-        dists[i] = d
-        total_d += d
-        cdists[i+1] = total_d
-      }
-      if (startAdj) {
-        dists[0] += startAdj
-        total_d += startAdj
-      }
-      if (endAdj) {
-        dists[n-2] += endAdj
-        cdists[n-1] += endAdj
-        total_d += endAdj
-      }
-
-      labels.forEach(linelabel => {
-        let pos = evaluate(linelabel.position,
-                              figure.currentValuation),
-            offset = evaluate(linelabel.offset,
-                              figure.currentValuation),
-            dpos = pos * total_d
-        let i = 0
-        for (i = 0; i < n - 1; i++) {
-            if (cdists[i+1] > dpos) break
-        }
-        let x1 = pts[i][0],
-            y1 = pts[i][1],
-            x2 = pts[i+1][0],
-            y2 = pts[i+1][1],
-            d = norm2d(x2-x1, y2-y1),
-            dx = (x2 - x1)/d,
-            dy = (y2 - y1)/d
-        if (i == 0) {
-            x1 -= startAdj * dx
-            y1 -= startAdj * dy
-            d += startAdj
-        }
-        if (i == n-2) {
-            x2 += endAdj * dx
-            y2 += endAdj * dy
-            d += endAdj
-        }
-        let f = (dpos - cdists[i])/d,
-            x = x1 + (x2 - x1) * f + dy * offset,
-            y = y1 + (y2 - y1) * f - dx * offset
-        linelabel.drawAt(ctx, x, y)
-      })
+    if (!labels || labels.length == 0) return
+    let total_d = -startAdj, cdists = [total_d], dists = []
+    for (let i = 0; i < n - 1; i++) {
+      let d = norm2d(pts[i+1][0] - pts[i][0],
+                     pts[i+1][1] - pts[i][1])
+      dists[i] = d
+      total_d += d
+      cdists[i+1] = total_d
     }
+    if (startAdj) {
+      dists[0] += startAdj
+      total_d += startAdj
+    }
+    if (endAdj) {
+      dists[n-2] += endAdj
+      cdists[n-1] += endAdj
+      total_d += endAdj
+    }
+
+    labels.forEach(linelabel => {
+      let pos = evaluate(linelabel.position,
+                            figure.currentValuation),
+          offset = evaluate(linelabel.offset,
+                            figure.currentValuation),
+          dpos = pos * total_d
+      let i = 0
+      for (i = 0; i < n - 1; i++) {
+          if (cdists[i+1] > dpos) break
+      }
+      let x1 = pts[i][0],
+          y1 = pts[i][1],
+          x2 = pts[i+1][0],
+          y2 = pts[i+1][1],
+          f = (dpos - cdists[i])/(cdists[i+1] - cdists[i]),
+          d = norm2d(x2-x1, y2-y1),
+          dx12 = (x2 - x1)/d,
+          dy12 = (y2 - y1)/d,
+          dx, dy
+      if (f < 0.0 || f > 1.0) {
+        console.error("line label position is impossible")
+      }
+      if (f < 0.5) { // blend normal with previous normal
+        let dx01 = dx12, dy01 = dy12
+        if (i > 0) {
+          let x0 = pts[i-1][0],
+              y0 = pts[i-1][1],
+              d01 = norm2d(x1-x0, y1-y0)
+          dx01 = (x1 - x0)/d01
+          dy01 = (x1 - x0)/d01
+        }
+        dx = (f + 0.5) * dx12 + (0.5 - f) * dx01
+        dy = (f + 0.5) * dy12 + (0.5 - f) * dy01
+      } else { // blend normal with next normal
+        let dx23 = dx12, dy23 = dy12
+        if (i < n-2) {
+          let x3 = pts[i+2][0],
+              y3 = pts[i+2][1],
+              d23 = norm2d(x3 - x2, y3 - y2)
+          dx23 = (x3 - x2)/d23
+          dy23 = (y3 - y2)/d23
+        }
+        dx = (1.5 - f)*dx12 + (f - 0.5)*dx23
+        dy = (1.5 - f)*dy12 + (f - 0.5)*dy23
+      }
+      if (i == 0) {
+          x1 -= startAdj * dx
+          y1 -= startAdj * dy
+          d += startAdj
+      }
+      if (i == n-2) {
+          x2 += endAdj * dx
+          y2 += endAdj * dy
+          d += endAdj
+      }
+      let f1 = (dpos - cdists[i])/d,
+          x = x1 + (x2 - x1) * f1 + dy * offset,
+          y = y1 + (y2 - y1) * f1 - dx * offset
+      let [w, h] = linelabel.computeSize()
+      result.push([x, y, w, h])
+    })
+    return result
+}
+
+function setupClipRegion(figure, boxes, inset) {
+    if (inset == null) return
+    const ctx = figure.ctx
+    ctx.beginPath()
+    ctx.rect(0, 0, figure.width, figure.height)
+    boxes.forEach(box =>
+        {
+            const [x,y,w,h] = box
+            const w2 = w/2 + inset, h2 = h/2 + inset
+            ctx.moveTo(x - w2, y - h2)
+            ctx.lineTo(x + w2, y - h2)
+            ctx.lineTo(x + w2, y + h2)
+            ctx.lineTo(x - w2, y + h2)
+            ctx.closePath()
+        })
+    ctx.clip("evenodd")
 }
 
 // Draw an arrowhead of size s in the current style,
@@ -3591,7 +3890,7 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
 // A straight line
 class Line extends GraphicalObject {
     // create a line from p1 to p2 (optionally specified)
-    constructor(figure, strokeStyle, lineWidth, p1, p2) {
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, undefined, strokeStyle, lineWidth)
         this.p1 = p1 || new Point(figure.variable("p1x"), figure.variable("p1y"))
         this.p2 = p2 || new Point(figure.variable("p2x"), figure.variable("p2y"))
@@ -3675,14 +3974,14 @@ class Line extends GraphicalObject {
         return new Average(this.p1, this.p2)
     }
     variables() {
-        return exprVariables(this.p1).concat(exprVariables(this.p2))
+        return union(exprVariables(this.p1), exprVariables(this.p2))
     }
 }
 
-// A horizontal line.
+// A horizontal line, oriented left-to-right
 class HorzLine extends Line {
-    constructor(figure, strokeStyle, lineWidth, p1, p2) {
-        super(figure, strokeStyle, lineWidth, p1, p2)
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
+        super(figure, p1, p2, strokeStyle, lineWidth)
         figure.equal(this.start().y(), this.end().y())
         // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().x(), this.end().x())
@@ -3695,10 +3994,10 @@ class HorzLine extends Line {
     }
 }
 
-// A vertical line.
+// A vertical line, oriented downward
 class VertLine extends Line {
-    constructor(figure, strokeStyle, lineWidth, p1, p2) {
-        super(figure, strokeStyle, lineWidth, p1, p2)
+    constructor(figure, p1, p2, strokeStyle, lineWidth) {
+        super(figure, p1, p2, strokeStyle, lineWidth)
         figure.equal(this.start().x(), this.end().x())
         // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().y(), this.end().y())
@@ -3750,6 +4049,7 @@ class Connector extends GraphicalObject {
         this.labels = []
         this.arrowSize = figure.arrowSize
         this.connectionStyle = figure.connectionStyle
+        this.lineLabelInset = figure.lineLabelInset // may be null
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -3768,6 +4068,13 @@ class Connector extends GraphicalObject {
         const pts = objs.map(o => 
             [ evaluate(o.x(), valuation),
               evaluate(o.y(), valuation) ]);
+        const labelPosns = (this.labels && this.labels.length > 0)
+            ? positionLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
+                              this.endArrowStyle ? this.arrowSize : 0)
+            : null
+
+        ctx.save()
+        if (labelPosns) setupClipRegion(figure, labelPosns, this.lineLabelInset)
 
         switch (this.connectionStyle) {
             case 'magnet':
@@ -3801,16 +4108,27 @@ class Connector extends GraphicalObject {
         ctx.strokeStyle = this.strokeStyle
         Paths.bsplines(ctx, pts)
         ctx.stroke()
-        if (this.labels && this.labels.length > 0)
-            drawLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
-                            this.endArrowStyle ? this.arrowSize : 0)
+        ctx.restore()
+
+        if (labelPosns) {
+            for (let i = 0; i < this.labels.length; i++) {
+                const box = labelPosns[i]
+                this.labels[i].drawAt(ctx, ...box)
+            }
+        }
     }
     insert(object, pos) {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
     }
-    addLabel(obj) {
-        this.labels.push(obj)
+    addLabel(obj, pos, offset, margin) {
+        if (arguments.length == 1)
+            this.labels.push(obj)
+        else
+            this.labels.push(this.figure.lineLabel(obj, pos, offset, margin))
         return this
+    }
+    setLabelInset(inset) {
+        this.lineLabelInset = inset
     }
     setStartArrow(style) {
         this.startArrowStyle = style
@@ -3825,10 +4143,16 @@ class Connector extends GraphicalObject {
         return this
     }
     variables() {
-        let r = []
+        let r = new Set()
         this.objects.forEach(o =>
-            r = r.concat(exprVariables(o)))
+            r = union(r, exprVariables(o)))
         return r
+    }
+    className() {
+        return "Connector"
+    }
+    toString() {
+        return this.className() + "(" + (this.objects ? this.objects.join(',') : "") + ")"
     }
 }
 
@@ -4052,8 +4376,9 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
 class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
+        // this.text is either a string or a ContainedText object
         if (text.layout) {
-            this.text = new ContainedText(figure, text) // either a String or a TextItem
+            this.text = new ContainedText(figure, text)
             this.font = new Font(figure)
             if (fillStyle != null) {
                 this.fillStyle = this.text.fillStyle = fillStyle
@@ -4130,28 +4455,10 @@ class Label extends GraphicalObject {
         if (typeof this.text == STRING_STR) {
             this.computedWidth = ctx.measureText(this.text).width
         } else {
-            const tc = new TextContext(null, figure)
-            tc.setAll({font: this.font, verticalAlign: "center",
-              justification: "center", lineSpacing: 0, inset: 0,
-              layoutAlgorithm: "greedy",
-              fillStyle: this.fillStyle,
-              strokeStyle: null, baseline: 0,
-              forceLayout: false, container: this
-            })
-            const layout = findLayout(this.figure, [{item: this.text.text, context: tc}], 1,
-                                      0, 0, 0, Figure_defaults.LARGE_SPAN, 0)
-
-            if (!layout.success) {
-                console.error("Could not lay out a label")
-                return 0
-            }
-            let w = 0, items = layout.lines[0].items
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i]
-                w += item.width
-            }
+            let [w, h] = this.text.minimumSize()
             this.computedWidth = w
         }
+        return this.computedWidth
     }
 
     // Set font size
@@ -4172,6 +4479,16 @@ class Label extends GraphicalObject {
         this.font.setStyle(n)
         return this
     }
+
+    // set text color etc.
+    setTextStyle(s) {
+        this.fillStyle = s
+        return this
+    }
+
+    toString() {
+        return 'Label("' + this.text + '")'
+    }
 }
 
 // A label somewhere along a connector.
@@ -4183,24 +4500,57 @@ class Label extends GraphicalObject {
 // the connector.
 class LineLabel {
     constructor(figure, text, position, offset) {
+        this.figure = figure
         this.text = text
         this.position = position
         this.offset = offset || figure.font.getSize()
-        this.strokeStyle = figure.strokeStyle
-        this.fillStyle = figure.textStyle || "#000000"
+        this.strokeStyle = null
+        this.textStyle = figure.textStyle || "#000000"
         this.font = new Font(figure)
+    }
+    computeSize() {
+        const ctx = this.figure.ctx
+        if (this.text.constructor == String) {
+            this.font.setContextFont(ctx)
+            this.computedHeight = this.font.getSize()
+            this.computedWidth = ctx.measureText(this.text).width
+        } else {
+            let [w, h] = this.text.minimumSize()
+            this.computedHeight = h
+            this.computedWidth = w
+        }
+        return [this.computedWidth, this.computedHeight]
     }
     drawAt(ctx, x, y) {
         this.font.setContextFont(ctx)
-        ctx.fillStyle = this.fillStyle
-        x -= ctx.measureText(this.text).width / 2
-        y += this.font.getSize()/2
-        ctx.fillText(this.text, x, y)
+        ctx.fillStyle = this.textStyle
+        this.computeSize()
+        let w = this.computedWidth, h = this.computedHeight
+
+        if (this.strokeStyle) {
+            ctx.strokeStyle = this.strokeStyle
+            ctx.beginPath()
+            ctx.rect(x - w/2, y - h/2, w, h)
+            ctx.stroke()
+        }
+
+        if (this.text.constructor == String) {
+            ctx.fillText(this.text, x - w/2, y + h/2)
+        } else {
+            const box = new LayoutObject()
+            box.x = () => x
+            box.y = () => y
+            box.w = () => w
+            box.h = () => h
+            this.text.renderIn(this.figure, box)
+        }
     }
     setFillStyle(s) { this.fillStyle = s; return this }
     setStrokeStyle(s) { this.strokeStyle = s; return this }
     setFontName(n) { this.font.setName(n); return this }
     setFontSize(s) { this.font.setSize(s); return this }
+    setPosition(p) { this.position = p; return this }
+    setOffset(o) { this.offset = o; return this }
 }
 
 function countItems(ly) {
@@ -4276,6 +4626,41 @@ class ContainedText {
     setLayoutAlgorithm(a) {
         this.layoutAlgorithm = a
         return this
+    }
+
+    // Return [w, h] where w and h are the width and height of the smallest rectangle
+    // that contains the text when formatted in the smallest possible number of lines.
+    minimumSize() {
+        const tc = new TextContext(null, figure),
+            font = this.font,
+            lineSpacing = font.getSize() *
+                (typeof this.lineSpacing == "number" ? this.lineSpacing : 1)
+        tc.setAll({font, verticalAlign: "center",
+            justification: "left", lineSpacing, inset: 0,
+            layoutAlgorithm: "greedy",
+            fillStyle: this.fillStyle,
+            strokeStyle: null, baseline: 0,
+            forceLayout: false, container: this
+        })
+        const layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,
+                                  0, 0, 0, Figure_defaults.LARGE_SPAN, Figure_defaults.LARGE_SPAN)
+
+        if (!layout.success) {
+            console.error("Could not lay out a label")
+            return 0
+        }
+        let w = 0, h = 0
+        for (let l = 0; l < layout.lines.length; l++) {
+            let lw = 0, items = layout.lines[l].items
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                lw += item.width
+            }
+            if (lw > w) w = lw
+            h = Math.max(h, layout.lines[l].y)
+        }
+        const padding = 2 * this.inset
+        return [w + padding, h + lineSpacing + padding]
     }
 
     // Draw this text inside a graphical object (container)
@@ -4396,7 +4781,7 @@ class TextItem {
     // starting from baseline position (x,y) but without extending below y position
     // ymax, and with x1 as the right margin of the current line.  The result
     // is an object with these fields:
-    //  {
+    // {
     //     success: a boolean indicating whether layout was completed
     //     positions: an array of positions at which formatting can continue
     //           after this item. For most text items, this is a single-element array, but
@@ -4417,10 +4802,11 @@ class TextItem {
     //                     fillStyle: the fill style
     //                     strokeStyle: the stroke style (if any)
     //                   }
+    //           }
     //     following: an array of context-items (see findLayout) that should be
     //                formatted after this one, or undefined if success is false.
     //                Elements are in forward order.
-    //  }
+    // }
     layout(figure, textContext, x, y, x0, x1, ymax) {
         return {success: false}
     }
@@ -4429,6 +4815,9 @@ class TextItem {
     // style, and stroke style are assumed already to be set correctly.
     // Default: do nothing
     render(ctx, x, y) {}
+
+    // Report the width of this item in the given context and font choice.
+    getWidth(ctx, font) { return 0 }
 
     // Erase any cached information specific to a given layout task
     resetCaches() {}
@@ -4511,16 +4900,20 @@ class WordText extends TextItem {
         this.text = t
     }
     toString() { return `[WordText ${this.text}]` }
-
-    // See TextItem.layout
-    layout(figure, tc, x, y, x0, x1, ymax) {
-        const ctx = figure.ctx,
-              font = tc.get("font")
+    getWidth(ctx, font) {
         let width = this.width
         if (!width) {
             font.setContextFont(ctx)
             this.width = width = ctx.measureText(this.text).width
         }
+        return width
+    }
+
+    // See TextItem.layout
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const ctx = figure.ctx,
+              font = tc.get("font"),
+              width = this.getWidth(ctx, font)
         if (x + width > x1) {
             return { success: false }
         }
@@ -4552,20 +4945,23 @@ var ws_counter = 0
 var EMPTY_IMMUTABLE_ARRAY = []
 
 class Whitespace extends TextItem {
-    constructor(figure) {
-        super(figure)
+    constructor() {
+        super()
         this.index = ws_counter++
     }
     toString() { return `[Whitespace ${this.index}]` }
     // See TextItem.layout
-    layout(figure, tc, x, y, x0, x1, ymax) {
+    getWidth(ctx, font) {
         let space = this.width
         if (!space) {
-              const font = tc.get("font")
-              font.setContextFont(figure.ctx)
-              space = figure.ctx.measureText(" ").width
+              font.setContextFont(ctx)
+              space = ctx.measureText(" ").width
               this.width = space
         }
+        return space
+    }
+    layout(figure, tc, x, y, x0, x1, ymax) {
+        const space = this.getWidth(figure.ctx, tc.get("font"))
         const positions = []
         if (x + space <= x1) {
             positions.push( { newLine: false,
@@ -4593,6 +4989,18 @@ class Whitespace extends TextItem {
         delete this.width 
         delete this.cache
     }
+}
+
+// Create a negative space for text
+class NegSpace extends WordText {
+    constructor(size) {
+        super()
+        this.offset = -size
+    }
+    getWidth(ctx, font) {
+        return this.offset
+    }
+    render(ctx, x, y) {}
 }
 
 class ConcatText extends TextItem {
@@ -4676,6 +5084,39 @@ class LineBreak extends TextItem {
     }
     render(ctx, x, y) {
         ctx.fillText("-", x, y)
+    }
+}
+
+// A ComputedText is evaluated dynamically using a function, once per
+// layout task
+class ComputedText extends TextItem {
+    constructor(f) {
+        super()
+        this.creator = f
+    }
+    initializeIfNecessary() {
+        if (this.hasOwnProperty("item")) return
+        this.item = this.creator()
+    }
+    layout(figure, textContext, x, y, x0, x1, ymax) {
+        delete this.item
+        this.initializeIfNecessary()
+        return this.item.layout(figure, textContext, x, y, x0, x1, ymax)
+    }
+    render(ctx, x, y) {
+        this.initializeIfNecessary()
+        this.item.render(ctx, x, y)
+    }
+    getWidth(ctx, font) {
+        this.initializeIfNecessary()
+        return this.item.getWidth(ctx, font)
+    }
+    resetCaches() {
+        delete this.item
+    }
+    toString() {
+        this.initializeIfNecessary()
+        return "computed[" + this.item.toString() + "]"
     }
 }
 
@@ -4794,6 +5235,8 @@ class InteractiveObject extends LayoutObject {
 }
 InteractiveObject.prototype.renderIfVisible = GraphicalObject.prototype.renderIfVisible
 InteractiveObject.prototype.visible = GraphicalObject.prototype.visible
+InteractiveObject.prototype.placeOver = GraphicalObject.prototype.placeOver
+InteractiveObject.prototype.placeUnder = GraphicalObject.prototype.placeUnder
 
 // A handle that can be dragged interactively.
 class Handle extends InteractiveObject {
@@ -4872,6 +5315,8 @@ class Handle extends InteractiveObject {
         }
         this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 10)
         this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 10)
+        this.xcon.stage = 0
+        this.ycon.stage = 0
         if (!this.figure.renderNeeded) {
             this.figure.renderNeeded = true
             setTimeout(() => this.figure.renderIfDirty(true), 0) // collapse multiple renders
@@ -4880,6 +5325,7 @@ class Handle extends InteractiveObject {
     active() { return true }
     visible() { return true }
     toString() { return "Handle" }
+    variables() { return new Set().add(this.x_).add(this.y_) }
 }
 
 class Button extends InteractiveObject {
@@ -5041,6 +5487,18 @@ class DebugExpr extends Expression {
     toString() {
         return "debug(" + this.expr + ")"
     }
+    x() {
+        return this.expr.x()
+    }
+    y() {
+        return this.expr.y()
+    }
+    w() {
+        return this.expr.w()
+    }
+    h() {
+        return this.expr.h()
+    }
 }
 
 class DOMElementBox extends LayoutObject {
@@ -5182,8 +5640,9 @@ function autoResize() {
     CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,
     Expression, Minus, Plus, Times, Divide, Sqrt, Distance, Average, Min, Max,
     Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
+    ComputedText,
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners,
     Figure_defaults, isFigure, statistics, currentValue, drawLineEndSeg,
-    evaluate, sqdist, exprVariables, DebugExpr
+    evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions
   })
 }()

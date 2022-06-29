@@ -1,0 +1,99 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <style>
+      body {background-color: white}
+      canvas {background-color: #eee }
+    </style>
+</head>
+<body>
+<h1>Gate design</h1>
+    <canvas id=gate></canvas>
+    <script>
+        const gate = new Constrain.Figure("gate")
+        with (gate) {
+            let [ul, ur, lr, ll] = arrObjects(4, () => point())
+            minimizationOptions.UNCMIN_MAXIT = 20000
+
+            equal(ul, point(10,15))
+            polygon(ul, ur, lr, ll).setStrokeStyle("blue").setFillStyle()
+            equal(ul.x(), ll.x()).changeCost(10)
+            equal(ur.x(), lr.x()).changeCost(10)
+            align("none", "center", average(ll, ul), average(ur, lr))
+            equal(distance(ul, ur), 101.5)
+            equal(distance(ll, ul), 92.5)
+            equal(distance(ur, lr), 90.5)
+            equal(distance(ll, lr), 101)
+            geq(lr.y(), ur.y()).changeCost(10)
+            geq(ll.y(), ul.y()).changeCost(10)
+            geq(lr.y(), plus(10, ur.y())).changeCost(10)
+            geq(lr.y(), ul.y()).changeCost(10)
+            geq(ur.x(), ul.x()).changeCost(10)
+            geq(ur.x(), ll.x()).changeCost(10)
+
+            freeze()
+            setFontSize(8)
+
+            let [bul, bll, bur, blr] = arrObjects(4, () => point())
+            polygon(bul, bll, blr, bur)
+                .setStrokeStyle("orange")
+            // label("bul").at(bul)
+            // label("bll").at(bll)
+            // label("bur").at(bur)
+            // label("blr").at(blr)
+
+            perpendicular(bul, bur, bur, blr)
+            perpendicular(bll, blr, bur, blr)
+            perpendicular(bul, bur, bul, bll)
+            parallel(bll, blr, bul, bur)
+
+            collinear(ul, bur, ur)
+            leq(ul.x(), bur.x(), ur.x())
+            collinear(ll, bll, lr)
+            leq(ll.x(), bll.x(), lr.x())
+
+            equal(121.3, distance(bul, bll), distance(bur, blr))
+            equal(13.8, distance(bll, blr), distance(bul, bur))
+
+            geq(bur.x(), plus(5, bul.x())).changeCost(10)
+            geq(bul.x(), plus(5, blr.x()))
+            geq(blr.x(), plus(5, bll.x()))
+
+            equal(distance(bur, ur), distance(ll, bll))
+            // geq(bur.y(), bul.y()).changeCost(0.1)
+            // setAnimatedSolving(true)
+
+            freeze()
+
+            const p1 = point(), p2 = point()
+
+            collinear(ul, p1, ur)
+            collinear(bul, p1, bll)
+
+            collinear(ll, p2, lr)
+            collinear(blr, p2, bur)
+
+            circle().setW(2).at(p2).setFillStyle("black")
+            circle().setW(2).at(p1).setFillStyle("black")
+
+            line(p1, bur).setLineWidth(0.5).setLineDash([3,2])
+            line(p2, bll).setLineWidth(0.5).setLineDash([3,2])
+
+            align("abut", "center", 
+                ur,
+                hspace(10),
+                label(text("cut position = ", numericText(distance(p1, bul)), " cm"))
+            )
+            align("left", "abut",
+                label(text("board length = ", numericText(distance(bul, bll)), " cm")),
+                label(text("board width = ", numericText(distance(bul, bur)), " cm")),
+                margin().lc()
+            )
+
+            start()
+        }
+    </script>
+</body>
+</html>

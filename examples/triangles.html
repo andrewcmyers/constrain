@@ -14,7 +14,7 @@
 <body>
 <h1>Triangle demo (this should be hidden)</h1>
 
-<canvas></canvas>
+<canvas id=triangle></canvas>
 
 <button>Show solving</button>
 <script>
@@ -28,31 +28,36 @@ canvas.style.backgroundColor = "#eee"
 
 const CIRCUMCENTER = true,
       INCENTER = true,
-      ORTHOCENTER = false,
+      ORTHOCENTER = true,
       CENTROID = true
 
+Constrain.setupTouchListeners()
 with (figure) {
-    figure.animatedSolving = true
+    // figure.animatedSolving = true
+    // function freeze() {}
     function dot() {
         return circle().setW(8).setFillStyle("black")
     }
-    let h1 = handle(),
-        p2 = point(variable("p2x", 0), variable("p2y", 400)),
-        p3 = point(variable("p3x", 400), variable("p3y", 400))
-    let circum = CIRCUMCENTER ? circle("#def", null, null, 200, 400, 400) : null
-    let triangle = polygon([h1, p2, p3]).setFillStyle("white").setLineWidth(2);
-    let inscribed = INCENTER ? circle("#ffe", null, null, 100, 100, 100) : null
-    let canvRect = canvasRect()
+    let h1 = handle().setStrokeStyle("red")
+    let temp1 = equal(h1.y(), 0),
+        temp2 = equal(h1.x(), 400)
+
+    let p2 = point(variable("p2x", 0), variable("p2y", 400)),
+        p3 = point(variable("p3x", 400), variable("p3y", 400)),
+        cr = canvasRect()
+
+    const triangle = polygon([h1, p2, p3]).setFillStyle("white").setLineWidth(2)
+    let circum
 
     align("none", "center", p2, p3)
-    let b = box().at(canvRect)
-    equal(b.w(), times(canvRect.w(), 0.5))
-    equal(b.h(), times(canvRect.h(), 0.5))
+    let b = box().at(cr)
+    equal(b.w(), times(cr.w(), 0.5))
+    equal(b.h(), times(cr.h(), 0.5))
     pin(p2, b.ll())
     pin(p3, b.lr())
     
     hint(h1, [200,0])
-    keepInside(h1, canvRect.inset(20))
+    keepInside(h1, cr.inset(20))
     leq(h1.y(), minus(p2.y(), 50))
 
     let m1 = average(h1, p2),
@@ -60,6 +65,9 @@ with (figure) {
         m3 = average(p2, p3)
 
     if (CIRCUMCENTER) {
+        freeze()
+        circum = circle("#def", null, null, 200, 400, 400)
+        circum.placeUnder(triangle)
         equal(distance(h1, circum), distance(p2, circum), distance(p3, circum),
               times(0.5, circum.w()))
 
@@ -71,39 +79,45 @@ with (figure) {
         dot().at(circum)
         align("abut", "center", circum.center(), hspace(7), label("circumcenter"))
     }
+    let centroid
     if (CENTROID) {
+        freeze()
         line().setStart(h1).setEnd(m3).setLineDash([2,6]).setStrokeStyle("#080")
         line().setStart(p2).setEnd(m2).setLineDash([2,6]).setStrokeStyle("#080")
         line().setStart(p3).setEnd(m1).setLineDash([2,6]).setStrokeStyle("#080")
-        let centroid = point(plus(times(1/3, h1.x()), times(2/3, m3.x())),
+        centroid = point(plus(times(1/3, h1.x()), times(2/3, m3.x())),
                         plus(times(1/3, h1.y()), times(2/3, m3.y())))
         align("abut", "center", centroid, hspace(7), label("centroid"))
         dot().at(centroid)
     }
 
     if (INCENTER) {
+        freeze()
+        let inscribed = circle("#ffe")
+        inscribed.placeOver(triangle)
         let incenter = inscribed.center()
-        hint(incenter, [200,10])
-        keepInside(inscribed, triangle)
+        keepInside(inscribed, triangle).changeCost(10)
         new Array(h1, p2, p3).forEach(p => 
             line().setStart(p).setEnd(incenter).setLineDash([2,6]).setStrokeStyle("#800")
         )
         dot().at(incenter)
         align("abut", "center", incenter, hspace(7), label("incenter"))
         const ip1 = point(), ip2 = point(), ip3 = point()
-        between(ip1, h1, p2)
-        between(ip2, p2, p3)
-        between(ip3, p3, h1)
+        between(ip1, h1, p2).changeCost(1000)
+        between(ip2, p2, p3).changeCost(1000)
+        between(ip3, p3, h1).changeCost(1000)
+
         perpendicular(incenter, ip1, h1, p2)
         perpendicular(incenter, ip2, p2, p3)
         perpendicular(incenter, ip3, p3, h1)
         const di1 = distance(ip1, incenter),
               di2 = distance(ip2, incenter),
               di3 = distance(ip3, incenter)
-        equal(di1, di2, di3, times(0.5, inscribed.w()))
+        equal(times(0.5, inscribed.w()), di1, di2, di3)
     }
 
     if (ORTHOCENTER) {
+        freeze()
         const op1 = point(), op2 = point(), op3 = point(), orthocenter = point()
         collinear(op1, h1, p2)
         collinear(op2, p2, p3)
@@ -115,18 +129,20 @@ with (figure) {
         perpendicular(h1, p2, p3, op1)
         perpendicular(p2, p3, h1, op2)
         perpendicular(p3, h1, p2, op3)
-        line().setStart(p3).setEnd(op1).setLineDash([2, 6, 4, 6])
-        line().setStart(h1).setEnd(op2).setLineDash([2, 6, 4, 6])
-        line().setStart(p2).setEnd(op3).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op1).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op2).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op3).setLineDash([2, 6, 4, 6])
+        line().setStart(p3).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        line().setStart(h1).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        line().setStart(p2).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
         if (CIRCUMCENTER && ORTHOCENTER) {
             line().setLineWidth(1).setStart(circum).setEnd(orthocenter)
         }
     }
 
-    let temp1 = equal(h1.y(), 0),
-        temp2 = equal(h1.x(), 400)
     updateValuation()
-         removeConstraints(temp1, temp2)
+    removeConstraints(temp1, temp2)
+
 
     start()
 }

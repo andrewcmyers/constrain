@@ -67,8 +67,7 @@
   web-based presentations. It has some advantages over
   alternative ways to generate diagrams:
   <ul>
-    <li>Constrain supports animated figures in which displayed objects move and change
-        their appearance smoothly or discontinuously. To make animations smooth,
+    <li>Constrain supports animated figures in which displayed objects move and change their appearance smoothly or discontinuously. To make animations smooth,
         it uses a fast solver based on backpropagation, with each animation frame's
         solution used as a starting point for solving the next one.</li>
     <li>Figures can be interactive: the reader can change their appearance.</li>
@@ -94,11 +93,11 @@
   deserve more explanation.
 </p>
 <p>
-<a href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html">
-Heydon and Nelson wrote in 1994</a>, “thirty years after Sketchpad, the sad
-fact is that constraints have so far been more promising than useful”.
-It has now been more than fifty years, but Constrain does seem to make
-constraints useful for graphics.
+Heydon and Nelson wrote in their introduction to the Juno 2 constraint-based drawing editor in 1994,
+“thirty years after Sketchpad, the sad
+fact is that constraints have so far been more promising than useful” <a href="#juno_2_ref">[1]</a>.
+It has now been almost sixty years since Sketchpad <a href="#sketchpad_ref">[2]</a>,
+but Constrain does seem to make constraints useful for graphics.
 </p>
 
 <h2>Overview</h2>
@@ -250,7 +249,8 @@ length.
     equal(p2.y(), p3.y())
     setFillStyle("#dfd")
     polygon(p1, p2, p3).at(canvasRect())
-                       .setCornerRadius(10)
+                       .setCornerRadius(10);
+    [p1, p2, p3].map(p => circle().setW(2).at(p))
   }
 </script>
 </div>
@@ -269,7 +269,7 @@ Control points can be repeated to introduce sharp vertices in the curve.
 <canvas id=curve_ex_fig></canvas>
 <script>
   with (new Constrain.Figure("curve_ex_fig")) {
-    const c = canvasRect()
+    const c = margin()
     align("LR", "TB", rectangle().setFillStyle(null)
                                  .setLineDash([6,6]),
                       c)
@@ -285,20 +285,22 @@ Control points can be repeated to introduce sharp vertices in the curve.
 
 <h3>Lines</h3>
 
-<h4>line([strokeStyle], [lineWidth])</h4>
+<h4>line([start], [end], [strokeStyle], [lineWidth])</h4>
 <p>
 Creates a straight line whose appearance can be overridden with optional
-parameters (class <code>Line</code>).  Its position is defined by adding constraints on the points
-returned by its <code>start()</code> and <code>end()</code> methods. It can also be
-given arrowheads.
+parameters (class <code>Line</code>). The line goes from the point <code>start</code>
+to the point <code>end</code>, which if not specified are initialized to new points.
+The start and end of the line can be accessed using its <code>start()</code> and
+<code>end()</code> methods, and constraints can be applied to them.
+A line can also be given arrowheads.
 </p>
 
-<h4>horzLine([strokeStyle], [lineWidth])</h4>
+<h4>horzLine([start], [end], [strokeStyle], [lineWidth])</h4>
 <p>
 Creates a straight horizontal line that goes from left to right (class <code>HorzLine</code>).
 </p>
 
-<h4>vertLine([strokeStyle], [lineWidth])</h4>
+<h4>vertLine([start], [end], [strokeStyle], [lineWidth])</h4>
 <p>
 Creates a straight vertical line that goes from the top to the bottom (class <code>VertLine</code>).
 </p>
@@ -322,7 +324,7 @@ like B-splines (which are smoother) in the middle.
         c2 = circle().setW(30).at(c1.toRight(100)),
         t = average(c1, c2).toTop(20),
         b = average(c1, c2).toBottom(40),
-        h = handle()
+        h = handle().setStrokeStyle("red")
     polygon(c2, t, c1, b)
         .setFillStyle(null)
         .setLineDash([4,4])
@@ -331,8 +333,9 @@ like B-splines (which are smoother) in the middle.
         .setEndArrow("arrow")
     connector(c2, b, c1)
         .setEndArrow("arrow")
-    connector(c2, h, c1, c2).setLineWidth(3)
-        .setEndArrow("curved")
+    h.placeOver(
+      connector(c2, h, c1, c2).setLineWidth(3)
+        .setEndArrow("curved"))
   }
 </script>
 </div>
@@ -376,6 +379,25 @@ Creates a graphical object that is a simple line of text. The text may either be
 or a text object created using <code>text()</code>.
 </p>
 
+<pre id="label_ex_code" class=code></pre>
+<div id="label_ex">
+<canvas id=label_ex_fig style="height: 200px">
+</canvas>
+<script>
+with (new Constrain.Figure("label_ex_fig")) {
+  align("left", "abut", margin(5).ul(),
+    label("The quick fox jumps").setTextStyle("blue"),
+    label("over the lazy", 18, "Times"), vspace(8),
+    label(fontSize(24,
+            text(bold("brown"), " dog.",
+                 negspace(8), superscript("1")))))
+}
+</script>
+</div>
+<script>
+    show_example("label_ex_code", "label_ex")
+</script>
+
 <h4>textFrame(text, [fillStyle])</h4>
 <p>
 Creates a graphical object that is a box containing text. The text is automatically reformatted
@@ -385,7 +407,7 @@ support adding text with similar formatting capability.
 
 <pre id="textFrame_ex_code" class=code></pre>
 <div id="textFrame_ex">
-<canvas id=textFrame_ex_fig style="height: 260px">
+<canvas id=textFrame_ex_fig>
 </canvas>
 <script>
   with (new Constrain.Figure("textFrame_ex_fig")) {
@@ -438,19 +460,31 @@ potential line breaks.
 
 <h4>br()</h4>
 <p>
-Create a text object for a line break.
+A text object for a line break.
 </p>
 
 <h4>subscript(text)<br>
 superscript(text)</h4>
 <p>
-Create a text object that places its text in subscript or superscript position while reducing
+A text object that places its text in subscript or superscript position while reducing
 the font size.
 </p>
 
 <h4>whitespace()</h4>
 <p>
-Create a text object for whitespace that is an allowed position for a line break.
+A text object for whitespace that is an allowed position for a line break.
+</p>
+
+<h4>negspace(w)</h4>
+<p>
+A text object that moves the position leftward by <code>w</code> pixels.
+</p>
+
+<h4>numericText(expr, precision)</h4>
+<p>
+Create a text object containing the value of the expression <code>expr</code>,
+which can be solved for.  The optional parameter <code>precision</code> specifies
+the number of digits of precision, which is 2 by default.
 </p>
 
 <h3>Interactive objects</h3>
@@ -460,23 +494,25 @@ Create a text object for whitespace that is an allowed position for a line break
 A handle (class <code>Handle</code>) is an object that can be moved using the mouse,
 affecting any constraints that depend on its position. The following example constrains
 distances to dynamically circumscribe a triangle;
-you can drag the diamond-shaped handle to change the figure.
+you can drag the red diamond to change the figure.
 </p>
 
-<pre id="handle_ex_code" class=code></pre>
-<div id="handle_ex">
+<pre id=handle_ex_code class=code></pre>
+<div id=handle_ex>
 <canvas id=handle_ex_fig></canvas>
 <script>
-  with (new Constrain.Figure("handle_ex_fig")) {
-    let c = circle("#def"), h1 = handle(),
-        p2 = point(150, 150), p3 = point(50, 150)
-    hint(h1, [100, 20])
-    polygon([h1, p2, p3])
-    equal(distance(c, h1), distance(c, p2),
-          distance(c, p3))
-    c.setW(times(2, distance(c, h1)))
-    geq(minus(p3.y(), h1.y()), 10) // ensure solvable!
-  }
+with (new Constrain.Figure("handle_ex_fig")) {
+  let h1 = handle().setStrokeStyle("red"),
+      p2 = point(150, 150), p3 = point(50, 150)
+  const triangle = polygon(h1, p2, p3); freeze()
+  c = circle("#def").placeUnder(triangle)
+  hint(h1, [0,0]); leq(distance(c, h1), 5000)
+  equal(times(0.5, c.width()), distance(c, h1),
+        distance(c, p2), distance(c, p3))
+  setStrokeStyle("gray")
+  line(c, average(p2, p3)); line(c, average(h1, p2))
+  line(c, average(h1, p3));
+}
 </script>
 </div>
 <script>
@@ -573,7 +609,15 @@ graphics onto regular web page content, as demonstrated in
 <h4>canvasRect()</h4>
 <p>
 A box exactly filling the canvas the figure is drawn in, which is useful for
-positioning objects relative to the canvas.
+positioning objects relative to the canvas. See also 
+</p>
+
+<h4>margin(), margin(d)</h4>
+<p>
+A box representing the canvas margin, which is the full box returned by
+<code>canvasRect()</code>, but inset either explicitly by <code>d</code> pixels
+or, if the margin width is not specified, by the default canvas line width so
+that objects aligned against the margin do not overflow outside the canvas.
 </p>
 
 <h4>group(...objects)</h4>
@@ -581,10 +625,10 @@ positioning objects relative to the canvas.
 A box containing a set of objects. The box is just large enough to surround all the objects.
 </p>
 
-<h3>User-defined graphical objects</h3>
+<h3 id=UserDefined>User-defined graphical objects</h3>
 <p>
 The class <code>UserDefined</code> provides a template for building new graphical objects.
-By default, a user-defined object is drawn as a plain gray square.
+By default, a user-defined object is drawn as a plain gray rectangle.
 It is the responsibility of the user to define a subclass of <code>UserDefined</code>, in
 which the following method is overridden:
 
@@ -620,6 +664,14 @@ telling each one to start:
 <h4>destroy()</h4>
 
 <p>Destroys the figure and removes it from the list of figures (<code>Constrain.Figures</code>).</p>
+
+<h4>freeze()</h4>
+
+<p>
+Add a new stage to the figure, freezing all previously created
+objects in place. See <a href="#staged_solving">Staged solving</a> for
+more explanation.
+</p>
 
 <h3>Other figure control operations</h3>
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
@@ -714,7 +766,8 @@ Adds and returns a constraint that the expression <code>e</code> is greater than
 
 <h4>leq(...e)</h4>
 <p>
-Adds and returns a constraint that each expression in the list <code>e</code> is less than or equal to the next.
+Adds and returns a constraint that each expression in the list <code>e</code>
+is less than or equal to the next.
 </p>
 
 <h4>pin(...o)</h4>
@@ -762,6 +815,16 @@ return this element.</p>
 <p>Constrain the height of this element to be <code>w</code> and
 return this element.</p>
 
+<h4>placeUnder(obj), placeOver(obj)</h4>
+<p>
+These method do not affect the positioning of graphical objects, but they affect the
+order in which objects are rendered. They respectively cause the receiver object to 
+be rendered immediately before or immediately after the specified object. Note that
+by default, graphical objects are rendered in exactly the order they are created, so
+this method allows objects to be defined out of order with respect to the rendering
+order.
+</p>
+
 <h3>Costs</h3>
 <p>
 In general, the constraint solver cannot solve every constraint exactly. It works by trying to
@@ -769,10 +832,13 @@ minimize a total cost over all constraints. Every constraint has an associated c
 that is equal to 1 by default. Usually this does not need to be changed, but it can be useful
 to change the cost of some constraints to make them softer or harder constraints relative to
 other constraints.
+</p>
 <h4>changeCost(c)</h4>
 <p>
 This method can be invoked on <code>Constraint</code> objects to multiply the current cost by
-the factor <code>c</code>
+the factor <code>c</code>. This method can be very helpful for getting the solver out of local
+minima, for example by using <code>leq</code> or <code>geq</code> with a high cost to pull
+variables and points forcibly to the correct side of a diagram.
 </p>
 <h3>Expressions</h3>
 <p>
@@ -823,6 +889,13 @@ possible to compute the average of two points.</p>
 <h4>min(a, b, ...)</h4>
 <p>The minimum of the arguments, which must all be scalars.</p>
 
+<h4>conditional(cond, epos, eneg)</h4>
+<p>If the value of the conditional expression is positive, the value of this
+expression is the value of <code>epos</code>. Otherwise, it is <code>eneg</code>.
+For best behavior, <code>epos</code> and <code>eneg</code> should have the
+same value when <code>cond</code> is zero.
+</p>
+
 <h4>linear(frame, a, b)</h4>
 <p>An expression (class <code>Linear</code>) whose value is the value of expression <code>a</code> before the
 specified frame, and the value of <code>b</code> after that frame. During the
@@ -845,9 +918,11 @@ or, as in the following example, arrays.</p>
   with (new Constrain.Figure("smooth_ex_fig")) {
     let frame1 = addFrame(),
         frame2 = addFrame().setLength(1000),
-        CR = canvasRect().inset(20)
-    square().setW(20).setLineWidth(4)
-            .at(smooth(frame2, CR.cl(), CR.cr()))
+        CR = canvasRect().inset(20),
+        s = square().setW(20).setLineWidth(4)
+                   .setFillStyle("white")
+                   .setOpacity(smooth(frame2, 1, 0))
+                   .at(linear(frame2, CR.cl(), CR.cr()))
     align("right", "bottom", advanceButton(),
           CR.lr().toRight(20))
   }
@@ -881,8 +956,9 @@ solutions. The call returns the expression <code>e</code>.
 <p>
 The class <code>Global</code> represents an expression whose value may change but which is
 not affected by any variables that are solved for. Its value is provided by a function <code>f</code>
-passed to the constructor. It is useful for interfacing Constrain diagrams with external data
-sources.
+passed to the constructor. The function is expected to return a number or array of numbers.
+This class is used to interface Constrain diagrams with external data sources such as the user
+interface.
 </p>
 
 <h4>new DebugExpr(e)</h4>
@@ -1007,9 +1083,9 @@ These methods each return a point that is the center of one of the edges of the
 bounding box of the object.
 </p>
 <h4>toTop(d), toBottom(d), toRight(d), toLeft(d)</h4>
-<p> These methods can be used to nudge the position of a point or object in the
-specified direction by distance <code>d</code>, returning the resulting point.
-When applied to a graphical object, the starting position is respectively, the
+<p> These methods can be used to nudge the position of a point in the
+specified direction by distance <code>d</code>, returning the new resulting point.
+When applied to a graphical object, the starting position is respectively the
 result of <code>uc()</code>, <code>lc()</code>, <code>cr()</code>, or
 <code>cl()</code>. It is possible for the nudge distance to be negative, which is useful
 for nudging a point into the interior of a graphical object.
@@ -1022,7 +1098,7 @@ object, except moved outward by distance <code>d</code>.
 </p>
 
 <h3>Line positioning methods</h3>
-<h4>p1(), p2()</h4>
+<h4>start(), end()</h4>
 <p>
 These methods return the points corresponding to the start and end of the line.
 </p>
@@ -1251,6 +1327,132 @@ If invoked on a frame with <code>true</code>, the frame automatically advances
 to the following frame once its duration is over.
 </p>
 
+<h2 id="staged_solving">Staged solving</h2>
+<p>
+For complex diagrams, it may be too hard for the solver to find a stable solution
+with all the constraints and variables at once. Often this limitation can be
+worked around by breaking the solving process into a series of <em>stages</em>.
+In each stage, some set of the variables are solved for. Variables associated with
+later stages have no value until that stage is reached; variables in earlier stages
+have already been solved and their values cannot change.
+</p>
+<p>
+To introduce stages to a diagram, the method <code>freeze()</code>
+advances the figure to the next stage. Any constraints and variables created
+will be associated with the (new) current stage. Calling <code>freeze()</code>
+effectively freezes all previously created objects in place, with their positions
+determined only by the constraints created up to this point.
+</p>
+<p>
+For example, the following code declares a square with no constraints on its
+size or position, but solving the subsequent constraints on the circle
+does not move the square even though the square is unconstrained.
+</p>
+<pre class=code id="freeze_code_ex"></pre>
+<div id="freeze_ex" style="margin: 1em">
+<canvas id=freeze_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("freeze_ex_fig")) {
+    const s = square().setFillStyle("#edf")
+    freeze()
+    const c = circle().setW(7)
+    equal(50, distance(c, s.ul()), distance(c, s.ll()))
+  }
+</script>
+</div>
+<script>
+  show_example("freeze_code_ex", "freeze_ex")
+</script>
+<p>
+Note that stages have nothing to do with animation frames; the same stages
+exist for all frames. Stages simply define the order in which solving will be
+done for any frame.
+</p>
+
+<h2>The Constrain Solver</h2>
+<p>
+Constrain acts like a constraint solver, but it is actually based on minimizing
+loss. This choice makes it more robust in the fact of constraints that cannot
+be solved, and means that it is also possible to add minimization goals to the
+problem it is solving.
+</p>
+<p>
+Constraints are converted into loss terms whose value is always nonnegative and
+is zero when the constraint is solved. The constraints are then converted into
+a minimization problem that is passed to the well-known BFGS algorithm. If the
+constraints can be decomposed into independently solvable subsets, this is done
+automatically. In addition, each call to <code>freeze()</code> partitions the
+set of variables and constraints into a series of stages that are decomposed
+and solved independently.
+</p>
+<p>
+Once a solution is found, any new instance of the minimization problem is
+passed the previous solution values, along with the approximate inverse
+Hessians computed during the BFGS algorithm, as an initial condition for the
+new solver run. This reuse of the previous solution is critical for allowing
+new solutions to be found quickly during the animated sequences that Constrain
+supports, reducing the number of loss-function evaluations by orders of magnitude
+in practice.
+</p>
+
+<h2>Debugging Tips</h2>
+<p>
+Sometimes you create a set of constraints and the solver just seems to refuse to find the
+right solution, or it is not consistent about finding the right solution. Automation
+is great when it works but frustrating when it doesn't!  A few tips may
+help resolve the problem.
+</p>
+<p>
+One possibility is that your constraints are actually unsolvable, so the solver is doing
+the best it can by balancing multiple unsolved constraints. Another possibility is that 
+the solver is getting stuck in a local minimum.
+</p>
+<h3>Debugging unsolvable constraints</h3>
+<ul>
+<li>Try commenting out constraints until you figure out which constraints are causing
+trouble. Then add constraints back in gradually.
+<li>
+If you're trying to understand what is happening with some variable or expression,
+wrap it in a <code>DebugExpr</code>, which will cause its value during solving
+to be logged to the console.
+</ul>
+</li>
+<h3>Escaping local minima</h3>
+<ul>
+<li><b>Keep constraints simple</b>. It's always better to express constraints in a
+simple way rather than adding complexity for the solver. For example, if you are expressing
+horizontal or vertical distance constraints, it's better to write constraints directly on
+the coordinates rather than using <code>distance()</code>. If you use <code>equal()</code>
+to set several things equal to each other, make sure the simplest expression comes first
+in the list, since it is the one that will be set equal to the rest.
+<li><b>Bounding constraints.</b> Constraints that keep the solution reasonable are often
+handy. Methods like <code>keepInside</code> and <code>between</code> are useful for this
+task, as are the humble <code>leq()</code> and <code>geq</code>.
+</li>
+<li><b>Hints.</b> The solver works by changing the values of variables to minimize
+  loss, which is the difference between a perfect solution and the current solution.
+  A perfectly solved constraint has zero cost and causes zero loss.
+  The initial values of variables can make a big difference in which solution is found
+  or how fast. Variables can be given a hinted value that defines the initial conditions
+                  of the constraint solver, using the <code>setHint()</code> method.
+</li>
+<li><b>Staging.</b> The figure's <code>freeze()</code> can be used to break solving into
+      multiple stages, simplifying the solver's task in each stage.
+</li>
+<li><b>Changing constraint costs.</b> If some constraints are being violated — especially
+bounding constraints — try increasing the cost of violating them using the <code>changeCost</code>
+method. Increasing cost will cause the solver to prioritize solving those constraints.
+An order-of-magnitude increase in cost in a constraint is usually
+sufficient to prevent other constraints from overriding it.
+</li>
+<li>
+<b>User-defined objects</b>. For complex diagrams, it will be easier for the constraint solver
+and sometimes just as convenient for the user to describe some of the diagram as a user-defined
+rendering task, rather than encoding it into constraints. You can subclass <code>Constrain.UserDefined</code>
+to specify how to render a complex graphical object, <a href="#UserDefined">as described above</a>.
+</li>
+</ul>
+
 <h2>Generating printable diagrams</h2>
 <p>
 The <code>Constrain.PS</code> and <code>Constrain.PDF</code>
@@ -1267,9 +1469,7 @@ as handles and buttons, are not rendered.
 <p>
 The function <code>Constrain.PS.print</code> can be called on a figure to
 generate PostScript output. For PDF output, the class
-<code>Constrain.PDF.PrintJob</code> allows more control. Fonts can be made
-available to the PDF renderer using its <code>addFont</code> and
-<code>addFontFile</code> methods.
+<code>Constrain.PDF.PrintJob</code> allows more control.
 </p>
 <p>
 To make it easier to generate printable output on demand, the classes
@@ -1289,11 +1489,11 @@ with (fig) {
                     .addText("Square")
                     .setFontName("Palatino")
   handle().at(s.lr())
-  align("left", "top", s, canvasRect().inset(2))
+  align("left", "top", s, margin(2))
   align("abut", "bottom",
     new Constrain.PS.PrintButton(fig), hspace(8),
     new Constrain.PDF.PrintButton(fig),
-    canvasRect().inset(2).lr())
+        margin().lr())
 }
 </script>
 </div>
@@ -1306,11 +1506,24 @@ dimensions become point dimensions. The figure therefore becomes
 correspondingly larger, although since PostScript and PDF are resolution-independent
 page descriptions, the generated figures are easily rescaled.
 </p>
-<p>The support for PDF depends on the jsPDF package, so HTML documents using PDF
-should include thas package, with a line like the following:
+<p>Support for PDF depends on
+<a href="https://github.com/parallax/jsPDF">the jsPDF package</a>, so HTML documents using PDF
+should include this package, with a line like the following:
 <pre>
     &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"&gt;&lt;/script&gt;
 </pre>
+
+<h3>Embedding fonts</h3>
+<p>
+If you use fonts outside the standard set of PostScript fonts, they will not be automatically embedded
+into the generated file. There are various ways to make this happen. One option
+is to use Adobe Acrobat to re-export the PDF output with fonts embedded. Another option is to make
+the font data available to the PDF renderer using its <code>addFont</code> and
+<code>addFontFile</code> methods, which are supported both by the Constrain <code>PrintJob</code> and
+<code>PrintButton</code> methods. TTF font files can be re-encoded 
+into JavaScript using <a href="https://peckconsulting.s3.amazonaws.com/fontconverter/fontconverter.html">a publicly available web service</a>. The file <kbd>fig2c.html</kbd> in the examples directory demonstrates how
+to embed fonts directly using a JavaScript-encoded font file.
+</p>
 
 <h2>Graphs</h2>
 <p>
@@ -1385,8 +1598,22 @@ Constrain.
 Constrain was designed and implemented by Andrew Myers. Its design draws on
 several previous systems, notably the <a
 href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html"> Juno-2
-constraint-based drawing editor</a> by Greg Nelson and Allan Heydon.
+constraint-based drawing editor</a> by Allan Heydon and Greg Nelson.
 </p>
+
+<h2>
+References
+</h2>
+<ol>
+<li id=juno_2_ref>
+Allan Heydon and Greg Nelson. <a href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html">
+The Juno-2 Constraint-Based Drawing Editor.</a>
+HP Labs Technical Report SRC-RR-131A, Dec. 1994.
+</li>
+<li id=sketchpad_ref>
+Ivan E. Sutherland. <a href="https://journals.sagepub.com/doi/pdf/10.1177/003754976400200514?casa_token=lVb6FYwFvaUAAAAA:r1puPgv_qABGNn3HKCmNYith6ZRkVSEgEiv2fmnY2_QMIaILWDgWD3V8ghK5eUm6fai2PT3Y6CLh">Sketchpad: A Man–Machine Graphical Communication System.</a> Simulation 2.5 (1964): R-3.
+</li>
+</ol>
 
 </div>
 
