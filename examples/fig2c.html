@@ -8,19 +8,19 @@
     <script src="LinLibertine_R.js"></script>
     <style>
       body, canvas {background-color: white}
-      body { margin: 0}
-      canvas {width: 400px; height: 150px}
+      body {margin: 10}
+      canvas {width: 400px; height: 150px; background-color: #f8f8f8}
     </style>
 </head>
 <body>
-    <canvas id="fig2c" style="width:600px; height: 400px"></canvas>
+    <canvas id="fig2c" style="width:500px; height: 300px"></canvas>
     <script>
       with (new Constrain.Figure("fig2c")) {
         setFontSize(14)
         setFontName("LinLibertine_R, serif")
-        function arrow(p1, p2) {
-            return connector(p1, p2).setEndArrow("arrow")
-        }
+
+        const arrow = (p1, p2)  => connector(p1, p2).setEndArrow("arrow"),
+              IO = t => rectangle().addText(t).setW(8*t.length).setH(20)
 
         const lr = handle().setStrokeStyle("red"),
               m = margin(10)
@@ -32,9 +32,7 @@
         const mpc1 = point(), mpc2 = point(),
               a1 = point(), a2 = point(), a3=point()
               b1 = point(), b2 = point(), b3=point()
-        function IO(t) {
-          return rectangle().addText(t).setW(8*t.length).setH(20)
-        }
+
         const a_input = IO("input a"), b_input = IO("input b")
               a_output = IO("output x"), b_output = IO("output x")
 

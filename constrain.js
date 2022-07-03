@@ -907,6 +907,7 @@ class Figure {
         if (!Array.isArray(objlist))
             objlist = flattenGraphicalObjects(argsToArray(arguments, 2))
         switch (horizontal) {
+            case "":
             case "none": break
             case "center": 
                 for (let i = 1; i < objlist.length; i++)
@@ -947,6 +948,7 @@ class Figure {
                 break
         }
         switch (vertical) {
+            case "":
             case "none": break
             case "center": 
                 for (let i = 1; i < objlist.length; i++)
@@ -2204,8 +2206,8 @@ class Distance extends Expression {
     // dO/a = dO/d(ab) * d(ab)/da = dO/d(ab) * b
 
     backprop(task) {
-        const p1 = this.p1.evaluate(task.valuation),
-              p2 = this.p2.evaluate(task.valuation),
+        const p1 = currentValue(this.p1),
+              p2 = currentValue(this.p2),
               pd = numeric.sub(p2, p1),
               sd = numeric.norm2Squared(pd),
               d = this.bpDiff
