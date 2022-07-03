@@ -25,7 +25,7 @@ const USE_BACKPROPAGATION = true,
 
 let DEBUG = false
 
-const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object"
+const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
 const Figure_defaults = {
     ARROW_SIZE : 12,
@@ -85,7 +85,7 @@ class Figure {
     // canvas HTML element or, for convenience, its id attribute as a string
     constructor(canvas) {
         this.figure = this
-        if (typeof canvas == OBJECT_STR && canvas.constructor == HTMLCanvasElement) {
+        if (typeof canvas == OBJECT_STR && canvas instanceof HTMLCanvasElement) {
             this.canvas = canvas
             this.name = canvas.id
         } else if (typeof canvas == "string") {
@@ -225,7 +225,7 @@ class Figure {
             if (v.stage != stage) return
             if (v.index !== undefined) return
             if (component && v.variableComponent() !== component) return
-            if (v.constructor != Variable) console.error("not a variable: " + v)
+            if (!(v instanceof Variable)) console.error("not a variable: " + v)
             v.setIndex(i)
             a.push(v)
             i++
@@ -875,7 +875,7 @@ class Figure {
 
     // Add a hint that value v is a good initial guess for the solution to expression e.
     hint(e, v) {
-        if (e.constructor == Variable && typeof v == NUMBER) {
+        if (e instanceof Variable && typeof v == NUMBER) {
             e.setHint(v)
         } else {
             if (typeof v == NUMBER) {
@@ -1131,7 +1131,7 @@ class Figure {
         return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
     }
     textFrame(txt, fillStyle) {
-        if (txt && txt.constructor != ContainedText) txt = new ContainedText(this, txt)
+        if (txt && !(txt instanceof ContainedText)) txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
     label(text, fontSize, fontName, fillStyle) {
@@ -1695,7 +1695,7 @@ class Expression {
 function legalExpr(e) {
     if (e instanceof Expression ||
         typeof e == "number" ||
-        (typeof e == "object" && e.constructor == Array)) {
+        (typeof e == "object" && Array.isArray(e))) {
             return e;
     }
     console.error("Illegal expression: " + e)
@@ -1799,7 +1799,7 @@ function exprVariables(e) {
     if (e.cachedVariables) return e.cachedVariables
     if (e === undefined)
         console.error("undefined expr")
-    if (typeof e === NUMBER || e.constructor == Array) return new Set()
+    if (typeof e === NUMBER || Array.isArray(e)) return new Set()
     if (!e.variables)
         console.error("no variables method")
     e.cachedVariables = e.variables()
@@ -2433,7 +2433,7 @@ class Linear extends Expression {
                 return [ v1[0] * a + v2[0] * b,
                          numeric.add(numeric.mul(v1[1], a), numeric.mul(v2[1], b)) ]
             case OBJECT_STR:
-                if (v1.constructor == Array) {
+                if (Array.isArray(v1)) {
                     var result = new Array(v1.length)
                     for (let i = 0; i < v1.length; i++) {
                         result[i] = numeric.add(numeric.mul(v1[i], a), numeric.mul(v2[i], b))
@@ -2504,7 +2504,7 @@ class Projection extends Expression {
             const [x, dx] = v
             return [x[i], dx[i]]
         } else {
-            if (v.constructor != Array)
+            if (!Array.isArray(v))
                 console.error("Projection expects its expression to have an array value: " + this.expr)
             if (i < 0 || i >= v.length)
                 console.error("Attempt to project out a nonexistent element")
@@ -2546,7 +2546,7 @@ class Temporal {
 class TemporalFilter extends Temporal {
     constructor(figure, obj) {
         super(figure)
-        if (obj.constructor == Array) {
+        if (Array.isArray(obj)) {
             console.error("Sorry, a Temporal can only hold one graphical object or one constraint. Use a Group or ConstraintGroup instead.")
         }
         if (!isFigure(figure)) {
@@ -2759,7 +2759,7 @@ class NearZero extends Loss {
 }
 
 function constraintsCost(a, valuation, doGrad) {
-    if (a.constructor !== Array) console.error("constraintsCost expects an array of constraints")
+    if (!Array.isArray(a)) console.error("constraintsCost expects an array of constraints")
     if (a.length == 0) return zeroCost(valuation, doGrad)
     if (a.length == 1) return a[0].getCost(valuation, doGrad)
     if (!doGrad) {
@@ -2977,7 +2977,7 @@ class LayoutObject extends Expression {
             this.figure.equal(this.y(), legalExpr(arguments[1]))
         } else if (arguments.length == 1) {
             const p = legalExpr(arguments[0])
-            if (p.constructor == Array) {
+            if (Array.isArray(p)) {
                 this.figure.equal(this.x(), legalExpr(p[0]))
                 this.figure.equal(this.y(), legalExpr(p[1]))
             } else {
@@ -4417,7 +4417,7 @@ class Label extends GraphicalObject {
         this.installFont()
         const x = evaluate(this.x0(), valuation),
               y = evaluate(figure.average(this.y(), this.y1()), valuation)
-        if (this.text.constructor == String) {
+        if (typeof this.text == STRING_STR) { // instanceof String doesn't work
             if (this.fillStyle) {
                 ctx.fillStyle = this.fillStyle
                 ctx.fillText(this.text, x, y)
@@ -4454,7 +4454,7 @@ class Label extends GraphicalObject {
     }
     computeWidth(ctx) {
         this.installFont()
-        if (this.text.constructor == String) {
+        if (typeof this.text == STRING_STR) {
             this.computedWidth = ctx.measureText(this.text).width
         } else {
             let [w, h] = this.text.minimumSize()
@@ -4830,7 +4830,7 @@ function createText(...text) {
     text = text.flat()
     const result = []
     text.forEach(t => {
-        if (t.constructor == String) { 
+        if (typeof t == STRING_STR) { 
             let lines = 0
             t.split(/\n/).forEach(ln => {
                 let wds = 0
@@ -5129,7 +5129,7 @@ class ContextTransformer extends TextItem {
     // and transforms the outer context tc into f(tc).
     constructor(f, text) {
         super()
-        this.text = (text.constructor == String) ? new WordText(text) : text
+        this.text = (typeof text == STRING_STR) ? new WordText(text) : text
         this.fun = f
     }
     // See TextItem.layout
