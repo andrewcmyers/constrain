@@ -1331,6 +1331,13 @@ function canvasToFigure(e) {
     return null
 }
 
+function getFigureByName(name) {
+    for (const fig of Figures) {
+        if (fig.name == name) return fig
+    }
+    return undefined
+}
+
 // add event listeners for touch events in canvases
 function setupTouchListeners() {
     window.addEventListener('touchstart',
@@ -5643,7 +5650,7 @@ function autoResize() {
     Expression, Minus, Plus, Times, Divide, Sqrt, Distance, Average, Min, Max,
     Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
     ComputedText,
-    evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners,
+    evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, currentValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions
   })

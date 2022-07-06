@@ -25,7 +25,8 @@
     div.content { max-width: 100ex; margin: 4em auto }   
     body  {background-color: #fed }
     p, ul li { font-size: 12pt; font-family: Georgia, serif }       
-    pre.code { padding: 1ex; font-size: 10pt; width: 60ex; float:right; border: 1px solid black; background-color: #ddd; font-family: Menlo, fixed }
+    pre.code, textarea { padding: 1ex; font-size: 10pt; width: 60ex; float:right; border: 1px solid black; background-color: #ddd; font-family: Menlo, fixed }
+    textarea { border-width: 3px }
     code { font-family: Menlo, fixed; font-size: 90% }
     @media print {
         pre.code {
@@ -132,6 +133,10 @@ A figure is created by instantiating the class <code>Figure</code> with the iden
 attribute of the canvas in which the figure is to appear, or with the canvas object itself.
 In the example above, the canvas is named <code>"fig1"</code>, so this attribute is passed
 to the <code>Figure</code> constructor.
+</p>
+<p>
+The code of this figure, like other code seen in this document, can be edited by clicking on it.
+Clicking elsewhere on the page will cause the figure to be regenerated with the edited code.
 </p>
 <p>
 Typically, the methods of <code>Figure</code> are used to define graphical objects to appear
@@ -692,6 +697,11 @@ They are not turned on by default because handling touch events seems to require
 on touch events at the level of the entire window.
 </p>
 
+<h4>Constrain.getFigureByName(name)</h4>
+<p>
+Find and return the figure with the specified name, or return <code>undefined</code> if no such figure
+currently exists.
+</p>
 
 <h3>Default styles</h3>
 
@@ -1617,14 +1627,54 @@ Ivan E. Sutherland. <a href="https://journals.sagepub.com/doi/pdf/10.1177/003754
 
 </div>
 
-<div id="startup_code">
+<pre id=startup_code_ex class=code></pre>
+<div id=startup_ex>
 <script>
   Constrain.Figures.forEach(f => f.start())
   Constrain.setupTouchListeners()
 </script>
 </div>
 <script>
-  show_example("startup_code_ex", "startup_code")
+  show_example("startup_code_ex", "startup_ex")
+  </script>
+
+<!-- make examples editable -->
+<script>
+  let codes = document.getElementsByClassName("code")
+  let script_pattern = /^(<canvas[^]*<script>\n)( *with .new Constrain.Figure.")([^"]*)(.*\{\n)([^]*)(\}\n)([^]*)$/
+  for (const code of codes) {
+    const editable = document.createElement("textarea"),
+          div = document.createElement("div")
+    code.parentNode.insertBefore(div, code)
+    div.appendChild(editable)
+    div.appendChild(code)
+    editable.style.display = "none"
+    code.onclick = e => {
+        let [ignore, start, prologue, figname, endpro, middle, epilogue, end] = code.innerText.match(script_pattern)
+        editable.value = middle
+        editable.style.width = `${code.getBoundingClientRect().width}px`
+        editable.style.height = `${code.getBoundingClientRect().height}px`
+        editable.style.display = "block"
+        editable.focus()
+        code.style.display = "none"
+        editable.onblur = e => {
+            editable.style.display = "none"
+            code.style.display = "block"
+            code.innerText = start + prologue + figname + endpro + editable.value + epilogue + end
+            const new_script = prologue + figname + endpro + editable.value + epilogue
+            if (Constrain.getFigureByName(figname))
+                Constrain.getFigureByName(figname).destroy()
+            let result
+            try {
+                result = eval(new_script)
+            } catch (error) {
+                alert(error)
+            }
+            if (Constrain.getFigureByName(figname))
+                Constrain.getFigureByName(figname).start()
+        }
+    }
+  }
 </script>
 
 </body>
