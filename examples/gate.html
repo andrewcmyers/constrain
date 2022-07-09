@@ -10,10 +10,11 @@
 </head>
 <body>
 <h1>Gate design</h1>
-    <canvas id=gate style="width: 600px; height: 180px"></canvas>
+    <canvas id=gate style="width: 900px; height: 360px"></canvas>
     <script>
         const gate = new Constrain.Figure("gate")
         with (gate) {
+            setZoom(2)
 
             function createDoor(top, bottom, left, right, posx, posy, board_length, board_width) {
 
@@ -36,7 +37,7 @@
                 geq(ur.x(), ll.x()).changeCost(10)
 
                 freeze()
-                setFontSize(12)
+                setFontSize(8)
 
                 let [bul, bll, bur, blr] = arrObjects(4, () => point())
                 polygon(bul, bll, blr, bur)
@@ -77,10 +78,12 @@
                 line(p1, bur).setLineWidth(0.5).setLineDash([3,2])
                 line(p2, bll).setLineWidth(0.5).setLineDash([3,2])
 
+                let cutposn
+
                 align("abut", "center", 
                     ur,
                     hspace(10),
-                    label(text("cut position = ", numericText(distance(p1, bul)), " cm"))
+                    cutposn = label(text("cut position = ", numericText(distance(p1, bul)), " cm"))
                 )
                 align("left", "abut",
                     ll, 
@@ -88,10 +91,11 @@
                     label(text("board length = ", numericText(distance(bul, bll)), " cm")),
                     label(text("board width = ", numericText(distance(bul, bur)), " cm"))
                 )
+                return cutposn.x1()
             }
 
-            createDoor(102, 101.5, 92.8, 90.6, 10, 15, 121.3, 13.8)
-            createDoor(102, 101.5, 92.0, 91.5, 300, 15, 129.5, 13.9)
+            let cutposn1 = createDoor(102, 101.5, 92.8, 90.6, 10, 15, 121.3, 13.9)
+            createDoor(102, 101.5, 92.0, 91.5, plus(20, cutposn1), 15, 129.5, 13.9)
 
             start()
         }

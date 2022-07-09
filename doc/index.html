@@ -677,6 +677,19 @@ objects in place. See <a href="#staged_solving">Staged solving</a> for
 more explanation.
 </p>
 
+<h4>setZoom(zoom)</h4>
+<p>
+By default the coordinate system of the figure is the same as the HTML
+coordinate system, with 1 HTML pixel per horizontal or vertical unit. (Note
+that HTML pixels do not necessarily correspond to actual screen pixels.) The
+<code>setZoom()</code> method can be used to change the number of HTML pixels
+per figure unit to the specified value. Changing the zoom affects everything
+that is rendered, including font sizes and line widths. For example, if you
+want figure units to correspond to PostScript/PDF points, you should set a zoom
+of 1 1/3 ≅ 1.333. To make them correspond to TeX points, the zoom value should
+be 96/72.27 ≅ 1.328.
+</p>
+
 <h3>Other figure control operations</h3>
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
 <p>

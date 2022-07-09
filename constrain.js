@@ -107,6 +107,7 @@ class Figure {
         this.initObjects()
         this.scale = window.devicePixelRatio || 1; // canvas units per HTML "pixel"
         this.time = 0
+        this.zoom = 1 // figure units per HTML pixel
         this.currentFrame = undefined // current frame object
         this.frameRate = Figure_defaults.FRAMERATE
         this.Frames = []
@@ -140,10 +141,13 @@ class Figure {
         this.height = _height
         this.canvas.width = _width * this.scale
         this.canvas.height = _height * this.scale
-        this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
+        this.ctx.setTransform(this.scale * this.zoom, 0, 0, this.scale * this.zoom, 0, 0)
     }
     toString() {
         return "Figure"
+    }
+    setZoom(z) {
+        this.zoom = z || 1
     }
     setupListeners() {
         const canvas = this.canvas
@@ -480,7 +484,6 @@ class Figure {
             this.animationTime = 0
         }
         this.setupCanvas()
-        this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0)
         this.ctx.clearRect(0, 0, this.width, this.height)
         this.Graphs.forEach(g => g.setupHints())
         let solved
