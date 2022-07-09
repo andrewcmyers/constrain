@@ -21,11 +21,11 @@
             polygon(ul, ur, lr, ll).setStrokeStyle("blue").setFillStyle()
             equal(ul.x(), ll.x()).changeCost(10)
             equal(ur.x(), lr.x()).changeCost(10)
-            align("none", "center", average(ll, ul), average(ur, lr))
-            equal(distance(ul, ur), 101.5)
-            equal(distance(ll, ul), 92.5)
-            equal(distance(ur, lr), 90.5)
-            equal(distance(ll, lr), 101)
+            align("none", "center", ll, lr)
+            equal(distance(ul, ur), 102)
+            equal(distance(ll, ul), 92.8)
+            equal(distance(ur, lr), 90.6)
+            equal(distance(ll, lr), 101.5)
             geq(lr.y(), ur.y()).changeCost(10)
             geq(ll.y(), ul.y()).changeCost(10)
             geq(lr.y(), plus(10, ur.y())).changeCost(10)
@@ -39,10 +39,6 @@
             let [bul, bll, bur, blr] = arrObjects(4, () => point())
             polygon(bul, bll, blr, bur)
                 .setStrokeStyle("orange")
-            // label("bul").at(bul)
-            // label("bll").at(bll)
-            // label("bur").at(bur)
-            // label("blr").at(blr)
 
             perpendicular(bul, bur, bur, blr)
             perpendicular(bll, blr, bur, blr)
@@ -62,8 +58,6 @@
             geq(blr.x(), plus(5, bll.x()))
 
             equal(distance(bur, ur), distance(ll, bll))
-            // geq(bur.y(), bul.y()).changeCost(0.1)
-            // setAnimatedSolving(true)
 
             freeze()
 
