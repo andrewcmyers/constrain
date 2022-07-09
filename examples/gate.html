@@ -10,81 +10,88 @@
 </head>
 <body>
 <h1>Gate design</h1>
-    <canvas id=gate></canvas>
+    <canvas id=gate style="width: 600px; height: 180px"></canvas>
     <script>
         const gate = new Constrain.Figure("gate")
         with (gate) {
-            let [ul, ur, lr, ll] = arrObjects(4, () => point())
-            minimizationOptions.UNCMIN_MAXIT = 20000
 
-            equal(ul, point(10,15))
-            polygon(ul, ur, lr, ll).setStrokeStyle("blue").setFillStyle()
-            equal(ul.x(), ll.x()).changeCost(10)
-            equal(ur.x(), lr.x()).changeCost(10)
-            align("none", "center", ll, lr)
-            equal(distance(ul, ur), 102)
-            equal(distance(ll, ul), 92.8)
-            equal(distance(ur, lr), 90.6)
-            equal(distance(ll, lr), 101.5)
-            geq(lr.y(), ur.y()).changeCost(10)
-            geq(ll.y(), ul.y()).changeCost(10)
-            geq(lr.y(), plus(10, ur.y())).changeCost(10)
-            geq(lr.y(), ul.y()).changeCost(10)
-            geq(ur.x(), ul.x()).changeCost(10)
-            geq(ur.x(), ll.x()).changeCost(10)
+            function createDoor(top, bottom, left, right, posx, posy, board_length, board_width) {
 
-            freeze()
-            setFontSize(8)
+                let [ul, ur, lr, ll] = arrObjects(4, () => point())
 
-            let [bul, bll, bur, blr] = arrObjects(4, () => point())
-            polygon(bul, bll, blr, bur)
-                .setStrokeStyle("orange")
+                equal(ul, point(posx,posy))
+                polygon(ul, ur, lr, ll).setStrokeStyle("blue").setFillStyle()
+                equal(ul.x(), ll.x()).changeCost(10)
+                equal(ur.x(), lr.x()).changeCost(10)
+                align("none", "center", ll, lr)
+                equal(distance(ul, ur), top)
+                equal(distance(ll, ul), left)
+                equal(distance(ur, lr), right)
+                equal(distance(ll, lr), bottom)
+                geq(lr.y(), ur.y()).changeCost(10)
+                geq(ll.y(), ul.y()).changeCost(10)
+                geq(lr.y(), plus(10, ur.y())).changeCost(10)
+                geq(lr.y(), ul.y()).changeCost(10)
+                geq(ur.x(), ul.x()).changeCost(10)
+                geq(ur.x(), ll.x()).changeCost(10)
 
-            perpendicular(bul, bur, bur, blr)
-            perpendicular(bll, blr, bur, blr)
-            perpendicular(bul, bur, bul, bll)
-            parallel(bll, blr, bul, bur)
+                freeze()
+                setFontSize(12)
 
-            collinear(ul, bur, ur)
-            leq(ul.x(), bur.x(), ur.x())
-            collinear(ll, bll, lr)
-            leq(ll.x(), bll.x(), lr.x())
+                let [bul, bll, bur, blr] = arrObjects(4, () => point())
+                polygon(bul, bll, blr, bur)
+                    .setStrokeStyle("orange")
 
-            equal(121.3, distance(bul, bll), distance(bur, blr))
-            equal(13.8, distance(bll, blr), distance(bul, bur))
+                perpendicular(bul, bur, bur, blr)
+                perpendicular(bll, blr, bur, blr)
+                perpendicular(bul, bur, bul, bll)
+                parallel(bll, blr, bul, bur)
 
-            geq(bur.x(), plus(5, bul.x())).changeCost(10)
-            geq(bul.x(), plus(5, blr.x()))
-            geq(blr.x(), plus(5, bll.x()))
+                collinear(ul, bur, ur)
+                leq(ul.x(), bur.x(), ur.x())
+                collinear(ll, bll, lr)
+                leq(ll.x(), bll.x(), lr.x())
 
-            equal(distance(bur, ur), distance(ll, bll))
+                equal(board_length, distance(bul, bll), distance(bur, blr))
+                equal(board_width, distance(bll, blr), distance(bul, bur))
 
-            freeze()
+                geq(bur.x(), plus(5, bul.x())).changeCost(10)
+                geq(bul.x(), plus(5, blr.x()))
+                geq(blr.x(), plus(5, bll.x()))
 
-            const p1 = point(), p2 = point()
+                equal(distance(bur, ur), distance(ll, bll))
 
-            collinear(ul, p1, ur)
-            collinear(bul, p1, bll)
+                freeze()
 
-            collinear(ll, p2, lr)
-            collinear(blr, p2, bur)
+                const p1 = point(), p2 = point()
 
-            circle().setW(2).at(p2).setFillStyle("black")
-            circle().setW(2).at(p1).setFillStyle("black")
+                collinear(ul, p1, ur)
+                collinear(bul, p1, bll)
 
-            line(p1, bur).setLineWidth(0.5).setLineDash([3,2])
-            line(p2, bll).setLineWidth(0.5).setLineDash([3,2])
+                collinear(ll, p2, lr)
+                collinear(blr, p2, bur)
 
-            align("abut", "center", 
-                ur,
-                hspace(10),
-                label(text("cut position = ", numericText(distance(p1, bul)), " cm"))
-            )
-            align("left", "abut",
-                label(text("board length = ", numericText(distance(bul, bll)), " cm")),
-                label(text("board width = ", numericText(distance(bul, bur)), " cm")),
-                margin().lc()
-            )
+                circle().setW(2).at(p2).setFillStyle("black")
+                circle().setW(2).at(p1).setFillStyle("black")
+
+                line(p1, bur).setLineWidth(0.5).setLineDash([3,2])
+                line(p2, bll).setLineWidth(0.5).setLineDash([3,2])
+
+                align("abut", "center", 
+                    ur,
+                    hspace(10),
+                    label(text("cut position = ", numericText(distance(p1, bul)), " cm"))
+                )
+                align("left", "abut",
+                    ll, 
+                    vspace(20),
+                    label(text("board length = ", numericText(distance(bul, bll)), " cm")),
+                    label(text("board width = ", numericText(distance(bul, bur)), " cm"))
+                )
+            }
+
+            createDoor(102, 101.5, 92.8, 90.6, 10, 15, 121.3, 13.8)
+            createDoor(102, 101.5, 92.0, 91.5, 300, 15, 129.5, 13.9)
 
             start()
         }
