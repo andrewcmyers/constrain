@@ -29,7 +29,7 @@ function createFigure() {
         equal(m.center(), r.center())
         sameSize(m, r)
         let f1 = mathJax("a^2 + b^2 = c^2").expand(5),
-            f2 = mathJax("{1 \\over x + y} = z^2").expand(5)
+            f2 = mathJax("\\sum_{n=1}^\\infty{1 \\over x_n + y_n} = z^2").expand(5)
         align("left", "top", r, f1)
         align("right", "bottom", r, f2)
         setConnectionStyle("intersection")
