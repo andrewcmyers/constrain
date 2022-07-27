@@ -4043,11 +4043,9 @@ function argsForEach(args, i, f) {
 
 function flattenGraphicalObjects(objects) {
     return objects.flat().filter(o => {
-        if (!o.variables) {
-            console.error("Not a graphical object: " + o)
-            return false
-        }
-        return true
+        if (o && o.variables) return true
+        console.error("Not a graphical object: " + o)
+        return false
     })
 }
 
