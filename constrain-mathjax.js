@@ -28,12 +28,9 @@
         const w = svg_length(svg.width.baseVal, figure),
               h = svg_length(svg.height.baseVal, figure)
 
-        for (var p in this.img) {
-            console.log(p + ' = ' + this.img[p])
-        }
         figure.equal(this.x1(), figure.plus(this.x0(), w))
         figure.equal(this.y1(), figure.plus(this.y0(), h))
-        console.log(`MathJax figure size: ${this.img.width} x ${this.img.height}: ${data}`)
+        // console.log(`MathJax figure size: ${this.img.width} x ${this.img.height}: ${data}`)
     }
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
