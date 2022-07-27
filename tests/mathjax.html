@@ -2,7 +2,7 @@
 <html lang="en-US">
 <head>
   <script src="../numeric-1.2.6.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script async onload="createFigure()" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <script src="../constrain.js"></script>
   <script src="../constrain-mathjax.js"></script>
   <style>
@@ -18,23 +18,25 @@
 </head>
 <body>
 <h1>MathJax test</h1>
+<p>This page shows that it is easy to add TeX math formulas, formatted by MathJax,
+to a diagram.</p>
 <canvas id="mj"></canvas>
 <script>
-
-with (new Constrain.Figure("mj")) {
-    const m = margin(10), r = rectangle().inset(5)
-    setFontSize(16)
-    equal(m.center(), r.center())
-    sameSize(m, r)
-    let f1 = mathJax("a^2 + b^2 = c^2").expand(5),
-        f2 = mathJax("{1 \\over x + y} = z^2").expand(5)
-    align("left", "top", r, f1)
-    align("right", "bottom", r, f2)
-    setConnectionStyle("intersection")
-    connector(f1, f2).setLineWidth(2).setStrokeStyle("red")
-    start()
+function createFigure() {
+    with (new Constrain.Figure("mj")) {
+        const m = margin(10), r = rectangle().inset(5)
+        setFontSize(16)
+        equal(m.center(), r.center())
+        sameSize(m, r)
+        let f1 = mathJax("a^2 + b^2 = c^2").expand(5),
+            f2 = mathJax("{1 \\over x + y} = z^2").expand(5)
+        align("left", "top", r, f1)
+        align("right", "bottom", r, f2)
+        setConnectionStyle("intersection")
+        connector(f1, f2).setLineWidth(2).setStrokeStyle("red")
+        start()
+    }
 }
-
 </script>
 </body>
 </html>
