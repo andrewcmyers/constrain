@@ -25,8 +25,12 @@ with (new Constrain.Figure("mj")) {
     const m = margin(10), r = rectangle().inset(5)
     equal(m.center(), r.center())
     sameSize(m, r)
-    align("left", "top", r, mathJax("a^2 + b^2 = c^2"))
-    align("right", "bottom", r, mathJax("{1 \\over x + y} = z^2"))
+    let f1 = mathJax("a^2 + b^2 = c^2").expand(5),
+        f2 = mathJax("{1 \\over x + y} = z^2").expand(5)
+    align("left", "top", r, f1)
+    align("right", "bottom", r, f2)
+    setConnectionStyle("intersection")
+    connector(f1, f2).setLineWidth(2).setStrokeStyle("red")
     start()
 }
 
