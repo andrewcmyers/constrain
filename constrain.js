@@ -1063,9 +1063,21 @@ class Figure {
         return new Line(this, start, end, strokeStyle, lineWidth)
     }
     horzLine(start, end, strokeStyle, lineWidth) {
+        if (!(start instanceof LayoutObject) && arguments.length == 2) {
+            strokeStyle = start
+            lineWidth = end
+            start = this.point()
+            end = this.point()
+        }
         return new HorzLine(this, start, end, strokeStyle, lineWidth)
     }
     vertLine(start, end, strokeStyle, lineWidth) {
+        if (!(start instanceof LayoutObject) && arguments.length == 2) {
+            strokeStyle = start
+            lineWidth = end
+            start = this.point()
+            end = this.point()
+        }
         return new VertLine(this, start, end, strokeStyle, lineWidth)
     }
     hspace(w) {
