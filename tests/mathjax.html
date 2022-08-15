@@ -7,16 +7,27 @@
   <script>
    function createFigure() {
     with (new Constrain.Figure("mj")) {
-        const m = margin(10), r = rectangle().inset(5)
+        const grd = ctx.createLinearGradient(0, 0, 200, 200)
+        grd.addColorStop(0, "yellow")
+        grd.addColorStop(0.5, "white")
+        grd.addColorStop(1, "#eff")
+        const m = margin(10),
+              r = rectangle().setFillStyle(grd).inset(5),
+              r2 = rectangle().setFillStyle("white")
         setFontSize(16)
         equal(m.center(), r.center())
         sameSize(m, r)
         let f1 = mathJax("a^2 + b^2 = c^2").expand(5),
             f2 = mathJax("\\sum_{n=1}^\\infty{1 \\over x_n + y_n} = z^2").expand(5)
+        align("LR", "TB", f1, r2)
         align("left", "top", r, f1)
         align("right", "bottom", r, f2)
         setConnectionStyle("intersection")
-        connector(f1, f2).setLineWidth(2).setStrokeStyle("red")
+        setLineWidth(2)
+        setStrokeStyle("red")
+        connector(f1, f2).setLineDash([6,6])
+        connector(f1, r.ll(), f2)
+        connector(f1, r.ur(), f2)
         start()
     }
    }
