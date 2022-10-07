@@ -4419,16 +4419,18 @@ class Label extends GraphicalObject {
         if (fontName) this.font.setName(fontName)
 
         this.setStrokeStyle(undefined)
-        this.computeWidth(figure.ctx)
 
         // Have to override GraphicalObject in the object itself
-        this.w = function() { return this.computedWidth }
-        this.h = function() { return this.font.getSize() }
+        this.w = function() {
+            if (!this.hasOwnProperty('computedWidth')) this.computeWidth(figure.ctx)
+            return this.computedWidth
+        }
+        this.h = () => this.font.getSize()
         this.variables = function() { return [this.x(), this.y()] }
     }
     setFont(font) {
         this.font = font
-        this.computeWidth(this.figure.ctx)
+        delete this.computedWidth
         return this
     }
     installFont() {
@@ -4488,25 +4490,28 @@ class Label extends GraphicalObject {
     // Set font size
     setFontSize(s) {
         this.font.setSize(s)
-        this.computeWidth(this.figure.ctx)
+        delete this.computedWidth
         return this
     }
 
     // Set font name
     setFontName(n) {
         this.font.setName(n)
+        delete this.computedWidth
         return this
     }
 
     // Set font style
     setFontStyle(n) {
         this.font.setStyle(n)
+        delete this.computedWidth
         return this
     }
 
     // set text color etc.
     setTextStyle(s) {
         this.fillStyle = s
+        this.computeWidth(this.figure.ctx)
         return this
     }
 
