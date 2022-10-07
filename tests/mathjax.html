@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <script src="../constrain-mathjax.js"></script>
+  <script>
+   function createFigure() {
+    with (new Constrain.Figure("mj")) {
+        const grd = ctx.createLinearGradient(0, 0, 200, 200)
+        grd.addColorStop(0, "yellow")
+        grd.addColorStop(0.5, "white")
+        grd.addColorStop(1, "#eff")
+        const m = margin(10),
+              r = rectangle().setFillStyle(grd).inset(5),
+              r2 = rectangle().setFillStyle("white")
+        setFontSize(16)
+        equal(m.center(), r.center())
+        sameSize(m, r)
+        let f1 = mathJax("a^2 + b^2 = c^2").expand(5),
+            f2 = mathJax("\\sum_{n=1}^\\infty{1 \\over x_n + y_n} = z^2").expand(5)
+        align("LR", "TB", f1, r2)
+        align("left", "top", r, f1)
+        align("right", "bottom", r, f2)
+        setConnectionStyle("intersection")
+        setLineWidth(2)
+        setStrokeStyle("red")
+        connector(f1, f2).setLineDash([6,6])
+        connector(f1, r.ll(), f2)
+        connector(f1, r.ur(), f2)
+        start()
+    }
+   }
+  </script>
+  <script async onload="createFigure()" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    canvas {
+        width: 300px;
+        height: 300px;
+    }
+    h1 {
+        font-family: sans-serif
+    }
+  </style>
+</head>
+
+<body>
+    <h1>MathJax support for Constrain</h1>
+
+    <p>This page shows that it is easy in <a
+    href="../doc/index.html">Constrain</a> to add TeX math formulas, formatted
+    by MathJax, to a diagram.</p>
+
+    <canvas id="mj"></canvas>
+</body>
+</html>

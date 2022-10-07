@@ -1546,6 +1546,20 @@ into JavaScript using <a href="https://peckconsulting.s3.amazonaws.com/fontconve
 to embed fonts directly using a JavaScript-encoded font file.
 </p>
 
+<h2>Integrating with MathJax</h2>
+<p>
+If you want complex mathematics in your diagram, it can be useful to embed MathJax.
+The module <kbd>constrain-mathjax.js</kbd> extends the <code>Figure</code> class with
+an additional method to create MathJax objects. (<a href="../tests/mathjax.html">A simple example</a>)
+</p>
+
+<h4>mathJax(formula, [displayMath])</h4>
+<p>
+Create a graphical object that shows the specified formula. The optional <code>displayMath</code>
+parameter controls whether MathJax considers it to be “display math” in TeX's nomenclature. The size
+of the rendered object is determined by the figure's current font size.
+</p>
+
 <h2>Graphs</h2>
 <p>
 Constrain also includes support for automatic graph layout, in the module
