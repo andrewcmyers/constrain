@@ -40,7 +40,7 @@
 // two node positions. We don't need a separate framework for animated objects,
 // just a design pattern.
 
-const fig1 = new CFigure("tree_anatomy")
+const fig1 = new Constrain.Figure("tree_anatomy")
 let t
 with (fig1) {
     setFontSize(10)
@@ -68,6 +68,7 @@ with (fig1) {
     align("L", "TB", tgroup, margin().inset(10))
     align("abut", "B", tgroup, advanceButton(), margin().lr())
 
+    start()
 }
 </script>
 </html>
