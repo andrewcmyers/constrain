@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-let DEBUG = false
+const DEBUG = true, DEBUG_GROUPS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -112,7 +112,6 @@ class Figure {
         this.frameRate = Figure_defaults.FRAMERATE
         this.Frames = []
         this.wrapFrames = false // does advancing from last frame go back to first
-        this.frameIndex = []
         this.currentStage = 0
         this.numStages = 1
     // default styles
@@ -387,6 +386,10 @@ class Figure {
             this.numberVariables(stage, component)
             this.resetValuation()
             // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.size} constraints`)
+            if (component.invHessian && this.currentValuation.length != component.invHessian.length) {
+                delete component.invHessian
+                if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
+            }
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
@@ -496,10 +499,10 @@ class Figure {
 
     // Render the figure using the current valuation, whatever it is.
     renderFromValuation() {
-        this.GraphicalObjects.forEach(g => {
-            if (g.parent === undefined && g.renderIfVisible)
+        for (const g of this.GraphicalObjects) {
+            if (g.parent === undefined && g.renderIfVisible && g.active())
               g.renderIfVisible()
-        })
+        }
     }
 
 // Frame management. A figure can have multiple frames, each possibly with a
@@ -512,7 +515,7 @@ class Figure {
         if (names.length > 1) {
             return names.flat().map(n => new Frame(this, n))
         } else {
-            return new Frame(this, names)
+            return new Frame(this, ...names)
         }
     }
 
@@ -536,12 +539,18 @@ class Figure {
         this.numStages = this.currentStage + 1
     }
 
+    // Make sure there is at least one frame
+    ensureFrame() {
+        if (this.Frames.length == 0) {
+            this.currentFrame = this.Frames[0] = new Frame(this, "default")
+        }
+    }
+
 
     // Mark this figure as being ready for rendering.
     // Create an initial frame if no frames have been created yet.
     ready() {
-        if (this.Frames.length == 0)
-            this.Frames[0] = new Frame(this, "default")
+        this.ensureFrame()
         this.is_ready = true
         if (this.is_started) this.start()
     }
@@ -556,8 +565,7 @@ class Figure {
             console.log("Figure is not ready to render yet.")
             return
         }
-        if (this.Frames.length == 0)
-            this.Frames[0] = new Frame(this, "default")
+        this.ensureFrame()
         this.currentFrame = this.Frames[0]
         if (document.readyState == "complete") {
             console.log("Document is ready, starting first frame")
@@ -565,7 +573,7 @@ class Figure {
         } else {
             // console.log("Document is not ready, starting listener")
             window.addEventListener('load', () => {
-                console.log("Document loaded, starting frame")
+                // console.log("Document loaded, starting frame")
                 this.startCurrentFrame()
             })
         }
@@ -589,29 +597,33 @@ class Figure {
 
     // Reset this figure back to the first frame
     reset() {
+        this.ensureFrame()
         this.currentFrame = this.Frames[0]
         this.render(false)
     }
 
-// return the next frame or null if we are at the end already
-    nextFrame() {
-        if (this.currentFrame === undefined) {
+    // return the next frame to f (or to the current frame if f is omitted),
+    // or null if there is no next frame
+    nextFrame(f) {
+        f = f || this.currentFrame
+        if (f === undefined) {
             return this.Frames[0]
         }
         for (let i = 0; i < this.Frames.length; i++) {
-            if (this.Frames[i] == this.currentFrame &&
-                i + 1 < this.Frames.length) {
+            if (this.Frames[i] == f && i + 1 < this.Frames.length) {
                 return this.Frames[i+1]
             }
         }
         return null
     }
 
-    prevFrame() {
-        if (this.currentFrame === undefined) return null
+    // return the previous frame to f (or to the current frame if f is omitted)
+    // or null if it's the first frame.
+    prevFrame(f) {
+        f = f || this.currentFrame
+        if (f === undefined) return null
         for (let i = 0; i < this.Frames.length; i++) {
-            if (this.Frames[i] == this.currentFrame && i > 0)
-                return this.Frames[i-1]
+            if (this.Frames[i] == f && i > 0) return this.Frames[i-1]
         }
         return null
     }
@@ -624,7 +636,7 @@ class Figure {
             return
         }
         const f = this.nextFrame()
-        if (DEBUG) console.log("Advancing to frame " + f.name)
+        if (DEBUG && f) console.log("Advancing to frame " + f.name)
         if (f) {
             this.currentFrame = f
             this.startCurrentFrame()
@@ -837,7 +849,10 @@ class Figure {
         return new ConstraintGroup(this, a)
     }
     equal(...e) {
-        if (e.length == 2) return new NearZero(this, new Minus(e[0], e[1]))
+        e.forEach(x => legalExpr(x))
+        if (e.length == 2) {
+            return new NearZero(this, new Minus(e[0], e[1]))
+        }
         const a = []
         for (let i = 1; i < e.length; i++) {
             a.push(new NearZero(this, new Minus(e[0], e[i])))
@@ -845,6 +860,7 @@ class Figure {
         return new ConstraintGroup(this, a)
     }
     geq(...args) {
+        args.forEach(x => legalExpr(x))
         if (args.length == 2) return new NearZero(this, new Relu(new Minus(args[1], args[0])))
         const a = []
         for (let i = 1; i < args.length; i++) {
@@ -853,9 +869,10 @@ class Figure {
         return new ConstraintGroup(this, a)
     }
     positive(e) {
-        return this.geq(e, 0)
+        return this.geq(legalExpr(e), 0)
     }
     leq(...args) {
+        args.forEach(x => legalExpr(x))
         if (args.length == 2) return new NearZero(this, new Relu(new Minus(args[0], args[1])))
         const a = []
         for (let i = 1; i < args.length; i++) {
@@ -878,6 +895,7 @@ class Figure {
 
     // Add a hint that value v is a good initial guess for the solution to expression e.
     hint(e, v) {
+        legalExpr(e)
         if (e instanceof Variable && typeof v == NUMBER) {
             e.setHint(v)
         } else {
@@ -940,6 +958,7 @@ class Figure {
                     result.push(this.equal(objlist[i-1].x1(), objlist[i].x0()))
                 break
             case "distribute":
+                if (objlist.length < 2) break
                 const d = new Minus(objlist[1].x0(), objlist[0].x1())
                 for (let i = 2; i < objlist.length; i++) {
                     result.push(this.equal(new Minus(objlist[i].x0(), objlist[i-1].x1()), d))
@@ -981,6 +1000,7 @@ class Figure {
                     result.push(this.equal(objlist[i-1].y1(), objlist[i].y0()))
                 break
             case "distribute":
+                if (objlist.length < 2) break
                 const d = new Minus(objlist[1].y0(), objlist[0].y1())
                 for (let i = 2; i < objlist.length; i++) {
                     result.push(this.equal(new Minus(objlist[i].y0(), objlist[i-1].y1()), d))
@@ -1019,6 +1039,10 @@ class Figure {
     between(frame1, frame2, ...objs) {
         if (objs.length == 1) return new Before(this, frame2, new After(this, frame1, objs[0]))
         objs.flat().map(o => new Before(this, frame2, new After(this, frame1, o)))
+    }
+    inFrame(frame, ...objs) {
+        if (objs.length == 1) return new InFrame(this, frame, objs[0])
+        return objs.flat().map(o => new InFrame(this, frame, o))
     }
     drawAfter(frame, ...objs) {
         if (objs.length == 1) return new DrawAfter(this, frame, objs[0])
@@ -1167,6 +1191,7 @@ class Figure {
         return new DOMElementBox(this, id)
     }
     group(...objects) {
+        if (objects.length == 1) return objects[0]
         return new Group(this, ...objects)
     }
     linear(frame, e1, e2) {
@@ -1216,7 +1241,7 @@ class Figure {
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
-        args = args.flat().map(a => legalExpr(a))
+        args = args.flat().map(a => legalExpr(a)).filter(x => x != 0)
         switch (args.length) {
             case 0: return 0
             case 1: return args[0]
@@ -1229,6 +1254,7 @@ class Figure {
     }
     times(...args) {
         args = args.flat().map(a => legalExpr(a))
+        if (args.some(x => x == 0)) return 0
         switch (args.length) {
             case 0: return 1
             case 1: return args[0]
@@ -1258,13 +1284,12 @@ class Figure {
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
-    group(...g) { return new Group(this, ...g) }
     // constraint that (p1 -> p2) is perpendicular to (p3->p4)
     perpendicular(p1, p2, p3, p4) {
         let v1 = new Minus(legalExpr(p2), legalExpr(p1)), v2 = new Minus(legalExpr(p4), legalExpr(p3))
         return new NearZero(this,
-            new Plus(new Times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
-                     new Times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
+            this.plus(this.times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
+                     this.times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
     }
 
 // dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
@@ -1993,8 +2018,8 @@ class BinaryExpression extends Expression {
             console.error("undefined e1")
         if (e2 === undefined)
             console.error("undefined e2")
-        this.e1 = e1
-        this.e2 = e2
+        this.e1 = legalExpr(e1)
+        this.e2 = legalExpr(e2)
         return this
     }
     toString() {
@@ -2557,7 +2582,10 @@ class Temporal {
     }
     active() { return true }
     // Is this object visible in frame f?
-    visible() { return true }
+    visible(f) {
+        if (this.parent) return this.parent.visible(f)
+        return true
+    }
 
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame)) this.render()
@@ -2634,6 +2662,9 @@ class After extends TemporalFilter {
         this.frame = frame
     }
     active() {
+        if (this.parent && !this.parent.active()) {
+            return false // XXX ok?
+        }
         return this.figure.currentFrame.isAfter(this.frame)
     }
 }
@@ -2662,7 +2693,28 @@ class Before extends TemporalFilter {
         this.frame = frame
     }
     active() {
+        if (this.parent && !this.parent.active()) {
+            return false // XXX ok?
+        }
         return !this.figure.currentFrame.isAfter(this.frame)
+    }
+}
+
+// An InFrame object wraps another object and makes it exist only in
+// the specified frame.
+class InFrame extends TemporalFilter {
+    constructor(figure, frame, obj) {
+        super(figure, obj)
+        this.frame = frame
+    }
+    active() {
+        if (this.parent) {
+            console.log("inFrame with a parent?")
+        }
+        if (this.parent && !this.parent.active()) {
+            return false // XXX ok?
+        }
+        return this.figure.currentFrame === this.frame
     }
 }
 
@@ -2725,8 +2777,11 @@ class Constraint extends Temporal {
         return this
     }
     // Does this constraint need to be solved for in the specified stage, for
-    // component c? If c is omitted, checks for the whole stage
+    // the active component? If c is omitted, checks for the whole stage
     active() {
+        if (this.parent && !this.parent.active()) {
+            return false // XXX ok?
+        }
         if (this.stage > this.figure.activeStage) return false
         const c = this.figure.activeComponent
         if (c === undefined) return true
@@ -3213,11 +3268,26 @@ class GraphicalObject extends Box {
         this.figure.GraphicalObjects = new_objects
         return this
     }
-    active() { return true }
-    visible() { return true }
+    active(f) {
+        if (this.parent) {
+            if (!this.parent.active(f)) {
+                console.log("Inactive: " + this)
+            }
+            return this.parent.active(f)
+        }
+        return true
+    }
+    visible(f) {
+        if (this.parent) {
+            return this.parent.visible(f)
+        }
+        return true
+    }
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame))
             this.render()
+        else
+            console.log("Skipping render of invisible object: " + this)
     }
     installHolder(figure, holder, child) {
         if (child.parent !== undefined) {
@@ -3299,6 +3369,24 @@ class Group extends GraphicalObject {
     w() { return new Minus(this.x1(), this.x0()) }
     h() { return new Minus(this.y1(), this.y0()) }
     render() {
+        if (!this.visible()) return
+        if (DEBUG_GROUPS) {
+            const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+            const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], figure.currentValuation)
+            ctx.save()
+            ctx.strokeStyle = 'magenta'
+            ctx.lineWidth = 2
+            ctx.translate(x0, y0)
+            const w = x1-x0, h = y1-y0
+            ctx.beginPath()
+            ctx.moveTo(0, 0)
+            ctx.lineTo(w, 0)
+            ctx.lineTo(w, h)
+            ctx.lineTo(0, h)
+            ctx.closePath()
+            ctx.stroke()
+            ctx.restore()
+        }
         this.objects.forEach(o => o.renderIfVisible())
     }
     children() {
@@ -4717,7 +4805,7 @@ class ContainedText {
             max_guessed_lines = Math.floor(maxh/lineSpacing)
         if (this.verticalAlign == "top") guessed_lines = max_guessed_lines
 
-        if (DEBUG) console.log("max guessed lines = " + max_guessed_lines)
+        // if (DEBUG) console.log("max guessed lines = " + max_guessed_lines)
 
         // Compute the successful layout with the least guessed lines, or the largest
         // unsuccessful layout.
@@ -4741,7 +4829,7 @@ class ContainedText {
                                   x0, y, x0, x1, ymax)
             if (ly.success) {
                 layout = ly
-                if (DEBUG) console.log("found best layout at " + guessed_lines)
+                // if (DEBUG) console.log("found best layout at " + guessed_lines)
                 break
             }
             if (!ly.success && this.verticalAlign == "top" && countItems(ly) == 0) {
