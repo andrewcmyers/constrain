@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = true, DEBUG_GROUPS = false
+const DEBUG = false, DEBUG_GROUPS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
