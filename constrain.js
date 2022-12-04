@@ -2961,7 +2961,7 @@ class LayoutObject extends Expression {
         }
         return best
     }
-    // Return the intersection of the line from (x,y) to to this
+    // Return the intersection of the line from (x,y) to this
     // shape with the shape's boundary.
     intersectionPt(x, y, valuation) {
         let [xc, yc] = evaluate([this.x(), this.y()], valuation)
@@ -3497,6 +3497,48 @@ class Rectangle extends GraphicalObject {
     setCornerRadius(r) {
         this.cornerRadius = legalExpr(r)
         return this
+    }
+    intersectionPt(px, py, valuation) {
+        let result = super.intersectionPt(px, py, valuation)
+        const r = this.cornerRadius
+        if (r == 0) return result
+        const [x, y] = result
+        const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
+                                         this.x1(), this.y1()], valuation)
+        const r2 = r * r
+        if ((x - x0) * (x - x0) + (y - y0) * (y - y0) < r2) {
+            // too near x0, y0
+            const x2 = x - x0 - r, y2 = y - y0 - r
+            const d = Math.sqrt(x2*x2 + y2*y2)
+            const x3 = x0 + r + r/d*(x - x0 - r),
+                  y3 = y0 + r + r/d*(y - y0 - r)
+            return [x3, y3]
+        } else
+        if ((x - x1) * (x - x1) + (y - y0) * (y - y0) < r2) {
+            // too near x1, y0
+            const x2 = x - x1 + r, y2 = y - y0 - r
+            const d = Math.sqrt(x2*x2 + y2*y2)
+            const x3 = x1 - r + r/d*(x - x1 + r),
+                  y3 = y0 + r + r/d*(y - y0 - r)
+            return [x3, y3]
+        } else
+        if ((x - x0) * (x - x0) + (y - y1) * (y - y1) < r2) {
+            // too near x0, y1
+            const x2 = x - x0 - r, y2 = y - y1 + r
+            const d = Math.sqrt(x2*x2 + y2*y2)
+            const x3 = x0 + r + r/d*(x - x0 - r),
+                  y3 = y1 - r + r/d*(y - y1 + r)
+            return [x3, y3]
+        } else
+        if ((x - x1) * (x - x1) + (y - y1) * (y - y1) < r2) {
+            // too near x1, y1
+            const x2 = x - x1 + r, y2 = y - y1 + r
+            const d = Math.sqrt(x2*x2 + y2*y2)
+            const x3 = x1 - r + r/d*(x - x1 + r),
+                  y3 = y1 - r + r/d*(y - y1 + r)
+            return [x3, y3]
+        }
+        return result
     }
 }
 
