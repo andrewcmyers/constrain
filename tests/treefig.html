@@ -9,7 +9,6 @@
   <script src="../numeric-1.2.6.js"></script>
   <script src="../constrain.js"></script>
   <script src="../constrain-trees.js"></script>
-  <script src="constrain-notes.js"></script>
   <script>
     document.addEventListener('load', Constrain.autoResize)
   </script>
@@ -58,11 +57,15 @@ with (fig1) {
       // t = tree(l => node(l + ""), 4, 0)
 
     t.addFrame(1500).rotateNodeWithParent(5)
+      align("right", "top", inFrame(Frames[1], label("rotate 5 up")), margin())
     t.addFrame(1500).rotateNodeWithParent(5)
-/*
+      align("right", "top", inFrame(Frames[2], label("rotate 5 up")), margin())
     t.addFrame(1500).swapNodeWithParent(0)
+      align("right", "top", inFrame(Frames[3], label("bubble 0 up")), margin())
     t.addFrame(1500).swapNodeWithParent(2)
-*/
+      align("right", "top", inFrame(Frames[4], label("bubble 2 up")), margin())
+    t.addFrame(1500).swapNodeWithParent(2)
+      align("right", "top", inFrame(Frames[5], label("bubble 2 up")), margin())
 
     const tgroup = t.roots.get(Frames[0]).groups.get(Frames[0])
     align("L", "TB", tgroup, margin().inset(10))

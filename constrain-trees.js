@@ -1,5 +1,5 @@
 Constrain.Trees = function() {
-    // An ordered set of edges
+    // A mutable, ordered set of edges [src, dst]
     class Edges {
         constructor(oldEdges) {
             if (arguments.length == 0) {
@@ -8,7 +8,7 @@ Constrain.Trees = function() {
                 this.edges = new Array(...oldEdges.edges)
             }
         }
-        // Add edge at the end of the list
+        // Add edge [n1, n2] at the end of the list
         addEdge(n1, n2) {
             this.edges.push([n1, n2])
             delete this.outgoing
@@ -71,6 +71,8 @@ Constrain.Trees = function() {
             return result
             
         }
+        // Return the index of a node with respect to its parents.
+        // The indices of child nodes start from 0.
         childIndex(node, parentNode) {
             let seen = 0
             for (const e of this.getEdges()) {
@@ -82,7 +84,7 @@ Constrain.Trees = function() {
             }
             return -1;
         }
-        // The nth child of this node, or null if none such
+        // Child node n of `node`, or null if none such
         nthChild(node, n) {
             let seen = 0
             for (const e of this.getEdges()) {
@@ -418,6 +420,9 @@ Constrain.Trees = function() {
         addLeaf(value, parentValue) {
             this.tree.addleaf(this.frame, this.tree.findnode(value),
                                 this.tree.findnode(parentvalue))
+        }
+        root() {
+            return this.tree.roots.get(this.frame).gobj
         }
     }
     Constrain.Figure.prototype.tree = function(mapper, ...args) {

@@ -199,6 +199,7 @@ class Figure {
         this.focused = null
         this.renderNeeded = false
     }
+    // Return the valuation to be used for solving
     initialValuation() {
         if (this.Variables.length != this.numVariables) {
             alert("oops " + this.numVariables + " " + this.Variables.length)
@@ -207,7 +208,20 @@ class Figure {
         const result = new Array(this.activeVariables.length)
         for (let i = 0; i < this.activeVariables.length; i++) {
             const v = this.activeVariables[i]
-            if (v.currentValue != null) result[i] = v.currentValue
+            if (v.hasOwnProperty('currentValue')) {
+                if (v.hasOwnProperty('prevValue')) {
+                    // predict next solution based on linear motion assumption
+                    const motion = numeric.sub(v.currentValue, v.prevValue)
+                    if (isFinite(motion) && Math.abs(motion) < 5) {
+                        result[i] =  numeric.add(v.currentValue, motion)
+                    } else {
+                        result[i] = v.currentValue
+                    }
+                } else {
+                    result[i] = v.currentValue
+                }
+                v.prevValue = v.currentValue
+            }
             else if (v.hint != null) result[i] = v.hint
             else result[i] = 100
             v.currentValue = result[i]
@@ -372,6 +386,7 @@ class Figure {
         // console.log(this.name + ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
         return components
     }
+    // update the current valuation to solve constraints within tolerance tol
     updateValuation(tol) {
       let solution, figure = this
       if (PROFILE_EVALUATIONS) evaluations = 0
