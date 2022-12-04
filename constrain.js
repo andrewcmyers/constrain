@@ -46,7 +46,7 @@ const Figure_defaults = {
 }
 
 const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4
-const algorithm = UNCMIN_BFGS
+let algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -465,10 +465,9 @@ class Figure {
             }
         }
         const minimizationOptions = this.minimizationOptions
-        const uncmin_options = {Hinv: invHessian,
-                                stepSize: minimizationOptions.UNCMIN_STEPSIZE,
-                                overshoot: minimizationOptions.UNCMIN_OVERSHOOT,
-                                maxit: minimizationOptions.UNCMIN_MAXIT}
+        const uncmin_options = {}
+        for (const key in minimizationOptions) uncmin_options[key] = minimizationOptions[key]
+        uncmin_options.Hinv = invHessian
         if (doGrad) { if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
                                 valuation, tol, maxit, callback, uncmin_options)
@@ -786,7 +785,7 @@ class Figure {
         if (t) {
             let counter = 0
             this.registerCallback(new SolverCallback("animateSolving",
-                () => { counter++; return counter < 1000; }))
+                () => { counter++; return counter < 10000; }))
         } else {
             this.unregisterCallback("animateSolving")
         }
@@ -1633,7 +1632,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
                 y_hist.push(y)
                 rho.push(1/dot(y, s))
                 hist++
-                if (hist > minimizationOptions.UNCMIN_LBFGS_M) {
+                if (hist > options.UNCMIN_LBFGS_M) {
                     s_hist.shift()
                     y_hist.shift()
                     rho.shift()
@@ -5805,6 +5804,10 @@ function autoResize() {
         )
 }
 
+function setMinimizationAlgorithm(a) {
+    algorithm = a
+}
+
   return ({
     figure, Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
     Point, Box, Line, Connector, Rectangle, Square, Circle, Ellipse, Polygon,
@@ -5815,6 +5818,7 @@ function autoResize() {
     ComputedText,
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, currentValue, drawLineEndSeg,
-    evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions
+    evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
+    setMinimizationAlgorithm
   })
 }()
