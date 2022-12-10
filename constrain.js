@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false
+const DEBUG = true, DEBUG_GROUPS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -246,7 +246,27 @@ class Figure {
         const a = [], frame = this.currentFrame
         this.Variables.forEach(v => v.removeIndex())
         const activeConstraints = new Set()
-        this.activeConstraints = activeConstraints
+        const frontier = []
+        const constraintsByVar = new Map()
+        this.Constraints.forEach(c => {
+            if (c.active()) {
+                for (const v of c.variables()) {
+                    const cons = constraintsByVar.get(v) || new Set()
+                    cons.add(c)
+                    constraintsByVar.set(v, cons)
+                }
+            }
+        })
+        // add this constraint, if not there already, to the
+        // set of active constraints and push it onto the frontier
+        // for traversal.
+        function activateConstraint(c) {
+            if (!activeConstraints.has(c)) {
+                c.variables().forEach(activate)
+                activeConstraints.add(c)
+                frontier.push(c)
+            }
+        }
         // Assign a fresh index to variable v if it doesn't have one yet
         function activate(v) {
             if (v.stage != stage) return
@@ -256,21 +276,27 @@ class Figure {
             v.setIndex(i)
             a.push(v)
             i++
+
+            const cons = constraintsByVar.get(v)
+            if (cons) cons.forEach(activateConstraint)
         }
         this.GraphicalObjects.forEach(g => {
             if (g.active()) {
-                g.variables().forEach(activate)
+                g.variables().forEach(v => {
+                    activate(v)
+                })
             }
         })
-        this.Constraints.forEach(c => {
-            if (c.active()) {
-                c.variables().forEach(activate)
-                activeConstraints.add(c)
-            }
-        })
+        // Take the closure over all constraints mentioning active variables
+        while (frontier.length > 0) {
+            activateConstraint(frontier.shift())
+        }
+
+        this.activeConstraints = activeConstraints
         this.activeVariables = a
         if (DEBUG) {
-            console.log("Active variables: ", a.length)
+            console.log("Stage " + stage + ": Active variables: ", a.length)
+            console.log("  Active constraints: ", activeConstraints.size)
         }
     }
     resetValuation() {

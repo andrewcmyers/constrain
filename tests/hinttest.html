@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en-US">
 <head>
-  <script src="numeric-1.2.6.js"></script>
-  <script src="constrain.js"></script>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
   <style>
     canvas {
         background-color: transparent;
@@ -21,8 +21,8 @@
     //  hint(h1.x(), 10); hint(h1.y(), 20)
         // equal(l.p2().x(), variable("hx_hint", 150))
         // equal(l.p2().y(), variable("hy_hint", 150))
-          equal(projection(l.p2(),0,2), variable("hx_hint", 150))
-          equal(projection(l.p2(),1,2), variable("hy_hint", 150))
+          equal(projection(l.p2,0,2), variable("hx_hint", 150))
+          equal(projection(l.p2,1,2), variable("hy_hint", 150))
 
       // equal(l.x0(), l.y0(), 0)
     // equal(l.x1(), h1.x1())
