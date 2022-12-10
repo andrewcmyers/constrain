@@ -96,16 +96,31 @@ with (figure) {
         let inscribed = circle("#ffe")
         inscribed.placeOver(triangle)
         let incenter = inscribed.center()
-        keepInside(inscribed, triangle).changeCost(10)
+        function debugExpr(n, e) {
+            if (Constrain.DEBUG) {
+                return new Constrain.DebugExpr(n, e)
+            } else {
+                return e
+            }
+        }
+        let w1 = debugExpr("w1", variable("w1")), w2 = debugExpr("w2", variable("w2")), w3 = minus(1, plus(w1, w2))
+        geq(w1, 0).changeCost(100); geq(w2, 0).changeCost(100); geq(w3, 0).changeCost(100);
+        leq(w1, 1).changeCost(100); leq(w2, 1).changeCost(100); leq(w3, 1).changeCost(100);
+        keepInside(inscribed, triangle)
+          geq(inscribed.x0(), min(p2.x(), h1.x()))
+          leq(inscribed.x1(), max(p3.x(), h1.x()))
+        equal(inscribed.x(), plus(times(w1, h1.x()), times(w2, p2.x()), times(w3, p3.x())))
+        equal(inscribed.y(), plus(times(w1, h1.y()), times(w2, p2.y()), times(w3, p3.y())))
+        equal(inscribed.y1(), p2.y()).changeCost(10)
         new Array(h1, p2, p3).forEach(p => 
             line().setStart(p).setEnd(incenter).setLineDash([2,6]).setStrokeStyle("#800")
         )
         dot().at(incenter)
         align("abut", "center", incenter, hspace(7), label("incenter"))
         const ip1 = point(), ip2 = point(), ip3 = point()
-        between(ip1, h1, p2).changeCost(1000)
-        between(ip2, p2, p3).changeCost(1000)
-        between(ip3, p3, h1).changeCost(1000)
+        between(ip1, h1, p2).changeCost(100)
+        between(ip2, p2, p3).changeCost(100)
+        between(ip3, p3, h1).changeCost(100)
 
         perpendicular(incenter, ip1, h1, p2)
         perpendicular(incenter, ip2, p2, p3)

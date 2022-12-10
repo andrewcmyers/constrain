@@ -13,10 +13,10 @@ const bezier_k = circularArcConstant(90)
 
 with (figure) {
 var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
-    h = handle("yellow", 300, 300)
+    h = handle("yellow", 300, 300),
+    m = margin()
+    equal(border, m)
 
-    equal(border.x(), figure.canvasRect().x())
-    equal(border.y(), figure.canvasRect().y())
     align("left", "top", h, border)
 
 class SpiralPiece extends Constrain.Square {
@@ -73,9 +73,9 @@ let success;
 let mw = Constrain.evaluate(border.w(), figure.currentValuation),
     mh = Constrain.evaluate(border.h(), figure.currentValuation)
 let phi = mw/mh
-    t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow", undefined, 1, canvas.width/2, 100)
+    t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow")
 align("center", "none", t, border)
-align("none", "top", t, figure.canvasRect())
+align("none", "top", t, m)
 
 figure.removeConstraints(c)
 }
