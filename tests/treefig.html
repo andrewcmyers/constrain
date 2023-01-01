@@ -43,6 +43,7 @@ const fig1 = new Constrain.Figure("tree_anatomy")
 let t
 with (fig1) {
     setFontSize(10)
+    const bbox = rectangle().setStrokeStyle("#0ff").setLineDash([3,3]).setFillStyle(null)
     function node(s) {
         return square().addText(s).setFontSize(10).setW(20).setCornerRadius(5).setFillStyle(null)
     }
@@ -50,28 +51,35 @@ with (fig1) {
     // empty tree: undefined
     // non-leaf: [root, children...]
     setConnectionStyle("intersection")
-    let t = tree(l => l !== undefined ? node(l + "") : point(),
-      4, [3, [6, 2, undefined], [5, [4, undefined, 9], 0]], 1)
-       // t = tree(l => node(l + ""),
-                   ///4, [5, 0, 2], 9)
-      // t = tree(l => node(l + ""), 4, 0)
+    function num(l) {
+        return l !== undefined ? node(l + "") : point()
+    }
 
-    t.addFrame(1500).rotateNodeWithParent(5)
+            t = tree(l => l !== undefined ? node(l + "") : point(), 4, [3, [6, 2, undefined], [5, [4, undefined, 9], 0]], 1)
+           // t = tree(l => node(l + ""), 4, [5, 0, 2], 9)
+          //  t = tree(num, 4, 0, 5)
+        // t = tree(l => l !== undefined ? node(l + "") : point(), 4, 2, [3, undefined, 5])
+
+            t.addFrame(1500).rotateNodeWithParent(5)
+        t.addFrame(1500).rotateNodeWithParent(5)
       // align("right", "top", inFrame(Frames[1], label("rotate 5 up")), margin())
-    t.addFrame(1500).rotateNodeWithParent(5)
       // align("right", "top", inFrame(Frames[2], label("rotate 5 up")), margin())
       // align("right", "top", inFrame(Frames[3], label("bubble 0 up")), margin())
-/*
     t.addFrame(1500).swapNodeWithParent(0)
-    t.addFrame(1500).swapNodeWithParent(2)
+    // t.addFrame(1500).swapNodeWithParent(2)
+/*
       align("right", "top", inFrame(Frames[4], label("bubble 2 up")), margin())
     t.addFrame(1500).swapNodeWithParent(2)
       align("right", "top", inFrame(Frames[5], label("bubble 2 up")), margin())
       */
 
-    const tgroup = t.roots.get(Frames[0]).groups.get(Frames[0])
-    align("L", "TB", tgroup, margin().inset(10))
-    align("abut", "B", tgroup, advanceButton(), margin().lr())
+    const tbox = t.bbox
+    const glue = figure.variable()
+    figure.equal(glue, 0).changeCost(0.01)
+    align("none", "TB", tbox, margin().inset(10))
+    align("abut", "B", margin().ll(), figure.hspace(glue), tbox, figure.hspace(glue), advanceButton(), margin().lr())
+
+    align("LR", "TB", bbox, tbox)
 
     Constrain.setMinimizationAlgorithm(Constrain.UNCMIN_BFGS) // L-BFGS
     fig1.minimizationOptions = {maxit: 1000, UNCMIN_LBFGS_M: 50}
