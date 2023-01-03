@@ -168,7 +168,7 @@ Constrain.Trees = function() {
         constructor(tree, value) {
             this.value = value
             // A node is associated with a particular graphical object
-            this.gobj = tree.mapper(value)
+            this.gobj = tree.style.drawNode(value)
             // this.positions.get(f) is an object that describes the position of this node
             // in frame i, as well as the animation plan for how to get 
             this.positions = new Map()
@@ -191,15 +191,32 @@ Constrain.Trees = function() {
         }
     }
 
+    // A TreeStyle encapsulates choices about how trees are graphically rendered
+    class TreeStyle {
+        constructor(figure) {
+            this.figure = figure
+        }
+        // Create a graphical object representing the tree node with value `info`
+        drawNode(info) {
+            return this.figure.label(info)
+        }
+        // Create a graphical object representing the edge from gobj1 to gobj2
+        drawEdge(gobj1, gobj2) {
+            return this.figure.connector(gobj1, gobj2)
+        }
+        // Optionally create some graphical objects indicating that gobj is the root node
+        decorateRoot(gobj) {}
+    }
+
     // An AnimatedTree is a tree of nodes that can be animated over
     // multiple frames in ways that change the structure of the tree.
     // Transitions between different structures are smoothly animated.
     // The tree is laid out vertically with the root at the top.
     class AnimatedTree {
-        constructor(figure, mapper, root, ...children) {
+        constructor(figure, style, root, ...children) {
             this.figure = figure
             const frame = this.currentFrame = figure.currentFrame
-            this.mapper = mapper
+            this.style = style
             this.vertSpacings = new Map()
             this.horzSpacings = new Map()
             this.roots = new Map()
@@ -210,6 +227,7 @@ Constrain.Trees = function() {
             const edges = new Edges()
             this.edges.set(frame, edges)
             this.createNodes(frame, rootNode, ...children)
+            this.style.decorateRoot(rootNode.gobj)
             this.constraints = new Map() // map from frames to arrays of constraints
             this.bbox = figure.box()
             this.frameConstraints(frame)
@@ -241,7 +259,6 @@ Constrain.Trees = function() {
             const a = this.constraints.get(frame)
             if (!a) this.constraints.set(frame, [])
             this.constraints.push(...constraints)
-
         }
         // Set up the constraints and connectors for this node in the given frame,
         // assuming the specified edges exist in the frame.
@@ -270,7 +287,7 @@ Constrain.Trees = function() {
                         figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3]))
                     )
                     */
-                    const a = figure.after(frame, figure.connector(node.gobj, c.gobj))
+                    const a = figure.after(frame, this.style.drawEdge(node.gobj, c.gobj))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
                     this.exclusiveAfters.add(a)
                 }
@@ -493,7 +510,7 @@ Constrain.Trees = function() {
     class TreeView {
         constructor(tree, frame) {
             this.tree = tree
-            this.frame = frame
+            this.frame = frame || tree.figure.currentFrame
         }
         swapNodeWithParent(value) {
             this.tree.swapNodeWithParent(this.frame, this.tree.findNode(value))
@@ -514,14 +531,18 @@ Constrain.Trees = function() {
         rootPosition() {
             return this.tree.roots.get(this.frame).positions(this.frame)
         }
+        findNode(n) {
+            return this.tree.findNode(n).gobj
+        }
     }
-    Constrain.Figure.prototype.tree = function(mapper, ...args) {
+    Constrain.Figure.prototype.tree = function(style, ...args) {
         this.ensureFrame()
-        return new AnimatedTree(this, mapper, ...args)
+        return new AnimatedTree(this, style, ...args)
     }
     return {
         AnimatedTree,
         TreeView,
+        TreeStyle,
         Node,
         Edges,
     }
