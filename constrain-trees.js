@@ -532,7 +532,10 @@ Constrain.Trees = function() {
             return this.tree.roots.get(this.frame).positions(this.frame)
         }
         findNode(n) {
-            return this.tree.findNode(n).gobj
+            return this.tree.findNode(n)
+        }
+        findNodeObj(n) {
+            return this.findNode(n).gobj
         }
     }
     Constrain.Figure.prototype.tree = function(style, ...args) {
