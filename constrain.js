@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = true, DEBUG_GROUPS = false
+const DEBUG = false, DEBUG_GROUPS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -252,14 +252,8 @@ class Figure {
         if (!valuation) valuation = this.currentValuation
         return evaluate(e, valuation, doGrad)
     }
-    // assign indices in the valuation array to each of the variables that are active in this stage
-    numberVariables(stage, component) {
-        let i = 0
-        const a = [], frame = this.currentFrame
-        this.Variables.forEach(v => v.removeIndex())
-        const activeConstraints = new Set()
-        const frontier = []
-        // constraintsByVar maps from each variable to a set of constraints that mention it
+    // Create a map from each variable to the set of constraints that mention it.
+    constraintsByVar() {
         const constraintsByVar = new Map()
         this.Constraints.forEach(c => {
             if (c.active()) {
@@ -270,6 +264,16 @@ class Figure {
                 }
             }
         })
+        return constraintsByVar
+    }
+    // assign indices in the valuation array to each of the variables that are active in this stage
+    numberVariables(stage, component) {
+        let i = 0
+        const a = [], frame = this.currentFrame
+        this.Variables.forEach(v => v.removeIndex())
+        const activeConstraints = new Set()
+        const frontier = []
+        const constraintsByVar = this.constraintsByVar()
         // add this constraint, if not there already, to the
         // set of active constraints and push it onto the frontier
         // for traversal.
@@ -412,6 +416,7 @@ class Figure {
     }
     // Recompute the components for a given figure stage
     computeComponents(stage) {
+        if (DEBUG) console.log("Computing components for stage " + stage)
         delete this.activeComponent
         for (const v of this.activeVariables) {
             delete v.component
@@ -439,7 +444,9 @@ class Figure {
             }
         }
         if (DEBUG)
-         console.log(this.name + ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+         console.log(this.name +
+            (this.currentFrame ? " frame " + this.currentFrame.index : "") +
+            ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
         return components
     }
     // update the current valuation to solve constraints within tolerance tol
@@ -805,6 +812,7 @@ class Figure {
     // Start rendering (and animating, if necessary) the current frame
     startCurrentFrame() {
         this.animationTime = 0
+        delete this.components // cannot safely reuse components across frames
         this.stopTimer()
         if (!this.currentFrame) {
             console.error("no current frame")
@@ -931,11 +939,11 @@ class Figure {
     equal(...e) {
         e.forEach(x => legalExpr(x))
         if (e.length == 2) {
-            return new NearZero(this, new Minus(e[0], e[1]))
+            return new NearZero(this, this.minus(e[0], e[1]))
         }
         const a = []
         for (let i = 1; i < e.length; i++) {
-            a.push(new NearZero(this, new Minus(e[0], e[i])))
+            a.push(new NearZero(this, this.minus(e[0], e[i])))
         }
         return new ConstraintGroup(this, a)
     }
@@ -1330,6 +1338,7 @@ class Figure {
         }
     }
     minus(x, y) {
+        if (y == 0) return x
         return new Minus(legalExpr(x), legalExpr(y))
     }
     times(...args) {
