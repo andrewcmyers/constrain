@@ -265,26 +265,32 @@ Constrain.Trees = function() {
                 const cgroup = c.groups.get(frame),
                       cpos = c.positions.get(frame)
                 if (c.value !== undefined) {
-                     // figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3])
+                    /*
+                    this.exclusiveAfters.add(figure.after(frame,
+                        figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3]))
+                    )
+                    */
                     const a = figure.after(frame, figure.connector(node.gobj, c.gobj))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
                     this.exclusiveAfters.add(a)
                 }
 
-                const vconstr =
-                    figure.equal(figure.minus(cpos.y(), pos.y()), vertSpacing)
-
+                const vconstr = figure.after(frame,
+                    figure.equal(figure.minus(cpos.y(), pos.y()), vertSpacing))
                 constraints.push(vconstr)
+                this.inclusiveAfters.add(vconstr)
                 if (prev_sib) {
                     const sib_rightmost = edges.rightmostDescendant(prev_sib),
                           c_leftmost =  edges.leftmostDescendant(c)
                           // console.log("because of siblings " + prev_sib + " and " + c + ", separating " + sib_rightmost.value + " and "  + c_leftmost.value)
-                    constraints.push(
+                    const hconstr = figure.after(frame,
                         figure.equal(figure.minus(c_leftmost.positions.get(frame).x(),
                                     sib_rightmost.positions.get(frame).x()),
                               figure.plus(figure.times(0.5, sib_rightmost.gobj.w()),
                                    figure.times(0.5, c_leftmost.gobj.w()),
                                    horzSpacing)))
+                    constraints.push(hconstr)
+                    this.inclusiveAfters.add(hconstr)
                 }
                 prev_sib = c
             }
@@ -306,14 +312,14 @@ Constrain.Trees = function() {
 
             const pf = figure.prevFrame(frame),
                   prevpos = pf && node.positions.get(pf)
-            const afters = prevpos
+            const gobj_constrs = prevpos
               ? figure.after(frame,
                     figure.equal(node.gobj.x(), figure.smooth(frame, prevpos.x(), pos.x())),
                     figure.equal(node.gobj.y(), figure.smooth(frame, prevpos.y(), pos.y())))
               : figure.after(frame, 
                     figure.equal(node.gobj.x(), pos.x()),
                     figure.equal(node.gobj.y(), pos.y()))
-            for (const a of afters) {
+            for (const a of gobj_constrs) {
                 this.exclusiveAfters.add(a)
                 constraints.push(a)
             }
@@ -403,13 +409,18 @@ Constrain.Trees = function() {
             this.roots.set(frame, oldRoot == parentNode ? node : oldRoot)
             this.frameConstraints(frame)
         }
+        glue() {
+            return 0
+        }
         frameConstraints(frame) {
             const figure = this.figure
             console.log("Setting up constraints for frame " + frame)
             if (this.constraints.get(frame)) {
                 console.error("Oops, already have constraints for frame " + frame)
             }
-            // Make all current constraints end before this frame starts
+            // Make all current tree constraints end either before this frame
+            // starts or on this frame, depending on whether they are graphical
+            // constraints or geometric ones.
             if (this.exclusiveAfters) this.exclusiveAfters.forEach(a => {
                 a.endBefore(frame)
             })
@@ -418,6 +429,7 @@ Constrain.Trees = function() {
             })
             this.exclusiveAfters = new Set()
             this.inclusiveAfters = new Set()
+
             // Now set up constraints for this frame
             const constraints = []
             const edges = this.edges.get(frame)
@@ -430,15 +442,18 @@ Constrain.Trees = function() {
                   vertSpacing = figure.variable("vertSpacing" + frame.index)
             this.horzSpacings.set(frame, horzSpacing)
             this.vertSpacings.set(frame, vertSpacing)
-            figure.geq(horzSpacing, 0)
-            figure.geq(vertSpacing, 0)
+            figure.after(frame,
+                figure.geq(horzSpacing, 0),
+                figure.geq(vertSpacing, 0)).forEach(a => 
+                    this.inclusiveAfters.add(a)
+                )
             this.frameNodeConstraints(frame, root, edges, horzSpacing, vertSpacing)
             //const prevFrame = figure.prevFrame(frame) || frame
-            const glue = figure.variable("glue")
+            const glue = this.glue()
             const bbox_constraints = // figure.after(prevFrame, 
             [
                 figure.geq(glue, 0),
-                figure.equal(glue, 0).changeCost(0.0001),
+                figure.equal(glue, 0).changeCost(0.001),
                 figure.equal(this.bbox.y0(), figure.plus(root.positions.get(frame).y(), figure.times(-0.5, root.gobj.h()))),
                 figure.equal(figure.plus(glue, this.bbox.x0()), figure.minus(lchild.positions.get(frame).x(),
                                                         figure.times(0.5, lchild.gobj.w()))),
