@@ -195,6 +195,9 @@ Constrain.Trees = function() {
     class TreeStyle {
         constructor(figure) {
             this.figure = figure
+            if (!(figure instanceof Constrain.Figure)) {
+                console.error("Not a figure")
+            }
         }
         // Create a graphical object representing the tree node with value `info`
         drawNode(info) {

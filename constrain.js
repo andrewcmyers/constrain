@@ -1427,10 +1427,6 @@ class Figure {
     }
 }
 
-function figure(nm) {
-    return new Figure(nm)
-}
-
 function isFigure(figure) {
     return (figure.connector !== undefined)
 }
@@ -5877,7 +5873,7 @@ function setMinimizationAlgorithm(a) {
 }
 
   return ({
-    figure, Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
+    Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
     Point, Box, Line, Connector, Rectangle, Square, Circle, Ellipse, Polygon,
     ContainedText, TextContext, TextItem, createText, InteractiveObject,
     CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,
