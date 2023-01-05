@@ -203,12 +203,13 @@ Constrain.Trees = function() {
         drawNode(info) {
             return this.figure.label(info)
         }
-        // Create a graphical object representing the edge from gobj1 to gobj2
-        drawEdge(gobj1, gobj2) {
-            return this.figure.connector(gobj1, gobj2)
+        // Create a graphical object representing the edge from node n1 to node n2
+        drawEdge(n1, n2) {
+            return this.figure.connector(n1.gobj, n2.gobj)
         }
-        // Optionally create some graphical objects indicating that gobj is the root node
-        decorateRoot(gobj) {}
+        // Optionally create some graphical objects indicating that n is the root node. They
+        // are not included in the tree's bounding box
+        decorateRoot(n) {}
     }
 
     // An AnimatedTree is a tree of nodes that can be animated over
@@ -230,7 +231,7 @@ Constrain.Trees = function() {
             const edges = new Edges()
             this.edges.set(frame, edges)
             this.createNodes(frame, rootNode, ...children)
-            this.style.decorateRoot(rootNode.gobj)
+            this.style.decorateRoot(rootNode)
             this.constraints = new Map() // map from frames to arrays of constraints
             this.bbox = figure.box()
             this.frameConstraints(frame)
@@ -290,7 +291,7 @@ Constrain.Trees = function() {
                         figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3]))
                     )
                     */
-                    const a = figure.after(frame, this.style.drawEdge(node.gobj, c.gobj))
+                    const a = figure.after(frame, this.style.drawEdge(node, c))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
                     this.exclusiveAfters.add(a)
                 }
@@ -537,7 +538,7 @@ Constrain.Trees = function() {
         findNode(n) {
             return this.tree.findNode(n)
         }
-        findNodeObj(n) {
+        findObj(n) {
             return this.findNode(n).gobj
         }
     }
