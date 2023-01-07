@@ -1041,6 +1041,11 @@ class Figure {
                     result.push(this.equal(objlist[i].x1(), objlist[0].x1()))
                 }
                 break
+            case "target":
+                for (let i = 1; i < objlist.length; i++) {
+                    result.push(this.equal(objlist[i].target().x(), objlist[0].target().x()))
+                }
+                break
             case "abut":
                 for (let i = 1; i < objlist.length; i++)
                     result.push(this.equal(objlist[i-1].x1(), objlist[i].x0()))
@@ -1081,6 +1086,11 @@ class Figure {
                 for (let i = 1; i < objlist.length; i++) {
                     result.push(this.equal(objlist[i].y0(), objlist[0].y0()))
                     result.push(this.equal(objlist[i].y1(), objlist[0].y1()))
+                }
+                break
+            case "target":
+                for (let i = 1; i < objlist.length; i++) {
+                    result.push(this.equal(objlist[i].target().y(), objlist[0].target().y()))
                 }
                 break
             case "abut":
@@ -2993,6 +3003,7 @@ class LayoutObject extends Expression {
     centerX() { return new Average(this.x0(), this.x1()) }
     centerY() { return new Average(this.y0(), this.y1()) }
     center() { return new Point(this.x(), this.y()) }
+    target() { return this.center() }
     width() { return this.w() }
     height() { return this.h() }
     w() { return 0 }
@@ -3025,7 +3036,7 @@ class LayoutObject extends Expression {
         return best
     }
     // Return the intersection of the line from (x,y) to this
-    // shape with the shape's boundary.
+    // shape with the shape's boundary, as an array [x, y]
     intersectionPt(x, y, valuation) {
         let [xc, yc] = evaluate([this.x(), this.y()], valuation)
         let [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
@@ -3059,6 +3070,7 @@ class LayoutObject extends Expression {
     variables() {
         return new Set()
     }
+    installHolder(figure, holder, child) {}
     // Any LayoutObject can be used as an expression, in which case it represents
     // its (x,y) position. By default, LayoutObjects cache their results.
     evaluate(valuation, doGrad) {
@@ -3348,14 +3360,17 @@ class GraphicalObject extends Box {
     }
     active(f) {
         if (this.parent) {
+            /*
             if (!this.parent.active(f)) {
                 console.log("Inactive: " + this)
             }
+            */
             return this.parent.active(f)
         }
         return true
     }
     visible(f) {
+        if (!this.active(f)) return false
         if (this.parent) {
             return this.parent.visible(f)
         }
@@ -3368,14 +3383,14 @@ class GraphicalObject extends Box {
             console.log("Skipping render of invisible object: " + this)
     }
     installHolder(figure, holder, child) {
-        if (child.parent !== undefined) {
-            console.error("Child GraphicalObject already has a parent")
-            return
-        }
+        const oldParent = child.parent
         for (let i = 0; i < figure.GraphicalObjects.length; i++) {
             if (figure.GraphicalObjects[i] === child) {
                 figure.GraphicalObjects[i] = holder
                 child.parent = holder
+                if (oldParent) {
+                    this.installHolder(figure, oldParent, holder)
+                }
                 break
             }
         }
