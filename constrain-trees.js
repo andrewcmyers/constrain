@@ -208,6 +208,10 @@ Constrain.Trees = function() {
         // Optionally create some graphical objects indicating that n is the root node. They
         // are not included in the tree's bounding box
         decorateRoot(n) {}
+
+        // Amount of glue space to insert on either side of the tree, which is
+        // weakly set equal to 0. The default implementation is that there is no glue.
+        glue() { return 0 }
     }
 
     // An AnimatedTree is a tree of nodes that can be animated over
@@ -462,9 +466,6 @@ Constrain.Trees = function() {
             this.roots.set(frame, oldRoot)
             this.frameConstraints(frame)
         }
-        glue() {
-            return 0
-        }
         frameConstraints(frame) {
             const figure = this.figure
             console.log("Setting up constraints for frame " + frame)
@@ -501,8 +502,8 @@ Constrain.Trees = function() {
                     this.inclusiveAfters.add(a)
                 )
             this.frameNodeConstraints(frame, root, edges, horzSpacing, vertSpacing)
-            const prevFrame = figure.prevFrame(frame) || frame
-            const glue = this.glue()
+            const prevFrame = figure.prevFrame(frame) || frame,
+                  glue = this.style.glue()
             const bbox_constraints = figure.after(prevFrame, 
                 figure.geq(glue, 0),
                 figure.equal(glue, 0).changeCost(0.001),
