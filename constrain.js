@@ -165,6 +165,10 @@ class Figure {
     toString() {
         return "Figure"
     }
+    // Return this figure. Useful in combination with `with`.
+    thisFigure() {
+        return this
+    }
     setZoom(z) {
         this.zoom = z || 1
     }
@@ -1013,6 +1017,7 @@ class Figure {
     // starting from the third argument.
     align(horizontal, vertical, objlist) {
         const result = []
+        if (objlist === undefined) return []
         if (!Array.isArray(objlist))
             objlist = flattenGraphicalObjects(argsToArray(arguments, 2))
         switch (horizontal) {
@@ -3038,7 +3043,7 @@ class LayoutObject extends Expression {
     // Return the intersection of the line from (x,y) to this
     // shape with the shape's boundary, as an array [x, y]
     intersectionPt(x, y, valuation) {
-        let [xc, yc] = evaluate([this.x(), this.y()], valuation)
+        let [xc, yc] = evaluate([this.target().x(), this.target().y()], valuation)
         let [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
                                          this.x1(), this.y1()], valuation)
         if (Math.abs(x - xc) < TINY) {
