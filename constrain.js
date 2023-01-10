@@ -4881,7 +4881,7 @@ class ContainedText {
     // Return [w, h] where w and h are the width and height of the smallest rectangle
     // that contains the text when formatted in the smallest possible number of lines.
     minimumSize() {
-        const tc = new TextContext(null, figure),
+        const tc = new TextContext(null, this.figure),
             font = this.font,
             lineSpacing = font.getSize() *
                 (typeof this.lineSpacing == "number" ? this.lineSpacing : 1)
