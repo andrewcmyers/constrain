@@ -233,7 +233,6 @@ Constrain.Trees = function() {
             const edges = new Edges()
             this.edges.set(frame, edges)
             this.createNodes(frame, rootNode, ...children)
-            this.style.decorateRoot(rootNode)
             this.constraints = new Map() // map from frames to arrays of constraints
             this.bbox = figure.box()
             this.frameConstraints(frame)
@@ -501,6 +500,8 @@ Constrain.Trees = function() {
                 figure.geq(vertSpacing, 0)).forEach(a => 
                     this.inclusiveAfters.add(a)
                 )
+            const decoration = this.style.decorateRoot(root)
+            if (decoration) this.exclusiveAfters.add(figure.after(frame, decoration))
             this.frameNodeConstraints(frame, root, edges, horzSpacing, vertSpacing)
             const prevFrame = figure.prevFrame(frame) || frame,
                   glue = this.style.glue()
