@@ -501,7 +501,7 @@ Constrain.Trees = function() {
                     this.inclusiveAfters.add(a)
                 )
             const decoration = this.style.decorateRoot(root)
-            this.exclusiveAfters.add(figure.after(frame, decoration))
+            if (decoration) this.exclusiveAfters.add(figure.after(frame, decoration))
             this.frameNodeConstraints(frame, root, edges, horzSpacing, vertSpacing)
             const prevFrame = figure.prevFrame(frame) || frame,
                   glue = this.style.glue()
