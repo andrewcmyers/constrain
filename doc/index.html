@@ -756,6 +756,7 @@ The horizontal alignment specification can be any of the following:
 <li><code>"left"</code>: Align left sides
 <li><code>"right"</code>: Align right sides
 <li><code>"center"</code>: Align horizontal centers
+<li><code>"target"</code>: Align the target locations to have the same horizontal position.
 <li><code>"left right"</code>: Align both left and right sides, forcing the objects to have the
                 same width.
 <li><code>"abut"</code>: Make objects abut each other directly, left-to-right. Space may be inserted
@@ -765,6 +766,12 @@ The horizontal alignment specification can be any of the following:
 <p>
 The vertical alignment specification is the same as the horizontal specification, except
 that <code>top</code> and <code>bottom</code> replace <code>left</code> and <code>right</code>.
+</p>
+<p>
+The abbreviations <code>"L"</code>, <code>"R"</code>, <code>"T"</code>, and <code>"B"</code>
+may be used as shorthands for <code>"left"</code>, <code>"right"</code>, etc. Further,
+<code>"LR"</code> and <code>"RL"</code> are shorthands for <code>"left right"</code> and similarly with
+<code>"TB"</code> and <code>"BT"</code>.
 </p>
 
 <h4>equal(...exprs)</h4>
@@ -1105,6 +1112,13 @@ four corners of the object: upper left, lower left, upper right, and lower right
 These methods each return a point that is the center of one of the edges of the
 bounding box of the object.
 </p>
+<h4>target()</h4>
+<p>This method returns a point somewhere in the object. It is used for
+connectors between objects and when <code>"target"</code> alignment is chosen.
+By default, the object target is the object's center, but it can be useful to
+override this method.
+</p>
+
 <h4>toTop(d), toBottom(d), toRight(d), toLeft(d)</h4>
 <p> These methods can be used to nudge the position of a point in the
 specified direction by distance <code>d</code>, returning the new resulting point.
