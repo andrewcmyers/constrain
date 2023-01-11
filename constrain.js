@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -315,7 +315,7 @@ class Figure {
 
         this.activeConstraints = activeConstraints
         this.activeVariables = a
-        if (DEBUG) {
+        if (DEBUG && DEBUG_CONSTRAINTS) {
             console.log("Stage " + stage + ": Active variables: ", a.length)
             console.log("  Active constraints: ", activeConstraints.size)
         }
