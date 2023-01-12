@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = true, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -386,7 +386,7 @@ class Figure {
             if (!s || s.size == 0) {
                 postSolve.push(valuation => {
                     v.currentValue = v.hasOwnProperty('hint') ? v.hint : 100
-                    console.log("Trivially solving " + v + " <- " + v.currentValue)
+                    if (DEBUG_CONSTRAINTS) console.log("Trivially solving " + v + " <- " + v.currentValue)
                 })
                 v.directSolved = true // unconstrained: any value works!
                 return
@@ -407,7 +407,7 @@ class Figure {
                         for (const v2 of e2v) tryDirectSolve(v2)
                         postSolve.push(valuation => {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
-                            console.log("Directly solving " + v + " <- " + v.currentValue)
+                            if (DEBUG_CONSTRAINTS) console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
                         v.directSolved = c
                         v.solvePending = false
