@@ -350,6 +350,7 @@ class Figure {
                         for (const v2 of e2v) directSolve(v2)
                         postSolve.push(valuation => {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
+                            console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
                         v.directSolved = true
                         directSolvedConstraints.add(c)
@@ -570,13 +571,13 @@ class Figure {
             }
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
-            this.postSolve.forEach(solver => solver(this.currentValuation))
+            this.postSolve.forEach(solver => solver(solution[0]))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
         }
       }
       if (PROFILE_EVALUATIONS) {
-        console.log("Total evaluations: " + evaluations)
-        if (REPORT_EVALUATED_EXPRESSIONS) {
+       console.log("Total evaluations: " + evaluations)
+       if (REPORT_EVALUATED_EXPRESSIONS) {
         const entries = []
         for (const e of evaluationCounts.entries()) {
             entries.push(e)
@@ -585,7 +586,7 @@ class Figure {
         for (let i = 0; i < sorted.length; i++) {
             console.log("  expr: " + sorted[i][0] + ", evaluations: " + sorted[i][1])
         }
-        }
+       }
       }
       return solution
     }
