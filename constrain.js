@@ -352,9 +352,9 @@ class Figure {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
                             console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
-                        v.directSolved = true
+                        v.directSolved = c
                         directSolvedConstraints.add(c)
-                        c.directSolved = true
+                        c.directSolved = v
                         return true
                     }
                 }
@@ -4747,7 +4747,7 @@ class Label extends GraphicalObject {
             return this.computedWidth
         }
         this.h = () => this.font.getSize()
-        this.variables = function() { return [this.x(), this.y()] }
+        this.variables = function() { return new Set().add(this.x()).add(this.y()) }
     }
     setFont(font) {
         this.font = font
@@ -5596,7 +5596,7 @@ class Handle extends InteractiveObject {
               vy = new Variable(figure, "hy")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => [vx, vy]
+        this.variables = () => new Set().add(vx).add(vy)
         this.size = 5
         this.strokeStyle = strokeStyle || figure.strokeStyle
         this.isActive = true
@@ -5675,7 +5675,7 @@ class Handle extends InteractiveObject {
     active() { return true }
     visible() { return true }
     toString() { return "Handle" }
-    variables() { return new Set().add(this.x_).add(this.y_) }
+   variables() { return new Set().add(this.x_).add(this.y_) }
 }
 
 class Button extends InteractiveObject {
@@ -5685,7 +5685,7 @@ class Button extends InteractiveObject {
               vy = new Variable(figure, "y")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => [vx, vy]
+        this.variables = () => new Set().add(vx).add(vy)
         figure.geq(vx,0)
         figure.geq(vy,0)
         figure.leq(vx, figure.canvasRect().x1())
