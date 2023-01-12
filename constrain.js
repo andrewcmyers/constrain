@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = true, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -284,9 +284,17 @@ class Figure {
     // constraint whose form admits direct solution. Closures that directly
     // solve these variables are appended to this.postSolve; these closures
     // are ordered so that variables have already been solved.
+    //   If the component is not specified, only computes this.stageVariables
+    // to be the variables that need to be solved across all components in the
+    // stage.
     numberVariables(stage, component) {
+
         let i = 0
         const frame = this.currentFrame
+        if (DEBUG && DEBUG_CONSTRAINTS) {
+            console.log("Numbering variables for " + this.name +
+                ", frame " + (frame ? frame.index : "none") + ", stage " + this.stage)
+        }
         this.Variables.forEach(v => v.removeIndex())
         this.Constraints.forEach(c => { delete c.directSolved })
         const solvedVariables = new Set()    // all variables to solve currently
@@ -297,15 +305,41 @@ class Figure {
         const postSolve = []
         const directSolvedConstraints = new Set()
         // Add this constraint, if not there already, to the
-        // set of enabled constraints, check if each of its variables
-        // need to be solved, and push it onto the frontier
-        // for traversal.
+        // set of enabled constraints, and check if each of its variables need
+        // to be solved, which may lead to enabling more constraints.
         function enableConstraint(c) {
             if (!enabledConstraints.has(c)) {
                 enabledConstraints.add(c)
                 c.variables().forEach(checkIfNeeded)
             }
         }
+
+        // Check whether v needs to be solved for, and activate any
+        // constraints that mention it.
+        function checkIfNeeded(v) {
+            if (v.stage != stage) return
+            if (v.index !== undefined) return
+            if (component && v.component != component) return
+            if (solvedVariables.has(v)) return
+            solvedVariables.add(v)
+            const cons = constraintsByVar.get(v)
+            if (cons) cons.forEach(enableConstraint)
+        }
+        this.GraphicalObjects.forEach(g => {
+            if (g.active() && g.visible()) {
+                g.variables().forEach(v => {
+                    checkIfNeeded(v)
+                })
+            }
+        })
+        if (!component) {
+            this.stageVariables = solvedVariables
+            if (DEBUG && DEBUG_CONSTRAINTS) {
+                console.log("Stage variables = ", this.stageVariables)
+            }
+            return solvedVariables
+        }
+
         // Return a function that solves the equation e = e2 for the variable v,
         // given two arguments: the value of e2, and a current valuation array.
         function solveFor(v, e) {
@@ -346,17 +380,25 @@ class Figure {
         // return false.
         // 
         function tryDirectSolve(v) {
-            if (v.directSolved) return true // already covered
+            if (v.hasOwnProperty('directSolved')) return v.directSolved
             if (v.solvePending) return false // prevent cycles in solution strategy
-            v.solvePending = true
             const s = constraintsByVar.get(v)
-            if (!s || s.size != 1) return false
+            if (!s || s.size == 0) {
+                postSolve.push(valuation => {
+                    v.currentValue = v.hasOwnProperty('hint') ? v.hint : 100
+                    console.log("Trivially solving " + v + " <- " + v.currentValue)
+                })
+                v.directSolved = true // unconstrained: any value works!
+                return
+            }
+            if (s.size > 1) return false
+            v.solvePending = true
             for (const c of s.keys()) {
                 if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && c.cost >= 1) {
                     let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
                     let solve1 = solveFor(v, e1),
                           e2v = e2.variables()
-                    if (!solve1 || e2.variables().has(v)) {
+                    if (!solve1 || e2.variables().has(v)) { // try it the other way round
                         [e1, e2] = [e2, e1]
                         solve1 = solveFor(v, e1)
                         e2v = e2.variables()
@@ -365,7 +407,7 @@ class Figure {
                         for (const v2 of e2v) tryDirectSolve(v2)
                         postSolve.push(valuation => {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
-                            // console.log("Directly solving " + v + " <- " + v.currentValue)
+                            console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
                         v.directSolved = c
                         v.solvePending = false
@@ -374,57 +416,42 @@ class Figure {
                         return true
                     }
                 }
+                v.directSolved = false // can't solve directly
+                v.solvePending = false
+                return
             }
+            console.error("can't get here")
         }
-        // Check whether v needs to be solved for, and activate any
-        // constraints that mention it.
-        function checkIfNeeded(v) {
-            if (v.stage != stage) return
-            if (v.index !== undefined) return
-            if (v.directSolved) return
-            solvedVariables.add(v)
-            const cons = constraintsByVar.get(v)
-            if (cons) cons.forEach(enableConstraint)
-        }
-        // Assign a fresh index to variable v if it is not to be solved directly
-        function assignIndex(v) {
-            if (v.directSolved) return
-            if (component && v.variableComponent() !== component) return
-            if (!(v instanceof Variable)) console.error("not a variable: " + v)
-            v.setIndex(i)
-            activeVariables.push(v)
-            i++
-        }
-        this.GraphicalObjects.forEach(g => {
-            if (g.active() && g.visible()) {
-                g.variables().forEach(v => {
-                    checkIfNeeded(v)
-                })
-            }
-        })
         for (const v of solvedVariables) {
             tryDirectSolve(v)
         }
 
-        // activate constraints now that we have identified
-        // variables to solve directly
+        // Assign a fresh index to variable v if it is not to be solved directly
+        function assignIndex(v) {
+            if (v.directSolved) return
+            if (component && v.variableComponent() !== component) return
+            v.setIndex(i)
+            activeVariables.push(v)
+            i++
+        }
+
+
+        // assign indices to all variables that need to be solved and cannot be
+        // solved directly
         for (const v of solvedVariables) {
             if (v.directSolved) continue
             assignIndex(v)
         }
 
+        // create the set of constraints that minimization should try to minimize
         for (const c of enabledConstraints) {
             if (!directSolvedConstraints.has(c)) activeConstraints.add(c)
         }
         this.activeConstraints = activeConstraints
 
-        for (const con of activeConstraints) {
-            if (con.directSolved) {
-                console.error("wat")
-            }
-            if (directSolvedConstraints.has(con)) {
-                console.error("wattt")
-            }
+        if (DEBUG) {
+            this.solvedVariables = solvedVariables
+            this.enabledConstraints = enabledConstraints
         }
         this.activeVariables = activeVariables
         this.postSolve = postSolve
@@ -537,10 +564,15 @@ class Figure {
         }
     }
     // Recompute the components for a given figure stage
+    // Requires: this.stageVariables contains all the variables that need to be solved in
+    // this stage.
     computeComponents(stage) {
         if (DEBUG) console.log("Computing components for stage " + stage)
         delete this.activeComponent
-        for (const v of this.activeVariables) {
+        for (const v of this.stageVariables) {
+            if (v.stage != stage) {
+                console.error("Variable is in wrong stage")
+            }
             delete v.component
         }
         this.Constraints.forEach(c => {
@@ -552,23 +584,29 @@ class Figure {
                         if (v2.stage != stage) return
                         const v2c = v2.variableComponent()
                         if (v1c !== v2c) {
-                        v1c.component = v2c
+                          v1c.component = v2c
                         }
                     })
                 })
         })
         const components = []
-        for (const v of this.activeVariables) {
+        for (const v of this.stageVariables) {
             const c = v.variableComponent()
             c.component = c
-            if (!components.includes(c)) {
-                components.push(c)
-            }
+            if (!components.includes(c)) components.push(c)
         }
-        if (DEBUG)
+        if (DEBUG) {
          console.log(this.name +
             (this.currentFrame ? " frame " + this.currentFrame.index : "") +
-            ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+            ": stage " + stage + " contains " + this.stageVariables.size + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+            for (const c of components) {
+                let s = "component " + c + ": "
+                for (const v of this.stageVariables) {
+                    if (v.variableComponent() == c) s += (v + ' ')
+                }
+                console.log(s)
+            }
+        }
         return components
     }
     // update the current valuation to solve constraints within tolerance tol
@@ -579,7 +617,6 @@ class Figure {
       for (let stage = 0; stage < this.numStages; stage++) {
         this.activeStage = stage
         this.numberVariables(stage)
-        const stageVariables = this.activeVariables
         let components = this.components[stage]
         if (!components) {
             components = this.computeComponents(stage)
@@ -5947,11 +5984,14 @@ class CanvasRect extends LayoutObject {
     x1() { return new Global(() => {
         if (!this.figure.width) this.figure.setupCanvas()
         return this.figure.width
-    })}
+    }, "Width of figure " + this.figure.name)}
     y0() { return 0 }
-    y1() { return new Global(() => this.figure.height) }
-    w() { return new Global(() => this.figure.width) }
-    h() { return new Global(() => this.figure.height) }
+    y1() { return new Global(() => this.figure.height,
+                             "Height of figure " + this.figure.name) }
+    w() { return new Global(() => this.figure.width,
+                             "Width of figure " + this.figure.name)}
+    h() { return new Global(() => this.figure.height,
+                             "Height of figure " + this.figure.name) }
     x() { return this.centerX() }
     y() { return this.centerY() }
     backprop(task) {}
