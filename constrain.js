@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = true, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -270,30 +270,40 @@ class Figure {
         })
         return constraintsByVar
     }
-    // assign indices in the valuation array to each of the variables that are active in this stage
-    // (and component, if provided)
+
+    // Variables are solved either by minimization or by direct solution after
+    // minimization is complete.  This function identifies which variables need
+    // to be solved to support the currently visible graphical objects in this
+    // stage (and component, if provided), and decides which way to solve them.
+    // It also determines which constraints need to be evaluated during
+    // minimization.
+    //   Variables solved by minimization are assigned indices in the valuation
+    // array to each of the variables that are active in this stage (and
+    // component, if provided).
+    //   Variables are solved directly when they are only used in a single
+    // constraint whose form admits direct solution. Closures that directly
+    // solve these variables are appended to this.postSolve; these closures
+    // are ordered so that variables have already been solved.
     numberVariables(stage, component) {
         let i = 0
-        const a = [], frame = this.currentFrame
+        const frame = this.currentFrame
         this.Variables.forEach(v => v.removeIndex())
-        const activeConstraints = new Set()
-        const frontier = []
+        this.Constraints.forEach(c => { delete c.directSolved })
+        const solvedVariables = new Set()    // all variables to solve currently
+        const enabledConstraints = new Set() // relevant to current solve
+        const activeConstraints = new Set()  // to use in minimization
+        const activeVariables = []           // to solve via minimization
         const constraintsByVar = this.constraintsByVar()
         const postSolve = []
         const directSolvedConstraints = new Set()
-        // add this constraint, if not there already, to the
-        // set of active constraints and push it onto the frontier
+        // Add this constraint, if not there already, to the
+        // set of enabled constraints, check if each of its variables
+        // need to be solved, and push it onto the frontier
         // for traversal.
-        function activateConstraint(c) {
-            if (directSolvedConstraints.has(c)) {
-                // console.log("Skipping constraint used for direct solving: ", c)
-                return
-            }
-            if (!activeConstraints.has(c)) {
-                c.directSolved && console.error("direct solved: ", c)
-                c.variables().forEach(activate)
-                activeConstraints.add(c)
-                frontier.push(c)
+        function enableConstraint(c) {
+            if (!enabledConstraints.has(c)) {
+                enabledConstraints.add(c)
+                c.variables().forEach(checkIfNeeded)
             }
         }
         // Return a function that solves the equation e = e2 for the variable v,
@@ -331,9 +341,14 @@ class Figure {
 
         // If variable v is only in one constraint and can
         // be solved from it, append solving code to postSolve
-        // and return true
-        function directSolve(v) {
+        // for v and (before that) for any directly solvable variables
+        // it depends on and return true. If we can't solve v directly,
+        // return false.
+        // 
+        function tryDirectSolve(v) {
             if (v.directSolved) return true // already covered
+            if (v.solvePending) return false // prevent cycles in solution strategy
+            v.solvePending = true
             const s = constraintsByVar.get(v)
             if (!s || s.size != 1) return false
             for (const c of s.keys()) {
@@ -347,12 +362,13 @@ class Figure {
                         e2v = e2.variables()
                     }
                     if (solve1 && !e2.variables().has(v)) {
-                        for (const v2 of e2v) directSolve(v2)
+                        for (const v2 of e2v) tryDirectSolve(v2)
                         postSolve.push(valuation => {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
-                            console.log("Directly solving " + v + " <- " + v.currentValue)
+                            // console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
                         v.directSolved = c
+                        v.solvePending = false
                         directSolvedConstraints.add(c)
                         c.directSolved = v
                         return true
@@ -360,37 +376,48 @@ class Figure {
                 }
             }
         }
-        // Assign a fresh index to variable v if it doesn't have one yet
-        function activate(v) {
+        // Check whether v needs to be solved for, and activate any
+        // constraints that mention it.
+        function checkIfNeeded(v) {
             if (v.stage != stage) return
             if (v.index !== undefined) return
+            if (v.directSolved) return
+            solvedVariables.add(v)
+            const cons = constraintsByVar.get(v)
+            if (cons) cons.forEach(enableConstraint)
+        }
+        // Assign a fresh index to variable v if it is not to be solved directly
+        function assignIndex(v) {
+            if (v.directSolved) return
             if (component && v.variableComponent() !== component) return
             if (!(v instanceof Variable)) console.error("not a variable: " + v)
-            if (directSolve(v)) return
             v.setIndex(i)
-            a.push(v)
+            activeVariables.push(v)
             i++
         }
         this.GraphicalObjects.forEach(g => {
             if (g.active() && g.visible()) {
                 g.variables().forEach(v => {
-                    activate(v)
+                    checkIfNeeded(v)
                 })
             }
         })
-        // activate constraints now that we have identified
-        // variables to solve directly
-        for (const v of a) {
-            if (v.directSolved) continue
-            const cons = constraintsByVar.get(v)
-            if (cons) cons.forEach(activateConstraint)
-        }
-        // Take the closure over all constraints mentioning active variables
-        while (frontier.length > 0) {
-            activateConstraint(frontier.shift())
+        for (const v of solvedVariables) {
+            tryDirectSolve(v)
         }
 
+        // activate constraints now that we have identified
+        // variables to solve directly
+        for (const v of solvedVariables) {
+            if (v.directSolved) continue
+            assignIndex(v)
+        }
+
+        for (const c of enabledConstraints) {
+            if (!directSolvedConstraints.has(c)) activeConstraints.add(c)
+        }
         this.activeConstraints = activeConstraints
+
         for (const con of activeConstraints) {
             if (con.directSolved) {
                 console.error("wat")
@@ -399,11 +426,11 @@ class Figure {
                 console.error("wattt")
             }
         }
-        this.activeVariables = a
+        this.activeVariables = activeVariables
         this.postSolve = postSolve
         if (DEBUG && DEBUG_CONSTRAINTS) {
-            console.log("Stage " + stage + ": Active variables: ", a.length)
-            console.log("  Active constraints: ", activeConstraints.size)
+            console.log("Stage " + stage + ": Variables solved by minimization: ", activeVariables.length)
+            console.log("  Constraints solved by minimization: ", activeConstraints.size)
             console.log("  Directly solved variables: ", postSolve.length)
             console.log("  Directly solved constraints: ", directSolvedConstraints.size)
         }
@@ -1988,6 +2015,7 @@ class Variable extends Expression {
     removeIndex() {
         delete this.index
         delete this.directSolved
+        delete this.solvePending
     }
     toString() {
         return this.basename
