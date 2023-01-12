@@ -690,6 +690,18 @@ want figure units to correspond to PostScript/PDF points, you should set a zoom
 of 1 1/3 ≅ 1.333. To make them correspond to TeX points, the zoom value should
 be 96/72.27 ≅ 1.328.
 </p>
+<h4>thisFigure()</h4>
+<pre class=code>
+with (new Constrain.Figure("figure1")) {
+    const figure1 = thisFigure()
+    ...
+}
+</pre>
+<p>
+This method simply returns the figure object itself, a functionality that
+is handy when used in conjunction with the <code>with</code>
+statement.
+</p>
 
 <h3>Other figure control operations</h3>
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
