@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Language" content="en-us" />
+  <meta http-equiv="Cache-Control" content="public, max-age=3600" /> <!-- cache for only 1 hour -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <script src="../constrain-trees.js"></script>
+  <script>
+    document.addEventListener('load', Constrain.autoResize)
+  </script>
+
+<body>
+
+<canvas id=avl_exercise1 style="width:600px; height: 100px"></canvas>
+<script class=graphics>
+class DotTree extends Constrain.Trees.TreeStyle {
+    drawNode(n) {
+        return n ? this.figure.circle().setW(8).setFillStyle('black') : this.figure.point()
+    }
+}
+let fig1 = new Constrain.Figure("avl_exercise1")
+with (fig1) {
+    const x = 'x', u = undefined
+    const dots = new DotTree(fig1)
+    const t1 = tree(dots, x, [x, [x,x,u], [x,u,x]], [x,x,u]),
+        t2 = tree(dots, x, x, [x,x,x]),
+        t3 = tree(dots, x, [x,x,x], u),
+        t4 = tree(dots, x, [x,x,x], [x,x,x] ),
+        t5 = tree(dots, x, [x,x,u], [x, x, [x,u,x]] )
+
+    const b = [t4, t2, t3, t1, t5].map(t => t.bbox)
+    b.forEach(bbox => bbox.setW(70))
+    let trees = group(b[0], hspace(10), b[1], hspace(10), b[2], hspace(10), b[3], hspace(10), b[4])
+        .align("abut", "TB")
+    align("LR", "T", trees, margin())
+
+    align("center", "abut", b[0], vspace(5), label("(a)"))
+    align("center", "abut", b[1], vspace(5), label("(b)"))
+    align("center", "abut", b[2], vspace(5), label("(c)"))
+    align("center", "abut", b[3], vspace(5), label("(d)"))
+    align("center", "abut", b[4], vspace(5), label("(e)"))
+    align("none", "abut", trees, vspace(15), margin().lc())
+}
+fig1.start()
+</script>

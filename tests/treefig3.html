@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Language" content="en-us" />
+  <meta http-equiv="Cache-Control" content="public, max-age=3600" /> <!-- cache for only 1 hour -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <script src="../constrain-trees.js"></script>
+  <script>
+    document.addEventListener('load', Constrain.autoResize)
+  </script>
+
+<body>
+
+<canvas id=bst_invariant style="width: 160px; height: 110px; margin: 4em"></canvas>
+<script class=graphics>
+const fig3 = new Constrain.Figure("bst_invariant")
+with (fig3) {
+    class BSTTree extends Constrain.Trees.TreeStyle {
+        constructor(figure) {super(figure)}
+      decorateRoot(n) {
+        return this.figure.line(margin().uc(), n.gobj.toTop(5))
+      }
+      drawNode(v) {
+        if (v.match("^[<>]")) {
+            const result = point()
+            polygon(result, point(plus(result.x(), 30), plus(result.y(), 45)),
+                            point(minus(result.x(), 30), plus(result.y(), 45)))
+              .addText(v).setVerticalAlign("bottom")
+            return result
+        } else {
+            return label(v).expand(3)
+        }
+      }
+      drawEdge(n1, n2) { return this.figure.connector(n1.gobj, n2.gobj) }
+    }
+    setConnectionStyle("intersection")
+    const t = tree(new BSTTree(fig3), "data", "<data", ">data")
+    align("LR", "none", t.bbox, margin().inset(30))
+    equal(plus(margin().y0(), 20), t.bbox.y0())
+    equal(plus(45, t.bbox.y1()), margin().y1())
+}
+fig3.start()
+</script>
