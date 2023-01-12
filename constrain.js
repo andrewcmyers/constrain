@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = true, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -271,6 +271,7 @@ class Figure {
         return constraintsByVar
     }
     // assign indices in the valuation array to each of the variables that are active in this stage
+    // (and component, if provided)
     numberVariables(stage, component) {
         let i = 0
         const a = [], frame = this.currentFrame
@@ -278,14 +279,84 @@ class Figure {
         const activeConstraints = new Set()
         const frontier = []
         const constraintsByVar = this.constraintsByVar()
+        const postSolve = []
+        const directSolvedConstraints = new Set()
         // add this constraint, if not there already, to the
         // set of active constraints and push it onto the frontier
         // for traversal.
         function activateConstraint(c) {
+            if (directSolvedConstraints.has(c)) {
+                // console.log("Skipping constraint used for direct solving: ", c)
+                return
+            }
             if (!activeConstraints.has(c)) {
+                c.directSolved && console.error("direct solved: ", c)
                 c.variables().forEach(activate)
                 activeConstraints.add(c)
                 frontier.push(c)
+            }
+        }
+        // Return a function that solves the equation e = e2 for the variable v,
+        // given two arguments: the value of e2, and a current valuation array.
+        function solveFor(v, e) {
+            if (e == v) {
+                return (v2, valuation) => v2
+            }
+            if (e instanceof Plus) {
+                const [e1, e2] = [e.e1, e.e2]
+                const solve1 = solveFor(v, e1)
+                if (solve1 && !e2.variables().has(v)) { // e1 + e2 = sum <=> e1 = sum - e2
+                    return (sum, valuation) => solve1(sum - evaluate(e2, valuation))
+                }
+                const solve2 = solveFor(v, e2)
+                if (solve2 && !e1.variables().has(v)) { // e1 + e2 = sum <=> e2 = sum - e1
+                    return (sum, valuation) => solve2(sum - evaluate(e1, valuation))
+                }
+                return null
+            } else if (e instanceof Minus) {
+                const [e1, e2] = [e.e1, e.e2]
+                const solve1 = solveFor(v, e1)
+                if (solve1 && !e2.variables().has(v)) { // e1 - e2 = diff <=> e1 = diff + e2
+                    return (diff, valuation) => solve1(diff + evaluate(e2, valuation))
+                }
+                const solve2 = solveFor(v, e2)
+                if (solve2 && !e1.variables().has(v)) { // e1 - e2 = diff <=> e2 = e1 - diff
+                    return (diff, valuation) => solve2(evaluate(e1, valuation) - diff)
+                }
+                return null
+            } else {
+                return null // can't solve
+            }
+        }
+
+        // If variable v is only in one constraint and can
+        // be solved from it, append solving code to postSolve
+        // and return true
+        function directSolve(v) {
+            if (v.directSolved) return true // already covered
+            const s = constraintsByVar.get(v)
+            if (!s || s.size != 1) return false
+            for (const c of s.keys()) {
+                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && c.cost >= 1) {
+                    let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
+                    let solve1 = solveFor(v, e1),
+                          e2v = e2.variables()
+                    if (!solve1 || e2.variables().has(v)) {
+                        [e1, e2] = [e2, e1]
+                        solve1 = solveFor(v, e1)
+                        e2v = e2.variables()
+                    }
+                    if (solve1 && !e2.variables().has(v)) {
+                        for (const v2 of e2v) directSolve(v2)
+                        postSolve.push(valuation => {
+                            v.currentValue = solve1(evaluate(e2, valuation), valuation)
+                        })
+                        v.directSolved = true
+                        directSolvedConstraints.add(c)
+                        c.directSolved = true
+                        return true
+                    }
+                }
             }
         }
         // Assign a fresh index to variable v if it doesn't have one yet
@@ -294,12 +365,10 @@ class Figure {
             if (v.index !== undefined) return
             if (component && v.variableComponent() !== component) return
             if (!(v instanceof Variable)) console.error("not a variable: " + v)
+            if (directSolve(v)) return
             v.setIndex(i)
             a.push(v)
             i++
-
-            const cons = constraintsByVar.get(v)
-            if (cons) cons.forEach(activateConstraint)
         }
         this.GraphicalObjects.forEach(g => {
             if (g.active() && g.visible()) {
@@ -308,16 +377,34 @@ class Figure {
                 })
             }
         })
+        // activate constraints now that we have identified
+        // variables to solve directly
+        for (const v of a) {
+            if (v.directSolved) continue
+            const cons = constraintsByVar.get(v)
+            if (cons) cons.forEach(activateConstraint)
+        }
         // Take the closure over all constraints mentioning active variables
         while (frontier.length > 0) {
             activateConstraint(frontier.shift())
         }
 
         this.activeConstraints = activeConstraints
+        for (const con of activeConstraints) {
+            if (con.directSolved) {
+                console.error("wat")
+            }
+            if (directSolvedConstraints.has(con)) {
+                console.error("wattt")
+            }
+        }
         this.activeVariables = a
+        this.postSolve = postSolve
         if (DEBUG && DEBUG_CONSTRAINTS) {
             console.log("Stage " + stage + ": Active variables: ", a.length)
             console.log("  Active constraints: ", activeConstraints.size)
+            console.log("  Directly solved variables: ", postSolve.length)
+            console.log("  Directly solved constraints: ", directSolvedConstraints.size)
         }
     }
     resetValuation() {
@@ -401,6 +488,9 @@ class Figure {
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
         this.activeConstraints.forEach(con => {
+            if (con.directSolved) {
+                console.error("direct-solved constraint appearing in cost minimization", con)
+            }
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -480,6 +570,7 @@ class Figure {
             }
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
+            this.postSolve.forEach(solver => solver(this.currentValuation))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
         }
       }
@@ -1860,6 +1951,10 @@ class Variable extends Expression {
         }
     }
     evaluate(valuation, doGrad) {
+        // A variable may be actively being solved for, in which case
+        // its current value is in the array valuation. Otherwise, the
+        // variable is treated as a constant and its currentValue property
+        // specifies its value.
         if (this.index === undefined) {
             return this.currentValue
                 || this.hint
@@ -1891,6 +1986,7 @@ class Variable extends Expression {
     }
     removeIndex() {
         delete this.index
+        delete this.directSolved
     }
     toString() {
         return this.basename
@@ -2098,10 +2194,8 @@ function union(s1, s2) {
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
         super()
-        if (e1 === undefined)
-            console.error("undefined e1")
-        if (e2 === undefined)
-            console.error("undefined e2")
+        if (e1 === undefined) console.error("undefined e1")
+        if (e2 === undefined) console.error("undefined e2")
         this.e1 = legalExpr(e1)
         this.e2 = legalExpr(e2)
         return this
