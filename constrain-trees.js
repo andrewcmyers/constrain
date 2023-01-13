@@ -372,7 +372,7 @@ Constrain.Trees = function() {
             let parentNode
             const oldRoot = this.roots.get(prevFrame)
             parentNode = prevEdges.getParentNode(node)
-            for (const e of prevEdges.getFrameEdges()) {
+            for (const e of prevEdges.getEdges()) {
                 let [src, dst] = e
                 if (src == parentNode && dst != node) {
                     newEdges.replaceEdge(node, dst, src, dst)
@@ -553,7 +553,7 @@ Constrain.Trees = function() {
             this.tree.rotateNodeWithParent(this.frame, this.tree.findNode(value))
         }
         getEdges() {
-            return this.tree.getEdges(this.frame)
+            return this.tree.getFrameEdges(this.frame)
         }
         addLeaf(value, parentValue, position) {
             this.tree.addLeaf(this.frame, value,
