@@ -14,6 +14,7 @@
     document.addEventListener('load', Constrain.autoResize)
   </script>
   <style>
+   h1 { font-family: sans-serif }
    p { width: 80ex; text-align: justify }
    div { width: 80ex; margin: 0 auto; text-align: center }
    canvas { align: center}
@@ -23,10 +24,12 @@
 <body>
 
 <div>
+<h1>Animated tree demo</h1>
 <p>
 There are four cases for rebalancing in the AVL tree data structure. Shown
 are the two cases in which insertion causes a node (z) to become unbalanced by
-making the height of its left subtree become too large. By
+making the height of its left subtree becomes too large; the cases when the right
+subtree becomes too tall are symmetrical. By
 clicking on the button, you can see the rebalancing that is performed in each case.
 In the LL case, a single tree rotation is used; in the LR case, there are two tree rotations.
 </p>
@@ -46,7 +49,7 @@ class RotTree extends Constrain.Trees.TreeStyle {
             const result = f.polygon(top, f.point(f.plus(top.x(), 20), f.plus(top.y(), 35)),
                               f.point(f.minus(top.x(), 20), f.plus(top.y(), 35)))
                 .addText(v).setVerticalAlign("bottom")
-            result.target = function() { return top }
+            result.target = () => top
             return result
         } else {
             return f.label(v).expand(3)
@@ -111,6 +114,7 @@ with (new Constrain.Figure("case_LL_LR")) {
     lr.view(f3 = addFrame().setLength(1500)).rotateNodeWithParent("y")
 
     align("right", "bottom", advanceButton(), margin())
+    setRepeat(true)
     start()
 }
 </script>
