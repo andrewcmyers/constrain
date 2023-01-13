@@ -13,11 +13,14 @@
   <script>
     document.addEventListener('load', Constrain.autoResize)
   </script>
+  <style>
+   p { width: 80ex }
+  </style>
 </head>
 
 <body>
 
-<p style="width: 80ex">
+<p>
 There are four cases for rebalancing in the AVL tree data structure. Shown
 are the two cases in which insertion causes a node (z) to become unbalanced by
 making the height of its left subtree become too large. By
@@ -117,3 +120,8 @@ with (new Constrain.Figure("case_LL_LR")) {
     start()
 }
 </script>
+<p>
+<p>
+This diagram is computed in real time in JavaScript, using
+<a href="https://andrewcmyers.github.io/constrain/doc">Constrain</a>.
+</p>
