@@ -398,7 +398,7 @@ class Figure {
                     let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
                     let solve1 = solveFor(v, e1),
                         e2v = exprVariables(e2)
-                    if (!solve1 || e2.variables().has(v)) { // try it the other way round
+                    if (!solve1 || e2v.has(v)) { // try it the other way round
                         [e1, e2] = [e2, e1]
                         solve1 = solveFor(v, e1)
                         e2v = exprVariables(e2)
