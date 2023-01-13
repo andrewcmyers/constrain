@@ -14,12 +14,15 @@
     document.addEventListener('load', Constrain.autoResize)
   </script>
   <style>
-   p { width: 80ex }
+   p { width: 80ex; text-align: justify }
+   div { width: 80ex; margin: 0 auto; text-align: center }
+   canvas { align: center}
   </style>
 </head>
 
 <body>
 
+<div>
 <p>
 There are four cases for rebalancing in the AVL tree data structure. Shown
 are the two cases in which insertion causes a node (z) to become unbalanced by
@@ -29,8 +32,8 @@ In the LL case, a single tree rotation is used; in the LR case, there are two tr
 </p>
 
 <canvas id=case_LL_LR style="width: 500px; height: 180px"></canvas>
-<script class=graphics>
-  class RotTree extends Constrain.Trees.TreeStyle {
+<script>
+class RotTree extends Constrain.Trees.TreeStyle {
     constructor(figure) {super(figure)}
     decorateRoot(n) {
       return this.figure.connector(n.gobj.toTop(15), n.gobj)
@@ -50,7 +53,8 @@ In the LL case, a single tree rotation is used; in the LR case, there are two tr
         }
     }
     drawEdge(n1, n2) { return this.figure.connector(n1.gobj, n2.gobj) }
-  }
+}
+
 with (new Constrain.Figure("case_LL_LR")) {
     setFontSize(14)
     setConnectionStyle("intersection")
@@ -106,18 +110,7 @@ with (new Constrain.Figure("case_LL_LR")) {
     lr.view(f2 = addFrame().setLength(1500)).rotateNodeWithParent("y")
     lr.view(f3 = addFrame().setLength(1500)).rotateNodeWithParent("y")
 
-/*
-    const pc2 = lr1.findObj("C").lr().toRight(5),
-            pc2s = smooth(f3, pc2, pc2.toLeft(50))
-    const l6 = line(pc2s, point(pc2s.x(),
-                                smooth(f3, lr1.findObj("y").y0(),
-                                        lr1.findObj("z").y0())))
-        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8).setStrokeStyle("#06c")
-
-    align("abut", "center", l6, hspace(3), label("h + 1").setFontSize(10))
-    */
-
-    align("R", "B", advanceButton(), margin())
+    align("right", "bottom", advanceButton(), margin())
     start()
 }
 </script>
@@ -126,3 +119,4 @@ with (new Constrain.Figure("case_LL_LR")) {
 This diagram is computed in real time in JavaScript, using
 <a href="https://andrewcmyers.github.io/constrain/doc">Constrain</a>.
 </p>
+</div>
