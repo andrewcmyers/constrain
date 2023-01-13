@@ -1,0 +1,119 @@
+<html>
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Language" content="en-us" />
+  <meta http-equiv="Cache-Control" content="public, max-age=3600" /> <!-- cache for only 1 hour -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <script src="../constrain-trees.js"></script>
+  <script>
+    document.addEventListener('load', Constrain.autoResize)
+  </script>
+</head>
+
+<body>
+
+<p style="width: 80ex">
+There are four cases for rebalancing in the AVL tree data structure. Shown
+are the two cases in which insertion causes a node (z) to become unbalanced by
+making the height of its left subtree become too large. By
+clicking on the button, you can see the rebalancing that is performed in each case.
+</p>
+
+<canvas id=case_LL_LR style="width: 500px; height: 180px"></canvas>
+<script class=graphics>
+  class RotTree extends Constrain.Trees.TreeStyle {
+    constructor(figure) {super(figure)}
+    decorateRoot(n) {
+      return this.figure.connector(n.gobj.toTop(15), n.gobj)
+    }
+    drawNode(v) {
+        const f = this.figure
+        if (v === undefined) return f.point()
+        if (v.match("^[A-Z]")) {
+            const top = f.point()
+            const result = f.polygon(top, f.point(f.plus(top.x(), 20), f.plus(top.y(), 35)),
+                              f.point(f.minus(top.x(), 20), f.plus(top.y(), 35)))
+                .addText(v).setVerticalAlign("bottom")
+            result.target = function() { return top }
+            return result
+        } else {
+            return f.label(v).expand(3)
+        }
+    }
+    drawEdge(n1, n2) { return this.figure.connector(n1.gobj, n2.gobj) }
+  }
+with (new Constrain.Figure("case_LL_LR")) {
+    setFontSize(14)
+    setConnectionStyle("intersection")
+    setFillStyle("#fdc")
+    const ll = tree(new RotTree(thisFigure()), "z", ["y", ["x", "A", "B"],"C"], "D"),
+          lr = tree(new RotTree(thisFigure()), "z", ["x", "A", ["y", "B","C"]], "D")
+    const trees = group(ll.bbox, lr.bbox).align("distribute", "TB")
+    equal(ll.bbox.w(), lr.bbox.w(), 200)
+    equal(trees.y0(), 10)
+    const ll_label = label("LL case"), lr_label = label("LR case")
+    align("none", "B", ll_label, lr_label, margin().toBottom(-5))
+    align("none", "abut", trees, ll_label)
+    align("none", "abut", trees, lr_label)
+    align("center", "abut", ll.bbox, vspace(10), ll_label)
+    align("center", "abut", lr.bbox, vspace(10), lr_label)
+    const ll1 = ll.view(), lr1 = lr.view()
+    const p1 = ll1.findObj("A").ll().toLeft(10),
+          p2 = ll1.findObj("x").ul(),
+          p3 = point(p1.x(), p2.y())
+    
+    setStrokeStyle("#06c")
+    setTextStyle("#06c")
+    const l1 = line(p1, p3).setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
+    align("abut", "center", l1, hspace(3), label("h + 1").setFontSize(10))
+
+    const pc1 = ll1.findObj("C").lr().toRight(10)
+    const l2 = line(pc1, point(pc1.x(), ll1.findObj("C").y0()))
+        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
+    align("abut", "center", l2, hspace(3), label("h").setFontSize(10))
+
+    const pd1 = ll1.findObj("D").lr().toRight(10)
+    const l3 = line(pd1, point(pd1.x(), ll1.findObj("D").y0()))
+        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
+    align("abut", "center", l3, hspace(3), label("h").setFontSize(10))
+
+    const pa2 = lr1.findObj("A").ll().toLeft(5)
+    const l4 = line(pa2, point(pa2.x(), lr1.findObj("A").y0()))
+        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
+    align("abut", "center", l4, hspace(3), label("h").setFontSize(10))
+
+    const pd2 = lr1.findObj("D").lr().toRight(5)
+    const l5 = line(pd2, point(pd2.x(), lr1.findObj("D").y0()))
+        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
+    align("abut", "center", l5, hspace(3), label("h").setFontSize(10))
+
+    setStrokeStyle("black")
+
+    equal(lr1.findObj("D").x1(), minus(margin().x1(), 20))
+
+    equal(p3.x(), 10)
+    let f1, f2, f3
+    ll.view(f1 = addFrame().setLength(1500)).rotateNodeWithParent("y")
+    lr.view(f2 = addFrame().setLength(1500)).rotateNodeWithParent("y")
+    lr.view(f3 = addFrame().setLength(1500)).rotateNodeWithParent("y")
+
+/*
+    const pc2 = lr1.findObj("C").lr().toRight(5),
+            pc2s = smooth(f3, pc2, pc2.toLeft(50))
+    const l6 = line(pc2s, point(pc2s.x(),
+                                smooth(f3, lr1.findObj("y").y0(),
+                                        lr1.findObj("z").y0())))
+        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8).setStrokeStyle("#06c")
+
+    align("abut", "center", l6, hspace(3), label("h + 1").setFontSize(10))
+    */
+
+    align("R", "B", advanceButton(), margin())
+    start()
+}
+</script>

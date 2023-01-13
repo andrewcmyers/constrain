@@ -25,6 +25,8 @@ Cornell University course notes using Constrain for embedded figures: [CS 2112](
 
 [Simple template page for using Constrain](https://andrewcmyers.github.io/constrain/examples/template.html)
 
+[Animated trees](https://andrewcmyers.github.io/constrain/examples/ll_lr.html)
+
 ## Requirements
 
 - ES6-capable web browser
