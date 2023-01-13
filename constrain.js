@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -270,54 +270,196 @@ class Figure {
         })
         return constraintsByVar
     }
-    // assign indices in the valuation array to each of the variables that are active in this stage
+
+    // Variables are solved either by minimization or by direct solution after
+    // minimization is complete.  This function identifies which variables need
+    // to be solved to support the currently visible graphical objects in this
+    // stage (and component, if provided), and decides which way to solve them.
+    // It also determines which constraints need to be evaluated during
+    // minimization.
+    //   Variables solved by minimization are assigned indices in the valuation
+    // array to each of the variables that are active in this stage (and
+    // component, if provided).
+    //   Variables are solved directly when they are only used in a single
+    // constraint whose form admits direct solution. Closures that directly
+    // solve these variables are appended to this.postSolve; these closures
+    // are ordered so that variables have already been solved.
+    //   If the component is not specified, only computes this.stageVariables
+    // to be the variables that need to be solved across all components in the
+    // stage.
     numberVariables(stage, component) {
+
         let i = 0
-        const a = [], frame = this.currentFrame
+        const frame = this.currentFrame
+        if (DEBUG && DEBUG_CONSTRAINTS) {
+            console.log("Numbering variables for " + this.name +
+                ", frame " + (frame ? frame.index : "none") + ", stage " + this.stage)
+        }
         this.Variables.forEach(v => v.removeIndex())
-        const activeConstraints = new Set()
-        const frontier = []
+        this.Constraints.forEach(c => { delete c.directSolved })
+        const solvedVariables = new Set()    // all variables to solve currently
+        const enabledConstraints = new Set() // relevant to current solve
+        const activeConstraints = new Set()  // to use in minimization
+        const activeVariables = []           // to solve via minimization
         const constraintsByVar = this.constraintsByVar()
-        // add this constraint, if not there already, to the
-        // set of active constraints and push it onto the frontier
-        // for traversal.
-        function activateConstraint(c) {
-            if (!activeConstraints.has(c)) {
-                c.variables().forEach(activate)
-                activeConstraints.add(c)
-                frontier.push(c)
+        const postSolve = []
+        const directSolvedConstraints = new Set()
+        // Add this constraint, if not there already, to the
+        // set of enabled constraints, and check if each of its variables need
+        // to be solved, which may lead to enabling more constraints.
+        function enableConstraint(c) {
+            if (!enabledConstraints.has(c)) {
+                enabledConstraints.add(c)
+                c.variables().forEach(checkIfNeeded)
             }
         }
-        // Assign a fresh index to variable v if it doesn't have one yet
-        function activate(v) {
+
+        // Check whether v needs to be solved for, and activate any
+        // constraints that mention it.
+        function checkIfNeeded(v) {
             if (v.stage != stage) return
             if (v.index !== undefined) return
-            if (component && v.variableComponent() !== component) return
-            if (!(v instanceof Variable)) console.error("not a variable: " + v)
-            v.setIndex(i)
-            a.push(v)
-            i++
-
+            if (component && v.component != component) return
+            if (solvedVariables.has(v)) return
+            solvedVariables.add(v)
             const cons = constraintsByVar.get(v)
-            if (cons) cons.forEach(activateConstraint)
+            if (cons) cons.forEach(enableConstraint)
         }
         this.GraphicalObjects.forEach(g => {
             if (g.active() && g.visible()) {
                 g.variables().forEach(v => {
-                    activate(v)
+                    checkIfNeeded(v)
                 })
             }
         })
-        // Take the closure over all constraints mentioning active variables
-        while (frontier.length > 0) {
-            activateConstraint(frontier.shift())
+        if (!component) {
+            this.stageVariables = solvedVariables
+            if (DEBUG && DEBUG_CONSTRAINTS) {
+                console.log("Stage variables = ", this.stageVariables)
+            }
+            return solvedVariables
         }
 
+        // Return a function that solves the equation e = e2 for the variable v,
+        // given two arguments: the value of e2, and a current valuation array.
+        function solveFor(v, e) {
+            if (e == v) {
+                return (v2, valuation) => v2
+            }
+            if (e instanceof Plus) {
+                const [e1, e2] = [e.e1, e.e2]
+                const solve1 = solveFor(v, e1)
+                if (solve1 && !e2.variables().has(v)) { // e1 + e2 = sum <=> e1 = sum - e2
+                    return (sum, valuation) => solve1(sum - evaluate(e2, valuation))
+                }
+                const solve2 = solveFor(v, e2)
+                if (solve2 && !e1.variables().has(v)) { // e1 + e2 = sum <=> e2 = sum - e1
+                    return (sum, valuation) => solve2(sum - evaluate(e1, valuation))
+                }
+                return null
+            } else if (e instanceof Minus) {
+                const [e1, e2] = [e.e1, e.e2]
+                const solve1 = solveFor(v, e1)
+                if (solve1 && !e2.variables().has(v)) { // e1 - e2 = diff <=> e1 = diff + e2
+                    return (diff, valuation) => solve1(diff + evaluate(e2, valuation))
+                }
+                const solve2 = solveFor(v, e2)
+                if (solve2 && !e1.variables().has(v)) { // e1 - e2 = diff <=> e2 = e1 - diff
+                    return (diff, valuation) => solve2(evaluate(e1, valuation) - diff)
+                }
+                return null
+            } else {
+                return null // can't solve
+            }
+        }
+
+        // If variable v is only in one constraint and can
+        // be solved from it, append solving code to postSolve
+        // for v and (before that) for any directly solvable variables
+        // it depends on and return true. If we can't solve v directly,
+        // return false.
+        // 
+        function tryDirectSolve(v) {
+            if (v.hasOwnProperty('directSolved')) return v.directSolved
+            if (v.solvePending) return false // prevent cycles in solution strategy
+            const s = constraintsByVar.get(v)
+            if (!s || s.size == 0) {
+                postSolve.push(valuation => {
+                    v.currentValue = v.hasOwnProperty('hint') ? v.hint : 100
+                    if (DEBUG_CONSTRAINTS) console.log("Trivially solving " + v + " <- " + v.currentValue)
+                })
+                v.directSolved = true // unconstrained: any value works!
+                return
+            }
+            if (s.size > 1) return false
+            v.solvePending = true
+            for (const c of s.keys()) {
+                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && c.cost >= 1) {
+                    let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
+                    let solve1 = solveFor(v, e1),
+                          e2v = e2.variables()
+                    if (!solve1 || e2.variables().has(v)) { // try it the other way round
+                        [e1, e2] = [e2, e1]
+                        solve1 = solveFor(v, e1)
+                        e2v = e2.variables()
+                    }
+                    if (solve1 && !e2.variables().has(v)) {
+                        for (const v2 of e2v) tryDirectSolve(v2)
+                        postSolve.push(valuation => {
+                            v.currentValue = solve1(evaluate(e2, valuation), valuation)
+                            if (DEBUG_CONSTRAINTS) console.log("Directly solving " + v + " <- " + v.currentValue)
+                        })
+                        v.directSolved = c
+                        v.solvePending = false
+                        directSolvedConstraints.add(c)
+                        c.directSolved = v
+                        return true
+                    }
+                }
+                v.directSolved = false // can't solve directly
+                v.solvePending = false
+                return
+            }
+            console.error("can't get here")
+        }
+        for (const v of solvedVariables) {
+            tryDirectSolve(v)
+        }
+
+        // Assign a fresh index to variable v if it is not to be solved directly
+        function assignIndex(v) {
+            if (v.directSolved) return
+            if (component && v.variableComponent() !== component) return
+            v.setIndex(i)
+            activeVariables.push(v)
+            i++
+        }
+
+
+        // assign indices to all variables that need to be solved and cannot be
+        // solved directly
+        for (const v of solvedVariables) {
+            if (v.directSolved) continue
+            assignIndex(v)
+        }
+
+        // create the set of constraints that minimization should try to minimize
+        for (const c of enabledConstraints) {
+            if (!directSolvedConstraints.has(c)) activeConstraints.add(c)
+        }
         this.activeConstraints = activeConstraints
-        this.activeVariables = a
+
         if (DEBUG) {
-            console.log("Stage " + stage + ": Active variables: ", a.length)
-            console.log("  Active constraints: ", activeConstraints.size)
+            this.solvedVariables = solvedVariables
+            this.enabledConstraints = enabledConstraints
+        }
+        this.activeVariables = activeVariables
+        this.postSolve = postSolve
+        if (DEBUG && DEBUG_CONSTRAINTS) {
+            console.log("Stage " + stage + ": Variables solved by minimization: ", activeVariables.length)
+            console.log("  Constraints solved by minimization: ", activeConstraints.size)
+            console.log("  Directly solved variables: ", postSolve.length)
+            console.log("  Directly solved constraints: ", directSolvedConstraints.size)
         }
     }
     resetValuation() {
@@ -401,6 +543,9 @@ class Figure {
     costGrad(valuation, doGrad) {
         let n = valuation.length, cost = 0, dcost = new Array(n).fill(0)
         this.activeConstraints.forEach(con => {
+            if (con.directSolved) {
+                console.error("direct-solved constraint appearing in cost minimization", con)
+            }
             const result = con.getCost(valuation, doGrad)
             let c, dc
             if (doGrad) {
@@ -419,10 +564,15 @@ class Figure {
         }
     }
     // Recompute the components for a given figure stage
+    // Requires: this.stageVariables contains all the variables that need to be solved in
+    // this stage.
     computeComponents(stage) {
         if (DEBUG) console.log("Computing components for stage " + stage)
         delete this.activeComponent
-        for (const v of this.activeVariables) {
+        for (const v of this.stageVariables) {
+            if (v.stage != stage) {
+                console.error("Variable is in wrong stage")
+            }
             delete v.component
         }
         this.Constraints.forEach(c => {
@@ -434,23 +584,29 @@ class Figure {
                         if (v2.stage != stage) return
                         const v2c = v2.variableComponent()
                         if (v1c !== v2c) {
-                        v1c.component = v2c
+                          v1c.component = v2c
                         }
                     })
                 })
         })
         const components = []
-        for (const v of this.activeVariables) {
+        for (const v of this.stageVariables) {
             const c = v.variableComponent()
             c.component = c
-            if (!components.includes(c)) {
-                components.push(c)
-            }
+            if (!components.includes(c)) components.push(c)
         }
-        if (DEBUG)
+        if (DEBUG) {
          console.log(this.name +
             (this.currentFrame ? " frame " + this.currentFrame.index : "") +
-            ": stage " + stage + " contains " + this.activeVariables.length + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+            ": stage " + stage + " contains " + this.stageVariables.size + " variables and " + components.length + " components: [" + components.join(", ") + "]")
+            for (const c of components) {
+                let s = "component " + c + ": "
+                for (const v of this.stageVariables) {
+                    if (v.variableComponent() == c) s += (v + ' ')
+                }
+                console.log(s)
+            }
+        }
         return components
     }
     // update the current valuation to solve constraints within tolerance tol
@@ -461,7 +617,6 @@ class Figure {
       for (let stage = 0; stage < this.numStages; stage++) {
         this.activeStage = stage
         this.numberVariables(stage)
-        const stageVariables = this.activeVariables
         let components = this.components[stage]
         if (!components) {
             components = this.computeComponents(stage)
@@ -480,12 +635,13 @@ class Figure {
             }
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
+            this.postSolve.forEach(solver => solver(solution[0]))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
         }
       }
       if (PROFILE_EVALUATIONS) {
-        console.log("Total evaluations: " + evaluations)
-        if (REPORT_EVALUATED_EXPRESSIONS) {
+       console.log("Total evaluations: " + evaluations)
+       if (REPORT_EVALUATED_EXPRESSIONS) {
         const entries = []
         for (const e of evaluationCounts.entries()) {
             entries.push(e)
@@ -494,7 +650,7 @@ class Figure {
         for (let i = 0; i < sorted.length; i++) {
             console.log("  expr: " + sorted[i][0] + ", evaluations: " + sorted[i][1])
         }
-        }
+       }
       }
       return solution
     }
@@ -1860,6 +2016,10 @@ class Variable extends Expression {
         }
     }
     evaluate(valuation, doGrad) {
+        // A variable may be actively being solved for, in which case
+        // its current value is in the array valuation. Otherwise, the
+        // variable is treated as a constant and its currentValue property
+        // specifies its value.
         if (this.index === undefined) {
             return this.currentValue
                 || this.hint
@@ -1891,6 +2051,8 @@ class Variable extends Expression {
     }
     removeIndex() {
         delete this.index
+        delete this.directSolved
+        delete this.solvePending
     }
     toString() {
         return this.basename
@@ -2098,10 +2260,8 @@ function union(s1, s2) {
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
         super()
-        if (e1 === undefined)
-            console.error("undefined e1")
-        if (e2 === undefined)
-            console.error("undefined e2")
+        if (e1 === undefined) console.error("undefined e1")
+        if (e2 === undefined) console.error("undefined e2")
         this.e1 = legalExpr(e1)
         this.e2 = legalExpr(e2)
         return this
@@ -4652,7 +4812,7 @@ class Label extends GraphicalObject {
             return this.computedWidth
         }
         this.h = () => this.font.getSize()
-        this.variables = function() { return [this.x(), this.y()] }
+        this.variables = function() { return new Set().add(this.x()).add(this.y()) }
     }
     setFont(font) {
         this.font = font
@@ -5501,7 +5661,7 @@ class Handle extends InteractiveObject {
               vy = new Variable(figure, "hy")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => [vx, vy]
+        this.variables = () => new Set().add(vx).add(vy)
         this.size = 5
         this.strokeStyle = strokeStyle || figure.strokeStyle
         this.isActive = true
@@ -5580,7 +5740,7 @@ class Handle extends InteractiveObject {
     active() { return true }
     visible() { return true }
     toString() { return "Handle" }
-    variables() { return new Set().add(this.x_).add(this.y_) }
+   variables() { return new Set().add(this.x_).add(this.y_) }
 }
 
 class Button extends InteractiveObject {
@@ -5590,7 +5750,7 @@ class Button extends InteractiveObject {
               vy = new Variable(figure, "y")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => [vx, vy]
+        this.variables = () => new Set().add(vx).add(vy)
         figure.geq(vx,0)
         figure.geq(vy,0)
         figure.leq(vx, figure.canvasRect().x1())
@@ -5824,11 +5984,14 @@ class CanvasRect extends LayoutObject {
     x1() { return new Global(() => {
         if (!this.figure.width) this.figure.setupCanvas()
         return this.figure.width
-    })}
+    }, "Width of figure " + this.figure.name)}
     y0() { return 0 }
-    y1() { return new Global(() => this.figure.height) }
-    w() { return new Global(() => this.figure.width) }
-    h() { return new Global(() => this.figure.height) }
+    y1() { return new Global(() => this.figure.height,
+                             "Height of figure " + this.figure.name) }
+    w() { return new Global(() => this.figure.width,
+                             "Width of figure " + this.figure.name)}
+    h() { return new Global(() => this.figure.height,
+                             "Height of figure " + this.figure.name) }
     x() { return this.centerX() }
     y() { return this.centerY() }
     backprop(task) {}

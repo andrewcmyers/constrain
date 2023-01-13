@@ -271,6 +271,12 @@ Constrain.Trees = function() {
         getFrameRoot(frame) {
             return this.roots.get(frame) || this.getFrameRoot(this.figure.prevFrame(frame))
         }
+        getFramePos(frame,  node) {
+            const result = node.positions.get(frame) 
+            if (result) return result
+            const pf = this.figure.prevFrame(frame)
+            return pf && pf !== frame && this.getFramePos(this.figure.prevFrame(frame), node)
+        }
         // Set up the constraints and connectors for this node in the given frame,
         // assuming the specified edges exist in the frame.
         frameNodeConstraints(frame, node, edges, horzSpacing, vertSpacing) {
@@ -283,8 +289,6 @@ Constrain.Trees = function() {
                 return
             }
             let pos = figure.point()
-            // const cols = [ '#00f', '#f00', '#0f0', '#f0f', '#0ff']
-            // figure.circle().setW(5).at(pos).setFillStyle(cols[frame.index])
             node.positions.set(frame, pos)
             const outgoing = edges.getOutgoing(node) || []
             // console.log("outgoing from " + node.value + ":" + outgoing.map(n => n.value).join(","))
@@ -295,16 +299,18 @@ Constrain.Trees = function() {
                 if (c.value !== undefined) {
                     /*
                     this.exclusiveAfters.add(figure.after(frame,
-                        figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3]))
-                    )
+                        figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3])
+                    ))
                     */
                     const a = figure.after(frame, this.style.drawEdge(node, c))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
+                    // console.log(a.description)
                     this.exclusiveAfters.add(a)
                 }
 
                 const vconstr = figure.after(frame,
                     figure.equal(figure.minus(cpos.y(), pos.y()), vertSpacing))
+                vconstr.description = 'vertical separation of ' + node.value + ' and ' + c.value
                 constraints.push(vconstr)
                 this.inclusiveAfters.add(vconstr)
                 if (prev_sib) {
@@ -317,6 +323,7 @@ Constrain.Trees = function() {
                               figure.plus(figure.times(0.5, sib_rightmost.gobj.w()),
                                    figure.times(0.5, c_leftmost.gobj.w()),
                                    horzSpacing)))
+                    hconstr.description = 'Horizontal spacing of children of ' + node.value
                     constraints.push(hconstr)
                     this.inclusiveAfters.add(hconstr)
                 }
@@ -339,7 +346,7 @@ Constrain.Trees = function() {
                                     ...outgoing.map(c => c.positions.get(frame))))
 
             const pf = figure.prevFrame(frame),
-                  prevpos = pf && node.positions.get(pf),
+                  prevpos = pf && this.getFramePos(pf, node),
                   gobj = node.gobj,
                   target = gobj.target(),
                   gobj_constrs = prevpos
@@ -357,7 +364,7 @@ Constrain.Trees = function() {
         // copy edges from the previous frame to this frame
         copyEdges(frame) {
             const prevFrame = this.figure.prevFrame(frame),
-                  prevEdges = this.edges.get(prevFrame),
+                  prevEdges = this.getFrameEdges(prevFrame),
                   newEdges = new Edges(prevEdges)
             this.edges.set(frame, newEdges)
         }
@@ -370,7 +377,7 @@ Constrain.Trees = function() {
                 console.error("No tree configuration for previous frame")
             }
             let parentNode
-            const oldRoot = this.roots.get(prevFrame)
+            const oldRoot = this.getFrameRoot(prevFrame)
             parentNode = prevEdges.getParentNode(node)
             for (const e of prevEdges.getEdges()) {
                 let [src, dst] = e
@@ -406,7 +413,7 @@ Constrain.Trees = function() {
             if (!prevEdges) {
                 console.error("No tree configuration for previous frame")
             }
-            const oldRoot = this.roots.get(prevFrame),
+            const oldRoot = this.getFrameRoot(prevFrame),
                   parentNode = prevEdges.getParentNode(node)
             if (!parentNode) return
             const gparentNode = prevEdges.getParentNode(parentNode),
@@ -443,7 +450,7 @@ Constrain.Trees = function() {
             const prevFrame = this.figure.prevFrame(frame),
                   prevEdges = this.getFrameEdges(prevFrame),
                   newEdges = new Edges(prevEdges),
-                  oldRoot = this.roots.get(prevFrame)
+                  oldRoot = this.getFrameRoot(prevFrame)
             this.figure.before(frame, node.gobj)
             const parent = prevEdges.getParentNode(node)
             newEdges.removeEdge(parent, node)
@@ -457,9 +464,9 @@ Constrain.Trees = function() {
             const prevFrame = this.figure.prevFrame(frame),
                   prevEdges = this.getFrameEdges(prevFrame),
                   newEdges = new Edges(prevEdges),
-                  oldRoot = this.roots.get(prevFrame)
+                  oldRoot = this.getFrameRoot(prevFrame)
             const node = new Node(this, value)
-            this.figure.after(frame, node.gobj)
+            this.figure.after(frame, node.gobj).description = 'Graphical object for added leaf ' + value
             newEdges.addEdge(parentNode, node)
             this.edges.set(frame, newEdges)
             this.roots.set(frame, oldRoot)
@@ -467,7 +474,6 @@ Constrain.Trees = function() {
         }
         frameConstraints(frame) {
             const figure = this.figure
-            console.log("Setting up constraints for frame " + frame)
             if (this.constraints.get(frame)) {
                 console.error("Oops, already have constraints for frame " + frame)
             }
@@ -501,7 +507,11 @@ Constrain.Trees = function() {
                     this.inclusiveAfters.add(a)
                 )
             const decoration = this.style.decorateRoot(root)
-            if (decoration) this.exclusiveAfters.add(figure.after(frame, decoration))
+            if (decoration) {
+                const a = figure.after(frame, decoration)
+                a.description = 'Root decoration for ' + root.value
+                this.exclusiveAfters.add(a)
+            }
             this.frameNodeConstraints(frame, root, edges, horzSpacing, vertSpacing)
             const prevFrame = figure.prevFrame(frame) || frame,
                   glue = this.style.glue()

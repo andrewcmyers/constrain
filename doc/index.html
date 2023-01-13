@@ -690,6 +690,18 @@ want figure units to correspond to PostScript/PDF points, you should set a zoom
 of 1 1/3 ≅ 1.333. To make them correspond to TeX points, the zoom value should
 be 96/72.27 ≅ 1.328.
 </p>
+<h4>thisFigure()</h4>
+<pre class=code>
+with (new Constrain.Figure("figure1")) {
+    const figure1 = thisFigure()
+    ...
+}
+</pre>
+<p>
+This method simply returns the figure object itself, a functionality that
+is handy when used in conjunction with the <code>with</code>
+statement.
+</p>
 
 <h3>Other figure control operations</h3>
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
@@ -756,6 +768,7 @@ The horizontal alignment specification can be any of the following:
 <li><code>"left"</code>: Align left sides
 <li><code>"right"</code>: Align right sides
 <li><code>"center"</code>: Align horizontal centers
+<li><code>"target"</code>: Align the target locations to have the same horizontal position.
 <li><code>"left right"</code>: Align both left and right sides, forcing the objects to have the
                 same width.
 <li><code>"abut"</code>: Make objects abut each other directly, left-to-right. Space may be inserted
@@ -765,6 +778,12 @@ The horizontal alignment specification can be any of the following:
 <p>
 The vertical alignment specification is the same as the horizontal specification, except
 that <code>top</code> and <code>bottom</code> replace <code>left</code> and <code>right</code>.
+</p>
+<p>
+The abbreviations <code>"L"</code>, <code>"R"</code>, <code>"T"</code>, and <code>"B"</code>
+may be used as shorthands for <code>"left"</code>, <code>"right"</code>, etc. Further,
+<code>"LR"</code> and <code>"RL"</code> are shorthands for <code>"left right"</code> and similarly with
+<code>"TB"</code> and <code>"BT"</code>.
 </p>
 
 <h4>equal(...exprs)</h4>
@@ -1105,6 +1124,13 @@ four corners of the object: upper left, lower left, upper right, and lower right
 These methods each return a point that is the center of one of the edges of the
 bounding box of the object.
 </p>
+<h4>target()</h4>
+<p>This method returns a point somewhere in the object. It is used for
+connectors between objects and when <code>"target"</code> alignment is chosen.
+By default, the object target is the object's center, but it can be useful to
+override this method.
+</p>
+
 <h4>toTop(d), toBottom(d), toRight(d), toLeft(d)</h4>
 <p> These methods can be used to nudge the position of a point in the
 specified direction by distance <code>d</code>, returning the new resulting point.
@@ -1621,9 +1647,14 @@ This property controls the direction of gravity. By default, it is false, meanin
 If true, gravity pulls to the right.
 </p>
 
+<h2>Animated Trees</h2>
+<p>
+The module <kbd>constrain-trees.js</kbd> includes support for automatically laying out trees.
+These trees can be animated to support changes to the tree structure over multiple frames.
+
 <h2>Reveal.js integration</h2>
 <p>
-To use Constrain with Reveal.js, the script <code>constrainreveal.js</code>
+To use Constrain with Reveal.js, the script <kbd>constrainreveal.js</kbd>
 should be included in the presentation. It relies on some hooks being added to
 Reveal, so you must also use the version of Reveal.js that comes with
 Constrain.
