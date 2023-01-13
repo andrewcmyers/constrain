@@ -397,13 +397,13 @@ class Figure {
                 if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && c.cost >= 1) {
                     let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
                     let solve1 = solveFor(v, e1),
-                          e2v = e2.variables()
-                    if (!solve1 || e2.variables().has(v)) { // try it the other way round
+                        e2v = exprVariables(e2)
+                    if (!solve1 || e2v.has(v)) { // try it the other way round
                         [e1, e2] = [e2, e1]
                         solve1 = solveFor(v, e1)
-                        e2v = e2.variables()
+                        e2v = exprVariables(e2)
                     }
-                    if (solve1 && !e2.variables().has(v)) {
+                    if (solve1 && !e2v.has(v)) {
                         for (const v2 of e2v) tryDirectSolve(v2)
                         postSolve.push(valuation => {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
@@ -679,7 +679,10 @@ class Figure {
         let doGrad = true, fig = this
         if (valuation === undefined) {
             console.error("Need initial valuation")
-            return
+        }
+        if (valuation.length == 0) {
+            if (DEBUG) console.log("  No nonlinear minimization needed")
+            return [valuation, "No nonlinear minimization needed"]
         }
         const task = USE_BACKPROPAGATION ? new BackPropagation(this.activeVariables) : undefined
         if (USE_BACKPROPAGATION) {
