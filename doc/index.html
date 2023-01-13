@@ -65,13 +65,14 @@
 <a class=author href="https://www.cs.cornell.edu/andru">Andrew C. Myers</a></h1>
 
 <p>
-  Constrain is designed for adding diagrams to web pages and
+  Constrain is a JavaScript framework designed for adding diagrams to web pages and
   web-based presentations. It has some advantages over
   alternative ways to generate diagrams:
   <ul>
-    <li>Constrain supports animated figures in which displayed objects move and change their appearance smoothly or discontinuously. To make animations smooth,
-        it uses a fast solver based on backpropagation, with each animation frame's
-        solution used as a starting point for solving the next one.</li>
+    <li>Constrain supports animated figures in which displayed objects move and
+        change their appearance smoothly or discontinuously. To make animations
+        smooth, it uses a fast solver based on backpropagation, with each animation
+        frame's solution used as a starting point for solving the next one.</li>
     <li>Figures can be interactive: the reader can change their appearance.</li>
     <li>Constrain is based on declaring constraints that are automatically
         solved. This makes it easy to produce very precise diagrams,
@@ -267,7 +268,7 @@ length.
 <h4>closedCurve(...points)</h4>
 <p>
 A smooth closed curve that goes near the specified control points (class <code>ClosedCurve</code>).
-Control points can be repeated to introduce sharp vertices in the curve.
+Control points can be repeated to introduce sharp corners.
 </p>
 
 <pre id="curve_ex_code" class=code></pre>
@@ -871,9 +872,9 @@ order.
 <p>
 In general, the constraint solver cannot solve every constraint exactly. It works by trying to
 minimize a total cost over all constraints. Every constraint has an associated cost multiplier
-that is equal to 1 by default. Usually this does not need to be changed, but it can be useful
-to change the cost of some constraints to make them softer or harder constraints relative to
-other constraints.
+that is equal to 1 by default. Normally, this multiplier does not need to be
+changed, but it can be useful to change the cost of some constraints to make
+them softer or harder constraints relative to other constraints.
 </p>
 <h4>changeCost(c)</h4>
 <p>
@@ -887,10 +888,10 @@ variables and points forcibly to the correct side of a diagram.
 Some constraints are built out of expressions. The following expressions are
 supported by the constraint solver. Expressions may have either a scalar
 value (a number) or an array value. For example, as an expression, a point
-evaluates to a two-element array, and any graphical objects evaluates similarly
+evaluates to a two-element array, and any graphical object evaluates similarly
 to its center position.  Many operations can be performed either on scalars or
-arrays. The function <code>Constrain.evaluate</code> may be used to obtain the
-current value of an expression, although usually this is not needed.
+arrays. The function <code>Constrain.evaluate()</code> may be used to obtain the
+current value of an expression, although usually this value is not needed.
 
 <h4>plus(a, b)</h4>
 <p>The sum of <code>a</code> and <code>b</code>, which may be scalars or arrays.

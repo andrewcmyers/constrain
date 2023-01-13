@@ -19,28 +19,6 @@
 
 <script class=graphics>
 
-// Once the nodes are generated, the changes should be expressed in terms of the
-// nodes.
-// 
-// Problem is that the tree needs to end up in its final configuration at the end
-// of the frame. Imperatively changing it is not declarative of course. Could
-// imagine having the tree keep track of all its states per frame. Then a change
-// is expressed simply by editing the tree to create a new tree structure. But
-// the tree can't really manage this on its own since the structure of nodes also
-// changes.
-//
-// New idea: tree keeps track of a map from frame numbers to a set of node
-// relationships.
-//
-// Another idea: maybe need a more general notion of animating objects, which would
-// require attaching constraints to some kind of owner. There are already constraint
-// groups that modulate how constraints manifest.
-//
-// Here we want a notion of node position that is not tied directly to the graphical
-// object itself. Then the graphical object can be animated to move between
-// two node positions. We don't need a separate framework for animated objects,
-// just a design pattern.
-
 const fig1 = new Constrain.Figure("tree_anatomy")
 let t
 with (fig1) {

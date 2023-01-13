@@ -563,7 +563,7 @@ Constrain.Trees = function() {
             this.tree.rotateNodeWithParent(this.frame, this.tree.findNode(value))
         }
         getEdges() {
-            return this.tree.getEdges(this.frame)
+            return this.tree.getFrameEdges(this.frame)
         }
         addLeaf(value, parentValue, position) {
             this.tree.addLeaf(this.frame, value,

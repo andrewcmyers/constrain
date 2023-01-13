@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = true, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -349,22 +349,22 @@ class Figure {
             if (e instanceof Plus) {
                 const [e1, e2] = [e.e1, e.e2]
                 const solve1 = solveFor(v, e1)
-                if (solve1 && !e2.variables().has(v)) { // e1 + e2 = sum <=> e1 = sum - e2
+                if (solve1 && !exprVariables(e2).has(v)) { // e1 + e2 = sum <=> e1 = sum - e2
                     return (sum, valuation) => solve1(sum - evaluate(e2, valuation))
                 }
                 const solve2 = solveFor(v, e2)
-                if (solve2 && !e1.variables().has(v)) { // e1 + e2 = sum <=> e2 = sum - e1
+                if (solve2 && !exprVariables(e1).has(v)) { // e1 + e2 = sum <=> e2 = sum - e1
                     return (sum, valuation) => solve2(sum - evaluate(e1, valuation))
                 }
                 return null
             } else if (e instanceof Minus) {
                 const [e1, e2] = [e.e1, e.e2]
                 const solve1 = solveFor(v, e1)
-                if (solve1 && !e2.variables().has(v)) { // e1 - e2 = diff <=> e1 = diff + e2
+                if (solve1 && !exprVariables(e2).has(v)) { // e1 - e2 = diff <=> e1 = diff + e2
                     return (diff, valuation) => solve1(diff + evaluate(e2, valuation))
                 }
                 const solve2 = solveFor(v, e2)
-                if (solve2 && !e1.variables().has(v)) { // e1 - e2 = diff <=> e2 = e1 - diff
+                if (solve2 && !exprVariables(e1).has(v)) { // e1 - e2 = diff <=> e2 = e1 - diff
                     return (diff, valuation) => solve2(evaluate(e1, valuation) - diff)
                 }
                 return null
@@ -398,7 +398,7 @@ class Figure {
                     let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
                     let solve1 = solveFor(v, e1),
                         e2v = exprVariables(e2)
-                    if (!solve1 || e2v.has(v)) { // try it the other way round
+                    if (!solve1 || e2.variables().has(v)) { // try it the other way round
                         [e1, e2] = [e2, e1]
                         solve1 = solveFor(v, e1)
                         e2v = exprVariables(e2)
