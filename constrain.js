@@ -23,7 +23,9 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false,
+      REPORT_PERFORMANCE = false
+
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -282,7 +284,7 @@ class Figure {
     // component, if provided).
     //   Variables are solved directly when they are only used in a single
     // constraint whose form admits direct solution. Closures that directly
-    // solve these variables are appended to this.postSolve; these closures
+    // solve these variables are appended to this.postMinActions; these closures
     // are ordered so that variables have already been solved.
     //   If the component is not specified, only computes this.stageVariables
     // to be the variables that need to be solved across all components in the
@@ -302,8 +304,9 @@ class Figure {
         const activeConstraints = new Set()  // to use in minimization
         const activeVariables = []           // to solve via minimization
         const constraintsByVar = this.constraintsByVar()
-        const postSolve = []
+        const postMinActions = []
         const directSolvedConstraints = new Set()
+        let substitutable = 0, directlySolved = 0
         // Add this constraint, if not there already, to the
         // set of enabled constraints, and check if each of its variables need
         // to be solved, which may lead to enabling more constraints.
@@ -374,7 +377,7 @@ class Figure {
         }
 
         // If variable v is only in one constraint and can
-        // be solved from it, append solving code to postSolve
+        // be solved from it, append solving code to postMinActions
         // for v and (before that) for any directly solvable variables
         // it depends on and return true. If we can't solve v directly,
         // return false.
@@ -384,7 +387,7 @@ class Figure {
             if (v.solvePending) return false // prevent cycles in solution strategy
             const s = constraintsByVar.get(v)
             if (!s || s.size == 0) {
-                postSolve.push(valuation => {
+                postMinActions.push(valuation => {
                     v.currentValue = v.hasOwnProperty('hint') ? v.hint : 100
                     if (DEBUG_CONSTRAINTS) console.log("Trivially solving " + v + " <- " + v.currentValue)
                 })
@@ -394,7 +397,7 @@ class Figure {
             if (s.size > 1) return false
             v.solvePending = true
             for (const c of s.keys()) {
-                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && c.cost >= 1) {
+                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus) {
                     let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
                     let solve1 = solveFor(v, e1),
                         e2v = exprVariables(e2)
@@ -405,10 +408,11 @@ class Figure {
                     }
                     if (solve1 && !e2v.has(v)) {
                         for (const v2 of e2v) tryDirectSolve(v2)
-                        postSolve.push(valuation => {
+                        postMinActions.push(valuation => {
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
                             if (DEBUG_CONSTRAINTS) console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
+                        directlySolved++
                         v.directSolved = c
                         v.solvePending = false
                         directSolvedConstraints.add(c)
@@ -426,9 +430,46 @@ class Figure {
             tryDirectSolve(v)
         }
 
+        function simpleExpr(e) {
+            return (e instanceof Variable) || (typeof e == 'number') || (e instanceof Global)
+        }
+
+        function trySubstitution(v) {
+            const s = constraintsByVar.get(v)
+            for (const c of s.keys()) {
+                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && c.cost >= 1) {
+                    let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
+                    const e1_simple = simpleExpr(e1),
+                          e2_simple = simpleExpr(e2)
+                    if (e1 == v && e2_simple || e2 == v && e1_simple) {
+                        const substitution = (v == e1) ? e2 : e1
+                        if (substitution instanceof Variable) {
+                            if (substitution.directSolved) continue
+                            if (v.toString() >= substitution.toString()) continue
+                        }
+                        v.substitution = substitution
+                        postMinActions.push(valuation => {
+                            v.currentValue = evaluate(substitution, valuation)
+                            if (DEBUG_CONSTRAINTS) console.log("Solving by substitution " + v + " <- " + v.currentValue)
+                        })
+                        substitutable++
+                        if (DEBUG_CONSTRAINTS) console.log("Substitution: " + v + " <- " + v.substitution)
+                    }
+                }
+            }
+        }
+
+        for (const v of solvedVariables) {
+            if (!v.directSolved) trySubstitution(v)
+        }
+        if (DEBUG) console.log("Substitutable variables: " + substitutable)
+
         // Assign a fresh index to variable v if it is not to be solved directly
         function assignIndex(v) {
-            if (v.directSolved) return
+            if (v.substitution && v.substitution.directSolved) {
+                console.error("Oops, using a direct solved variable")
+            }
+            if (v.directSolved || v.substitution) return
             if (component && v.variableComponent() !== component) return
             v.setIndex(i)
             activeVariables.push(v)
@@ -439,7 +480,6 @@ class Figure {
         // assign indices to all variables that need to be solved and cannot be
         // solved directly
         for (const v of solvedVariables) {
-            if (v.directSolved) continue
             assignIndex(v)
         }
 
@@ -454,12 +494,12 @@ class Figure {
             this.enabledConstraints = enabledConstraints
         }
         this.activeVariables = activeVariables
-        this.postSolve = postSolve
-        if (DEBUG && DEBUG_CONSTRAINTS) {
+        this.postMinActions = postMinActions
+        if (DEBUG) {
             console.log("Stage " + stage + ": Variables solved by minimization: ", activeVariables.length)
             console.log("  Constraints solved by minimization: ", activeConstraints.size)
-            console.log("  Directly solved variables: ", postSolve.length)
-            console.log("  Directly solved constraints: ", directSolvedConstraints.size)
+            console.log("  Directly solved variables: ", directlySolved)
+            console.log("  Substituted variables: ", substitutable)
         }
     }
     resetValuation() {
@@ -595,7 +635,7 @@ class Figure {
             c.component = c
             if (!components.includes(c)) components.push(c)
         }
-        if (DEBUG) {
+        if (DEBUG_CONSTRAINTS) {
          console.log(this.name +
             (this.currentFrame ? " frame " + this.currentFrame.index : "") +
             ": stage " + stage + " contains " + this.stageVariables.size + " variables and " + components.length + " components: [" + components.join(", ") + "]")
@@ -635,7 +675,7 @@ class Figure {
             }
             solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
-            this.postSolve.forEach(solver => solver(solution[0]))
+            this.postMinActions.forEach(solver => solver(solution[0]))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
         }
       }
@@ -960,7 +1000,7 @@ class Figure {
             if (frac >= 1) {
                 this.animationTime = 1
                 this.stopTimer()
-                if (DEBUG)  {
+                if (DEBUG || REPORT_PERFORMANCE)  {
                     console.log("rendered " + steps_rendered + " steps in " + t +
                                 " ms (" + Math.round(1000*steps_rendered/t) + "/sec)")
                 }
@@ -2020,10 +2060,14 @@ class Variable extends Expression {
     }
     evaluate(valuation, doGrad) {
         // A variable may be actively being solved for, in which case
-        // its current value is in the array valuation. Otherwise, the
+        // its current value is in the array valuation, unless it is a
+        // substituted variable, in which case its value is determined by
+        // evaluating the substituted expression. Otherwise, the
         // variable is treated as a constant and its currentValue property
         // specifies its value.
         if (this.index === undefined) {
+            const substitution = this.substitution
+            if (substitution) return evaluate(substitution, valuation, doGrad)
             return this.currentValue
                 || this.hint
                 || (console.error("undefined variable??"), 0)
@@ -2043,18 +2087,23 @@ class Variable extends Expression {
             return valuation[this.index] || 0
         }
     }
-    backprop(valuation, d) {}
-    addDependencies(task) {}
-
+    backprop(task) {
+        if (this.substitution) task.propagate(this.substitution, this.bpDiff)
+    }
+    addDependencies(task) {
+        if (this.substitution) task.prepareBackProp(this.substitution)
+    }
     setHint(v) {
         this.hint = v
     }
     setIndex(n) {
         this.index = n
     }
+    // Reset the information about how the value of this variable is determined
     removeIndex() {
         delete this.index
         delete this.directSolved
+        delete this.substitution
         delete this.solvePending
     }
     toString() {
