@@ -57,6 +57,12 @@ class RotTree extends Constrain.Trees.TreeStyle {
     }
     drawEdge(n1, n2) { return this.figure.connector(n1.gobj, n2.gobj) }
 }
+function measure(p1, p2) {
+    return this.line(p1, p2)
+        .setEndArrow("curved").setStartArrow("curved")
+        .setArrowSize(8).setStrokeStyle("#06c")
+}
+Constrain.Figure.prototype.measure = measure
 
 with (new Constrain.Figure("case_LL_LR")) {
     setFontSize(14)
@@ -80,28 +86,25 @@ with (new Constrain.Figure("case_LL_LR")) {
     
     setStrokeStyle("#06c")
     setTextStyle("#06c")
-    const l1 = line(p1, p3).setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
-    align("abut", "center", l1, hspace(3), label("h + 1").setFontSize(10))
+    setFontSize(10)
+    const l1 = measure(p1, p3)
+    align("abut", "center", l1, hspace(3), label("h + 1"))
 
     const pc1 = ll1.findObj("C").lr().toRight(10)
-    const l2 = line(pc1, point(pc1.x(), ll1.findObj("C").y0()))
-        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
-    align("abut", "center", l2, hspace(3), label("h").setFontSize(10))
+    const l2 = measure(pc1, point(pc1.x(), ll1.findObj("C").y0()))
+    align("abut", "center", l2, hspace(3), label("h"))
 
     const pd1 = ll1.findObj("D").lr().toRight(10)
-    const l3 = line(pd1, point(pd1.x(), ll1.findObj("D").y0()))
-        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
-    align("abut", "center", l3, hspace(3), label("h").setFontSize(10))
+    const l3 = measure(pd1, point(pd1.x(), ll1.findObj("D").y0()))
+    align("abut", "center", l3, hspace(3), label("h"))
 
     const pa2 = lr1.findObj("A").ll().toLeft(5)
-    const l4 = line(pa2, point(pa2.x(), lr1.findObj("A").y0()))
-        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
-    align("abut", "center", l4, hspace(3), label("h").setFontSize(10))
+    const l4 = measure(pa2, point(pa2.x(), lr1.findObj("A").y0()))
+    align("abut", "center", l4, hspace(3), label("h"))
 
     const pd2 = lr1.findObj("D").lr().toRight(5)
-    const l5 = line(pd2, point(pd2.x(), lr1.findObj("D").y0()))
-        .setEndArrow("curved").setStartArrow("curved").setArrowSize(8)
-    align("abut", "center", l5, hspace(3), label("h").setFontSize(10))
+    const l5 = measure(pd2, point(pd2.x(), lr1.findObj("D").y0()))
+    align("abut", "center", l5, hspace(3), label("h"))
 
     setStrokeStyle("black")
 
