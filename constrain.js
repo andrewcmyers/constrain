@@ -1494,6 +1494,7 @@ class Figure {
         return new DOMElementBox(this, id)
     }
     group(...objects) {
+        objects = flattenGraphicalObjects(objects)
         if (objects.length == 1) return objects[0]
         return new Group(this, ...objects)
     }
@@ -5793,9 +5794,11 @@ class Handle extends InteractiveObject {
     active() { return true }
     visible() { return true }
     toString() { return "Handle" }
-   variables() { return new Set().add(this.x_).add(this.y_) }
+    variables() { return new Set().add(this.x_).add(this.y_) }
 }
 
+// An interactive Button. Subclasses are expected to provide its behavior when pressed
+// by overriding activate(), and its appearance by overriding render()
 class Button extends InteractiveObject {
     constructor(figure) {
         super(figure)
