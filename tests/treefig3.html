@@ -26,10 +26,12 @@ with (fig3) {
       }
       drawNode(v) {
         if (v.match("^[<>]")) {
-            const result = point()
-            polygon(result, point(plus(result.x(), 30), plus(result.y(), 45)),
-                            point(minus(result.x(), 30), plus(result.y(), 45)))
-              .addText(v).setVerticalAlign("bottom")
+            const top = point()
+            const result = polygon(top,
+                                   point(plus(top.x(), 30), plus(top.y(), 45)),
+                                   point(minus(top.x(), 30), plus(top.y(), 45)))
+                .addText(v).setVerticalAlign("bottom")
+            result.target = () => top
             return result
         } else {
             return label(v).expand(3)
@@ -42,6 +44,7 @@ with (fig3) {
     align("LR", "none", t.bbox, margin().inset(30))
     equal(plus(margin().y0(), 20), t.bbox.y0())
     equal(plus(45, t.bbox.y1()), margin().y1())
+    console.log("bottom left node = " + t.view().findObj('<data').y0())
 }
 fig3.start()
 </script>
