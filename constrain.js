@@ -299,13 +299,12 @@ class Figure {
         }
         this.Variables.forEach(v => v.removeIndex())
         this.Constraints.forEach(c => { delete c.directSolved })
+        const constraintsByVar = this.constraintsByVar()
         const solvedVariables = new Set()    // all variables to solve currently
         const enabledConstraints = new Set() // relevant to current solve
-        const activeConstraints = new Set()  // to use in minimization
         const activeVariables = []           // to solve via minimization
-        const constraintsByVar = this.constraintsByVar()
-        const postMinActions = []
-        const directSolvedConstraints = new Set()
+        const postMinActions = []            // solving actions to run after minimization
+        const directSolvedConstraints = new Set() // solved directly or by substitution
         let substitutable = 0, directlySolved = 0
         // Add this constraint, if not there already, to the
         // set of enabled constraints, and check if each of its variables need
@@ -391,6 +390,7 @@ class Figure {
                     v.currentValue = v.hasOwnProperty('hint') ? v.hint : 100
                     if (DEBUG_CONSTRAINTS) console.log("Trivially solving " + v + " <- " + v.currentValue)
                 })
+                directlySolved++
                 v.directSolved = true // unconstrained: any value works!
                 return
             }
@@ -448,6 +448,7 @@ class Figure {
                             if (v.toString() >= substitution.toString()) continue
                         }
                         v.substitution = substitution
+                        directSolvedConstraints.add(c)
                         postMinActions.push(valuation => {
                             v.currentValue = evaluate(substitution, valuation)
                             if (DEBUG_CONSTRAINTS) console.log("Solving by substitution " + v + " <- " + v.currentValue)
@@ -462,7 +463,6 @@ class Figure {
         for (const v of solvedVariables) {
             if (!v.directSolved) trySubstitution(v)
         }
-        if (DEBUG) console.log("Substitutable variables: " + substitutable)
 
         // Assign a fresh index to variable v if it is not to be solved directly
         function assignIndex(v) {
@@ -483,6 +483,7 @@ class Figure {
             assignIndex(v)
         }
 
+        const activeConstraints = new Set()  // to use in minimization
         // create the set of constraints that minimization should try to minimize
         for (const c of enabledConstraints) {
             if (!directSolvedConstraints.has(c)) activeConstraints.add(c)
@@ -496,7 +497,7 @@ class Figure {
         this.activeVariables = activeVariables
         this.postMinActions = postMinActions
         if (DEBUG) {
-            console.log("Stage " + stage + ": Variables solved by minimization: ", activeVariables.length)
+            console.log("Stage " + stage + ", component " + component + ": Variables solved by minimization: ", activeVariables.length)
             console.log("  Constraints solved by minimization: ", activeConstraints.size)
             console.log("  Directly solved variables: ", directlySolved)
             console.log("  Substituted variables: ", substitutable)
