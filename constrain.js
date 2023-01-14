@@ -294,8 +294,9 @@ class Figure {
         let i = 0
         const frame = this.currentFrame
         if (DEBUG && DEBUG_CONSTRAINTS) {
-            console.log("Numbering variables for " + this.name +
-                ", frame " + (frame ? frame.index : "none") + ", stage " + this.stage)
+            console.log("-- Setting up solving for " + this.name +
+                ", frame " + (frame ? frame.index : "none") + ", stage " + stage
+                + (component ? (", component " + component) : " (all components)") + " --")
         }
         this.Variables.forEach(v => v.removeIndex())
         this.Constraints.forEach(c => { delete c.directSolved })
@@ -455,6 +456,7 @@ class Figure {
                         })
                         substitutable++
                         if (DEBUG_CONSTRAINTS) console.log("Substitution: " + v + " <- " + v.substitution)
+                        return
                     }
                 }
             }
@@ -497,8 +499,9 @@ class Figure {
         this.activeVariables = activeVariables
         this.postMinActions = postMinActions
         if (DEBUG) {
-            console.log("Stage " + stage + ", component " + component + ": Variables solved by minimization: ", activeVariables.length)
+            console.log("Stage " + stage + ", component " + component)
             console.log("  Constraints solved by minimization: ", activeConstraints.size)
+            console.log("  Variables solved by minimization: ", activeVariables.length)
             console.log("  Directly solved variables: ", directlySolved)
             console.log("  Substituted variables: ", substitutable)
         }
@@ -722,8 +725,8 @@ class Figure {
             console.error("Need initial valuation")
         }
         if (valuation.length == 0) {
-            if (DEBUG) console.log("  No nonlinear minimization needed")
-            return [valuation, "No nonlinear minimization needed"]
+            if (DEBUG) console.log("  No minimization needed")
+            return [valuation, "No minimization needed"]
         }
         const task = USE_BACKPROPAGATION ? new BackPropagation(this.activeVariables) : undefined
         if (USE_BACKPROPAGATION) {
@@ -2245,8 +2248,7 @@ class BackPropagation {
         for (let i = es.length - 1; i >= 0; i--) {
             const e = es[i]
             if (e.currentValue === undefined) {
-                console.log("Has an undefined value: " + e)
-                console.log("trying again: ", evaluate(e, valuation))
+                evaluate(e, valuation)
             }
             if (e.bpDiff == 0) continue
             e.backprop(this)
