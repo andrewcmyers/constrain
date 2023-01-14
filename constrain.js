@@ -667,6 +667,8 @@ class Figure {
             this.components[stage] = components
         } // otherwise, reuse previously computed components
 
+        solution = [[], "No minimization needed"]
+
         // console.log(`Stage ${stage}: ${components.length} components`)
         for (const component of components) {
             this.activeComponent = component
