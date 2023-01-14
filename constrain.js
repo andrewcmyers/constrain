@@ -2068,9 +2068,9 @@ class Variable extends Expression {
         if (this.index === undefined) {
             const substitution = this.substitution
             if (substitution) return evaluate(substitution, valuation, doGrad)
-            return this.currentValue
-                || this.hint
-                || (console.error("undefined variable??"), 0)
+            if (this.hasOwnProperty('currentValue')) return this.currentValue
+            return this.hint
+                   || (console.error("undefined variable??"), 0)
         }
         if (doGrad) {
             let g = this.grad, n = valuation.length
