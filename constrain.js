@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = true, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -1112,10 +1112,10 @@ class Figure {
     }
     geq(...args) {
         args.forEach(x => legalExpr(x))
-        if (args.length == 2) return new NearZero(this, new Relu(new Minus(args[1], args[0])))
+        if (args.length == 2) return new NearZero(this, new Relu(this.minus(args[1], args[0])))
         const a = []
         for (let i = 1; i < args.length; i++) {
-            a.push(new NearZero(this, new Relu(new Minus(args[i], args[i-1]))))
+            a.push(new NearZero(this, new Relu(this.minus(args[i], args[i-1]))))
         }
         return new ConstraintGroup(this, a)
     }
@@ -1124,10 +1124,10 @@ class Figure {
     }
     leq(...args) {
         args.forEach(x => legalExpr(x))
-        if (args.length == 2) return new NearZero(this, new Relu(new Minus(args[0], args[1])))
+        if (args.length == 2) return new NearZero(this, new Relu(this.minus(args[0], args[1])))
         const a = []
         for (let i = 1; i < args.length; i++) {
-            a.push(new NearZero(this, new Relu(new Minus(args[i-1], args[i]))))
+            a.push(new NearZero(this, new Relu(this.minus(args[i-1], args[i]))))
         }
         return new ConstraintGroup(this, a)
     }
@@ -1516,7 +1516,7 @@ class Figure {
         return new Minus(legalExpr(x), legalExpr(y))
     }
     times(...args) {
-        args = args.flat().map(a => legalExpr(a))
+        args = args.flat().map(a => legalExpr(a)).filter(x => x != 1)
         if (args.some(x => x == 0)) return 0
         switch (args.length) {
             case 0: return 1
