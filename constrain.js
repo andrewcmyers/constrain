@@ -110,7 +110,7 @@ class Figure {
         if (typeof canvas == OBJECT_STR && canvas instanceof HTMLCanvasElement) {
             this.canvas = canvas
             this.name = canvas.id
-        } else if (typeof canvas == "string") {
+        } else if (typeof canvas == STRING_STR) {
             const c = document.getElementById(canvas)
             if (c) {
                 this.canvas = canvas = c
@@ -431,7 +431,7 @@ class Figure {
         }
 
         function simpleExpr(e) {
-            return (e instanceof Variable) || (typeof e == 'number') || (e instanceof Global)
+            return (e instanceof Variable) || (typeof e == NUMBER) || (e instanceof Global)
         }
 
         function trySubstitution(v) {
@@ -2025,8 +2025,8 @@ class Expression {
     */
 function legalExpr(e) {
     if (e instanceof Expression ||
-        typeof e == "number" ||
-        (typeof e == "object" && Array.isArray(e))) {
+        typeof e == NUMBER ||
+        (typeof e == OBJECT_STR && Array.isArray(e))) {
             return e;
     }
     console.error("Illegal expression: " + e)
@@ -5102,7 +5102,7 @@ class ContainedText {
         const tc = new TextContext(null, this.figure),
             font = this.font,
             lineSpacing = font.getSize() *
-                (typeof this.lineSpacing == "number" ? this.lineSpacing : 1)
+                (typeof this.lineSpacing == NUMBER ? this.lineSpacing : 1)
         tc.setAll({font, verticalAlign: "center",
             justification: "left", lineSpacing, inset: 0,
             layoutAlgorithm: "greedy",
@@ -5972,7 +5972,7 @@ class DebugExpr extends Expression {
 class DOMElementBox extends LayoutObject {
     constructor(figure, id) {
         super()
-        if (typeof id == "string") {
+        if (typeof id == STRING_STR) {
             this.obj = document.getElementById(id)
             if (!this.obj) {
                 console.error("Can't find DOM element with id  " + id)
