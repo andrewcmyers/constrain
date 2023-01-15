@@ -184,8 +184,6 @@ Constrain.Trees = function() {
             // this.positions.get(f) is an object that describes the position of this node
             // in frame i, as well as the animation plan for how to get 
             this.positions = new Map()
-            // this.groups.get(f) is the group of positions of descendants of this node in frame i
-            this.groups = new Map()
         }
 
         // Descendant node with value v or null if no such node exists.
@@ -252,7 +250,6 @@ Constrain.Trees = function() {
         // Create tree nodes and edges based on the specification node + children
         // edges are created in the specified frame.
         createNodes(frame, node, ...children) {
-            const child_group = []
             if (arguments.length <= 1) return
             for (const c of children) {
                 let cnode
@@ -264,8 +261,6 @@ Constrain.Trees = function() {
                 }
                 this.addEdge(frame, node, cnode)
             }
-            // child_group.push(cnode.group)
-            // this[children.length-1] = cnode
         }
         // Add an edge from node n1 to node n2 in the specified frame
         addEdge(frame, n1, n2) {
@@ -306,8 +301,7 @@ Constrain.Trees = function() {
             // console.log("outgoing from " + node.value + ":" + outgoing.map(n => n.value).join(","))
             for (const c of outgoing) {
                 this.frameNodeConstraints(frame, c, edges, horzSpacing, vertSpacing)
-                const cgroup = c.groups.get(frame),
-                      cpos = c.positions.get(frame)
+                const cpos = c.positions.get(frame)
                 if (c.value !== undefined) {
                     /*
                     this.exclusiveAfters.add(figure.after(frame,
@@ -341,8 +335,6 @@ Constrain.Trees = function() {
                 }
                 prev_sib = c
             }
-            const node_group = outgoing.map(n => n.groups.get(frame))
-            node_group.push(node.gobj)
             switch (outgoing.length) {
                 case 0: break
                 case 1: constraints.push(figure.equal(pos.x(), outgoing[0].positions.get(frame).x()))
@@ -353,8 +345,6 @@ Constrain.Trees = function() {
                          figure.average(outgoing[0].positions.get(frame).x(),
                                  outgoing[outgoing.length-1].positions.get(frame).x())))
             }
-            const obj_group = figure.group(...node_group)
-            node.groups.set(frame, obj_group)
             /*
                 const r = figure.rectangle().at(obj_group).setStrokeStyle("orange").setFillStyle(null)
                 figure.sameSize(r, obj_group)
@@ -459,6 +449,7 @@ Constrain.Trees = function() {
             this.roots.set(frame, oldRoot == parentNode ? node : oldRoot)
             this.frameConstraints(frame)
         }
+        // In the specified frame, remove the leaf node `node`.
         removeLeaf(frame, node) {
             const prevFrame = this.figure.prevFrame(frame),
                   prevEdges = this.getFrameEdges(prevFrame),
@@ -471,8 +462,10 @@ Constrain.Trees = function() {
             this.roots.set(frame, oldRoot)
             this.frameConstraints(frame)
         }
-        // Create a new leaf node containing value at the given position in the
-        // children of the given parent node.
+        // In the specified frame, create a new leaf node containing value at
+        // the given position in the children of the given parent node.
+        // Children at that position or later have their position increased. If
+        // position is omitted, the new leaf is added as the last child.
         addLeaf(frame, value, parentNode, position) {
             const prevFrame = this.figure.prevFrame(frame),
                   prevEdges = this.getFrameEdges(prevFrame),
@@ -567,19 +560,27 @@ Constrain.Trees = function() {
             this.tree = tree
             this.frame = frame || tree.figure.currentFrame
         }
+        // Swap the position of the node with this value and that of its parent.
         swapNodeWithParent(value) {
             this.tree.swapNodeWithParent(this.frame, this.tree.findNode(value))
         }
+        // Perform a tree rotation to move the node with the specified value above
+        // its current parent.
         rotateNodeWithParent(value) {
             this.tree.rotateNodeWithParent(this.frame, this.tree.findNode(value))
         }
         getEdges() {
             return this.tree.getFrameEdges(this.frame)
         }
+        // Create a new leaf node containing value at the given position in the
+        // children of the given parent node. Children at that position or later
+        // have their position increased. If position is omitted, the new leaf
+        // is added as the last child.
         addLeaf(value, parentValue, position) {
             this.tree.addLeaf(this.frame, value,
                               this.tree.findNode(parentValue), position)
         }
+        // Remove the leaf node with this value.
         removeLeaf(value) {
             this.tree.removeLeaf(this.frame, this.tree.findNode(value))
         }
