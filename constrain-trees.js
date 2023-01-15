@@ -331,10 +331,10 @@ Constrain.Trees = function() {
                           // console.log("because of siblings " + prev_sib + " and " + c + ", separating " + sib_rightmost.value + " and "  + c_leftmost.value)
                     const hconstr = figure.after(frame,
                         figure.equal(figure.minus(c_leftmost.positions.get(frame).x(),
-                                    sib_rightmost.positions.get(frame).x()),
-                              figure.plus(figure.times(0.5, sib_rightmost.gobj.w()),
-                                   figure.times(0.5, c_leftmost.gobj.w()),
-                                   horzSpacing)))
+                                                  sib_rightmost.positions.get(frame).x()),
+                                     figure.plus(figure.times(0.5, sib_rightmost.gobj.w()),
+                                                 figure.times(0.5, c_leftmost.gobj.w()),
+                                                 horzSpacing)))
                     hconstr.description = 'Horizontal spacing of children of ' + node.value
                     constraints.push(hconstr)
                     this.inclusiveAfters.add(hconstr)
@@ -353,8 +353,13 @@ Constrain.Trees = function() {
                          figure.average(outgoing[0].positions.get(frame).x(),
                                  outgoing[outgoing.length-1].positions.get(frame).x())))
             }
-            node.groups.set(frame, figure.group(...node_group))
-            constraints.push(...figure.align("distribute", "center",
+            const obj_group = figure.group(...node_group)
+            node.groups.set(frame, obj_group)
+            /*
+                const r = figure.rectangle().at(obj_group).setStrokeStyle("orange").setFillStyle(null)
+                figure.sameSize(r, obj_group)
+            */
+            constraints.push(...figure.align("none", "center",
                                     ...outgoing.map(c => c.positions.get(frame))))
 
             const pf = figure.prevFrame(frame),
@@ -362,13 +367,9 @@ Constrain.Trees = function() {
                   gobj = node.gobj,
                   target = gobj.target(),
                   gobj_constrs = prevpos
-                    ? figure.after(frame,
-                            figure.equal(target.x(), figure.smooth(frame, prevpos.x(), pos.x())),
-                            figure.equal(target.y(), figure.smooth(frame, prevpos.y(), pos.y())))
-                    : figure.after(frame, 
-                            figure.equal(target.x(), pos.x()),
-                            figure.equal(target.y(), pos.y()))
-            for (const a of gobj_constrs) {
+                    ? figure.after(frame, figure.equal(target, figure.smooth(frame, prevpos, pos)))
+                    : figure.after(frame, figure.equal(target, pos))
+            for (const a of [gobj_constrs]) {
                 this.exclusiveAfters.add(a)
                 constraints.push(a)
             }
@@ -514,9 +515,8 @@ Constrain.Trees = function() {
             this.vertSpacings.set(frame, vertSpacing)
             figure.after(frame,
                 figure.geq(horzSpacing, 0),
-                figure.geq(vertSpacing, 0)).forEach(a => 
-                    this.inclusiveAfters.add(a)
-                )
+                figure.geq(vertSpacing, 0))
+              .forEach(a => this.inclusiveAfters.add(a))
             const decoration = this.style.decorateRoot(root)
             if (decoration) {
                 const a = figure.after(frame, decoration)
