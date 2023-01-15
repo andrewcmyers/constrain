@@ -8,9 +8,21 @@ Constrain.Trees = function() {
                 this.edges = new Array(...oldEdges.edges)
             }
         }
-        // Add edge [n1, n2] at the end of the list
-        addEdge(n1, n2) {
-            this.edges.push([n1, n2])
+        // Add edge [n1, n2] at position i among the children of n1, or as the last child
+        // if i is not specified.
+        addEdge(n1, n2, i) {
+            if (i === undefined) {
+                this.edges.push([n1, n2])
+            } else {
+                let seen = 0
+                for (let j = 0; j < this.edges.length; j++) {
+                    if (seen == i) {
+                        this.edges.splice(j, 0, [n1, n2])
+                        break
+                    }
+                    if (this.edges[j][0] == n1) seen++
+                }
+            }
             delete this.outgoing
             return this
         }
@@ -467,9 +479,8 @@ Constrain.Trees = function() {
                   oldRoot = this.getFrameRoot(prevFrame)
             const node = new Node(this, value)
             this.figure.after(frame, node.gobj).description = 'Graphical object for added leaf ' + value
-            newEdges.addEdge(parentNode, node)
+            newEdges.addEdge(parentNode, node, position)
             this.edges.set(frame, newEdges)
-            this.roots.set(frame, oldRoot)
             this.frameConstraints(frame)
         }
         frameConstraints(frame) {
