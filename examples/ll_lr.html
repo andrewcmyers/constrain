@@ -70,13 +70,11 @@ with (new Constrain.Figure("case_LL_LR")) {
     setFillStyle("#fdc")
     const ll = tree(new RotTree(thisFigure()), "z", ["y", ["x", "A", "B"],"C"], "D"),
           lr = tree(new RotTree(thisFigure()), "z", ["x", "A", ["y", "B","C"]], "D")
-    const trees = group(ll.bbox, lr.bbox).align("distribute", "TB")
+    const trees = group(ll.bbox, lr.bbox).align("none", "TB")
     equal(ll.bbox.w(), lr.bbox.w(), 200)
     equal(trees.y0(), 10)
     const ll_label = label("LL case"), lr_label = label("LR case")
     align("none", "B", ll_label, lr_label, margin().toBottom(-5))
-    align("none", "abut", trees, ll_label)
-    align("none", "abut", trees, lr_label)
     align("center", "abut", ll.bbox, vspace(10), ll_label)
     align("center", "abut", lr.bbox, vspace(10), lr_label)
     const ll1 = ll.view(), lr1 = lr.view()
@@ -107,7 +105,7 @@ with (new Constrain.Figure("case_LL_LR")) {
 
     setStrokeStyle("black")
 
-    equal(lr1.findObj("D").x1(), minus(margin().x1(), 20))
+    equal(lr.bbox.x1(), minus(margin().x1(), 20))
 
     equal(p1.x(), 10)
     let f1, f2, f3

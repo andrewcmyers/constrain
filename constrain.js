@@ -2763,11 +2763,11 @@ class Linear extends Expression {
     }
     interp(t) { return t }
     evaluate(valuation, doGrad) {
-        const figure = this.figure
-        if (figure.currentFrame.isBefore(this.frame)) {
+        const figure = this.figure, currentFrame = figure.currentFrame
+        if (currentFrame.isBefore(this.frame)) {
             return evaluate(this.e1, valuation, doGrad)
         }
-        if (figure.currentFrame.isAfter(this.frame) && figure.currentFrame != this.frame) {
+        if (currentFrame.isAfter(this.frame) && currentFrame != this.frame) {
             return evaluate(this.e2, valuation, doGrad)
         }
     // const v = this.checkCache(valuation, doGrad)
@@ -2800,18 +2800,23 @@ class Linear extends Expression {
         return union(exprVariables(this.e1), exprVariables(this.e2))
     }
     backprop(task) {
-      const b = this.interp(this.figure.animationTime), a = 1-b,
-            figure = this.figure
-      if (figure.currentFrame.isBefore(this.frame))
+      const figure = this.figure, currentFrame = figure.currentFrame
+      if (currentFrame.isBefore(this.frame)) {
+        task.propagate(this.e1, this.bpDiff)
+      } else if (currentFrame.isAfter(this.frame) && currentFrame != this.frame) {
+        task.propagate(this.e2, this.bpDiff)
+      } else {
+        const b = this.interp(this.figure.animationTime),
+              a = 1 - b
         task.propagate(this.e1, numeric.mul(a, this.bpDiff))
-      if (figure.currentFrame.isAfter(this.frame))
         task.propagate(this.e2, numeric.mul(b, this.bpDiff))
+      }
     }
     addDependencies(task) {
-        const figure = this.figure
-        if (figure.currentFrame.isBefore(this.frame))
+        const figure = this.figure, currentFrame = figure.currentFrame
+        if (currentFrame.isBefore(this.frame) || currentFrame == this.frame)
             task.prepareBackProp(this.e1)
-        if (figure.currentFrame.isAfter(this.frame)) 
+        if (currentFrame.isAfter(this.frame)) 
             task.prepareBackProp(this.e2)
     }
     toString() {
