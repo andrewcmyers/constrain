@@ -246,6 +246,7 @@ Constrain.Trees = function() {
             this.constraints = new Map() // map from frames to arrays of constraints
             this.bbox = figure.box()
             this.frameConstraints(frame)
+            this.deferConstraints = false // whether to defer generating constraints
         }
         // Create tree nodes and edges based on the specification node + children
         // edges are created in the specified frame.
@@ -291,7 +292,7 @@ Constrain.Trees = function() {
             const constraints = this.constraints.get(frame)
             const figure = this.figure
             constraints || console.error("No constraints for " + frame)
-            if (node.positions.get(frame)) {
+            if (node.positions && node.positions.get(frame)) {
                 console.error("cycle detected")
                 return
             }
@@ -366,15 +367,13 @@ Constrain.Trees = function() {
         }
         // copy edges from the previous frame to this frame
         copyEdges(frame) {
-            const prevFrame = this.figure.prevFrame(frame),
-                  prevEdges = this.getFrameEdges(prevFrame),
+            const prevEdges = this.getFrameEdges(frame),
                   newEdges = new Edges(prevEdges)
             this.edges.set(frame, newEdges)
         }
         // Make the animation for this frame be swapping this node with its parent
         swapNodeWithParent(frame, node) {
-            const prevFrame = this.figure.prevFrame(frame),
-                  prevEdges = this.getFrameEdges(prevFrame),
+            const prevEdges = this.getFrameEdges(frame),
                   newEdges = new Edges(prevEdges)
             if (!prevEdges) {
                 console.error("No tree configuration for previous frame")
@@ -397,7 +396,7 @@ Constrain.Trees = function() {
             newEdges.replaceEdge(node, parentNode, parentNode, node)
             this.edges.set(frame, newEdges)
             this.roots.set(frame, oldRoot == parentNode ? node : oldRoot)
-            this.frameConstraints(frame)
+            if (!this.deferConstraints) this.frameConstraints(frame)
         }
         emptyLeaf() {
             return new Node(this, undefined)
@@ -410,8 +409,7 @@ Constrain.Trees = function() {
         //       n   c ←---  a   p
         //      / \      L      / \
         //      a  b           b   c
-            const prevFrame = this.figure.prevFrame(frame),
-                  prevEdges = this.getFrameEdges(prevFrame),
+            const prevEdges = this.getFrameEdges(frame),
                   newEdges = new Edges(prevEdges)
             if (!prevEdges) {
                 console.error("No tree configuration for previous frame")
@@ -447,41 +445,52 @@ Constrain.Trees = function() {
             }
             this.edges.set(frame, newEdges)
             this.roots.set(frame, oldRoot == parentNode ? node : oldRoot)
-            this.frameConstraints(frame)
+            if (!this.deferConstraints) this.frameConstraints(frame)
         }
-        // In the specified frame, remove the leaf node `node`.
-        removeLeaf(frame, node) {
-            const prevFrame = this.figure.prevFrame(frame),
-                  prevEdges = this.getFrameEdges(prevFrame),
+        // In the specified frame, remove the leaf node `node`. If node2 is provided
+        // replace with that node.
+        removeLeaf(frame, node, node2) {
+            const prevEdges = this.getFrameEdges(frame),
                   newEdges = new Edges(prevEdges),
-                  oldRoot = this.getFrameRoot(prevFrame)
-            this.figure.before(frame, node.gobj)
+                  oldRoot = this.getFrameRoot(frame)
             const parent = prevEdges.getParentNode(node)
-            newEdges.removeEdge(parent, node)
+            if (node2) {
+                newEdges.replaceEdge(parent, node2, parent, node)
+            } else {
+                newEdges.removeEdge(parent, node)
+            }
             this.edges.set(frame, newEdges)
             this.roots.set(frame, oldRoot)
-            this.frameConstraints(frame)
+            if (!this.deferConstraints) this.frameConstraints(frame)
         }
         // In the specified frame, create a new leaf node containing value at
         // the given position in the children of the given parent node.
         // Children at that position or later have their position increased. If
         // position is omitted, the new leaf is added as the last child.
         addLeaf(frame, value, parentNode, position) {
-            const prevFrame = this.figure.prevFrame(frame),
-                  prevEdges = this.getFrameEdges(prevFrame),
-                  newEdges = new Edges(prevEdges),
-                  oldRoot = this.getFrameRoot(prevFrame)
+            const prevEdges = this.getFrameEdges(frame),
+                  newEdges = new Edges(prevEdges)
             const node = new Node(this, value)
             this.figure.after(frame, node.gobj).description = 'Graphical object for added leaf ' + value
             newEdges.addEdge(parentNode, node, position)
             this.edges.set(frame, newEdges)
-            this.frameConstraints(frame)
+            if (!this.deferConstraints) this.frameConstraints(frame)
+        }
+        spliceNode(frame, node) {
+            const prevEdges = this.getFrameEdges(frame),
+                  newEdges = new Edges(prevEdges),
+                  parentNode = prevEdges.getParentNode(node),
+                  children = prevEdges.getChildren(node)
+            newEdges.replaceEdge(parentNode, children[0], parentNode, node)
+            this.edges.set(frame, newEdges)
+            if (!this.deferConstraints) this.frameConstraints(frame)
         }
         frameConstraints(frame) {
             const figure = this.figure
             if (this.constraints.get(frame)) {
                 console.error("Oops, already have constraints for frame " + frame)
             }
+            this.deferConstraints = false
             // Make all current tree constraints end either before this frame
             // starts or on this frame, depending on whether they are graphical
             // constraints or geometric ones.
@@ -582,7 +591,17 @@ Constrain.Trees = function() {
         }
         // Remove the leaf node with this value.
         removeLeaf(value) {
-            this.tree.removeLeaf(this.frame, this.tree.findNode(value))
+            const node = this.tree.findNode(value)
+            this.tree.removeLeaf(this.frame, node)
+        }
+        replaceLeaf(value1, value2) {
+            const node = this.tree.findNode(value1)
+            const node2 = new Node(this.tree, value2)
+            this.tree.removeLeaf(this.frame, node, node2)
+        }
+        spliceNode(value) {
+            const node = this.tree.findNode(value)
+            this.tree.spliceNode(this.frame, node)
         }
 
         rootGraphicalObject() {
