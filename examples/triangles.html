@@ -103,12 +103,10 @@ with (figure) {
                 return e
             }
         }
-        let w1 = debugExpr("w1", variable("w1", 0.5)), w2 = debugExpr("w2", variable("w2", 0.5)), w3 = minus(1, plus(w1, w2))
+        let w1 = debugExpr("w1", variable("w1", 0.33)), w2 = debugExpr("w2", variable("w2", 0.33)), w3 = debugExpr("w3", minus(1, plus(w1, w2)))
         geq(w1, 0).changeCost(100); geq(w2, 0).changeCost(100); geq(w3, 0).changeCost(100);
-        leq(w1, 1).changeCost(100); leq(w2, 1).changeCost(100); leq(w3, 1).changeCost(100);
+        leq(w1, 1); leq(w2, 1); leq(w3, 1);
         keepInside(inscribed, triangle)
-          geq(inscribed.x0(), min(p2.x(), h1.x()))
-          leq(inscribed.x1(), max(p3.x(), h1.x()))
         equal(inscribed.x(), plus(times(w1, h1.x()), times(w2, p2.x()), times(w3, p3.x())))
         equal(inscribed.y(), plus(times(w1, h1.y()), times(w2, p2.y()), times(w3, p3.y())))
         equal(inscribed.y1(), p2.y()).changeCost(10)
