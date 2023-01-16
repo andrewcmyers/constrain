@@ -1,0 +1,167 @@
+<html>
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        position: fixed; left:0; top: 0;
+        background-color: transparent;
+        max-width: 100%; width: 100%; height: 100%
+    }
+  </style>
+  
+</head>
+<body>
+<h1>Triangle demo (this should be hidden)</h1>
+
+<canvas id=triangle></canvas>
+
+<button>Show solving</button>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+Constrain.fullWindowCanvas(canvas)
+
+const figure = new Constrain.Figure(canvas)
+
+canvas.style.backgroundColor = "#eee"
+
+const CIRCUMCENTER = true,
+      INCENTER = true,
+      ORTHOCENTER = true,
+      CENTROID = true
+
+Constrain.setupTouchListeners()
+with (figure) {
+    // figure.animatedSolving = true
+    // function freeze() {}
+    function dot() {
+        return circle().setW(8).setFillStyle("black")
+    }
+    let h1 = handle().setStrokeStyle("red")
+    let temp1 = equal(h1.y(), 0),
+        temp2 = equal(h1.x(), 400)
+
+    let p2 = point(variable("p2x", 0), variable("p2y", 400)),
+        p3 = point(variable("p3x", 400), variable("p3y", 400)),
+        cr = canvasRect()
+
+    const triangle = polygon([h1, p2, p3]).setFillStyle("white").setLineWidth(2)
+    let circum
+
+    align("none", "center", p2, p3)
+    let b = box().at(cr)
+    equal(b.w(), times(cr.w(), 0.5))
+    equal(b.h(), times(cr.h(), 0.5))
+    pin(p2, b.ll())
+    pin(p3, b.lr())
+    
+    hint(h1, [200,0])
+    keepInside(h1, cr.inset(20))
+    leq(h1.y(), minus(p2.y(), 50))
+
+    let m1 = average(h1, p2),
+        m2 = average(h1, p3),
+        m3 = average(p2, p3)
+
+    if (CIRCUMCENTER) {
+        freeze()
+        circum = circle("#def", null, null, 200, 400, 400)
+        circum.placeUnder(triangle)
+        equal(distance(h1, circum), distance(p2, circum), distance(p3, circum),
+              times(0.5, circum.w()))
+
+        let l1 = line().setLineDash([4,4]).setStart(circum).setEnd(m1),
+            l2 = line().setLineDash([4,4]).setStart(circum).setEnd(m2),
+            l3 = line().setLineDash([4,4]).setStart(circum).setEnd(m3)
+        l1.setLineDash([4,4])
+        pin(l1.start(), l2.start(), l3.start(), circum)
+        dot().at(circum)
+        align("abut", "center", circum.center(), hspace(7), label("circumcenter"))
+    }
+    let centroid
+    if (CENTROID) {
+        freeze()
+        line().setStart(h1).setEnd(m3).setLineDash([2,6]).setStrokeStyle("#080")
+        line().setStart(p2).setEnd(m2).setLineDash([2,6]).setStrokeStyle("#080")
+        line().setStart(p3).setEnd(m1).setLineDash([2,6]).setStrokeStyle("#080")
+        centroid = point(plus(times(1/3, h1.x()), times(2/3, m3.x())),
+                        plus(times(1/3, h1.y()), times(2/3, m3.y())))
+        align("abut", "center", centroid, hspace(7), label("centroid"))
+        dot().at(centroid)
+    }
+
+    if (INCENTER) {
+        freeze()
+        let inscribed = circle("#ffe")
+        inscribed.placeOver(triangle)
+        let incenter = inscribed.center()
+        function debugExpr(n, e) {
+            if (Constrain.DEBUG) {
+                return new Constrain.DebugExpr(n, e)
+            } else {
+                return e
+            }
+        }
+        let w1 = debugExpr("w1", variable("w1", 0.33)), w2 = debugExpr("w2", variable("w2", 0.33)), w3 = debugExpr("w3", minus(1, plus(w1, w2)))
+        geq(w1, 0).changeCost(100); geq(w2, 0).changeCost(100); geq(w3, 0).changeCost(100);
+        leq(w1, 1); leq(w2, 1); leq(w3, 1);
+        // keepInside(inscribed, triangle)
+        equal(inscribed.center(), plus(times(w1, h1), times(w2, p2), times(w3, p3)))
+        // equal(inscribed.x(), plus(times(w1, h1.x()), times(w2, p2.x()), times(w3, p3.x())))
+        // equal(inscribed.y(), plus(times(w1, h1.y()), times(w2, p2.y()), times(w3, p3.y())))
+        equal(inscribed.y1(), p2.y()).changeCost(10)
+        new Array(h1, p2, p3).forEach(p => 
+            line().setStart(p).setEnd(incenter).setLineDash([2,6]).setStrokeStyle("#800")
+        )
+        dot().at(incenter)
+        align("abut", "center", incenter, hspace(7), label("incenter"))
+        const ip1 = point(), ip2 = point(), ip3 = point()
+        between(ip1, h1, p2).changeCost(100)
+        between(ip2, p2, p3).changeCost(100)
+        between(ip3, p3, h1).changeCost(100)
+
+        perpendicular(incenter, ip1, h1, p2)
+        perpendicular(incenter, ip2, p2, p3)
+        perpendicular(incenter, ip3, p3, h1)
+        const di1 = distance(ip1, incenter),
+              di2 = distance(ip2, incenter),
+              di3 = distance(ip3, incenter)
+        equal(times(0.5, inscribed.w()), di1, di2, di3)
+    }
+
+    if (ORTHOCENTER) {
+        freeze()
+        const op1 = point(), op2 = point(), op3 = point(), orthocenter = point()
+        collinear(op1, h1, p2)
+        collinear(op2, p2, p3)
+        collinear(op3, p3, h1)
+        collinear(p3, op1, orthocenter)
+        collinear(h1, op2, orthocenter)
+        collinear(p2, op3, orthocenter)
+        align("abut", "center", dot().at(orthocenter), hspace(7), label("orthocenter"))
+        perpendicular(h1, p2, p3, op1)
+        perpendicular(p2, p3, h1, op2)
+        perpendicular(p3, h1, p2, op3)
+        line().setStart(orthocenter).setEnd(op1).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op2).setLineDash([2, 6, 4, 6])
+        line().setStart(orthocenter).setEnd(op3).setLineDash([2, 6, 4, 6])
+        line().setStart(p3).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        line().setStart(h1).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        line().setStart(p2).setEnd(orthocenter).setLineDash([2, 6, 4, 6])
+        if (CIRCUMCENTER && ORTHOCENTER) {
+            line().setLineWidth(1).setStart(circum).setEnd(orthocenter)
+        }
+    }
+
+    updateValuation()
+    removeConstraints(temp1, temp2)
+
+
+    start()
+}
+Constrain.autoResize()
+
+</script>
+</body>
+</html>
