@@ -6136,6 +6136,7 @@ function reportPerformance(b) {
     setMinimizationAlgorithm, reportPerformance,
     UNCMIN_GRADIENT,
     UNCMIN_BFGS,
-    UNCMIN_LBFGS
+    UNCMIN_LBFGS,
+    DEBUG
   })
 }()
