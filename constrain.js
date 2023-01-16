@@ -23,9 +23,8 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false,
-      REPORT_PERFORMANCE = false
-
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+let REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -6119,6 +6118,9 @@ function autoResize() {
 function setMinimizationAlgorithm(a) {
     algorithm = a
 }
+function reportPerformance(b) {
+    REPORT_PERFORMANCE = b
+}
 
   return ({
     Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
@@ -6131,7 +6133,7 @@ function setMinimizationAlgorithm(a) {
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, currentValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
-    setMinimizationAlgorithm,
+    setMinimizationAlgorithm, reportPerformance,
     UNCMIN_GRADIENT,
     UNCMIN_BFGS,
     UNCMIN_LBFGS
