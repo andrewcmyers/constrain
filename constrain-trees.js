@@ -414,7 +414,7 @@ Constrain.Trees = function() {
             if (!prevEdges) {
                 console.error("No tree configuration for previous frame")
             }
-            const oldRoot = this.getFrameRoot(prevFrame),
+            const oldRoot = this.getFrameRoot(frame),
                   parentNode = prevEdges.getParentNode(node)
             if (!parentNode) return
             const gparentNode = prevEdges.getParentNode(parentNode),
