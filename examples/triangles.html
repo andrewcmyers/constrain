@@ -103,30 +103,39 @@ with (figure) {
                 return e
             }
         }
-        let w1 = debugExpr("w1", variable("w1", 0.33)), w2 = debugExpr("w2", variable("w2", 0.33)), w3 = debugExpr("w3", minus(1, plus(w1, w2)))
-        geq(w1, 0).changeCost(100); geq(w2, 0).changeCost(100); geq(w3, 0).changeCost(100);
+        let w1 = debugExpr("w1", variable("w1", 0.33)), w2 = debugExpr("w2", variable("w2", 0.33)), w3 = debugExpr("w3", variable("w3", 0.33))
+        geq(w1, 0); geq(w2, 0); geq(w3, 0)
         leq(w1, 1); leq(w2, 1); leq(w3, 1);
+        equal(1, plus(w1, w2, w3))
         keepInside(inscribed, triangle)
-        equal(inscribed.x(), plus(times(w1, h1.x()), times(w2, p2.x()), times(w3, p3.x())))
-        equal(inscribed.y(), plus(times(w1, h1.y()), times(w2, p2.y()), times(w3, p3.y())))
+        equal(inscribed, plus(times(w1, h1), times(w2, p2), times(w3, p3)))
         equal(inscribed.y1(), p2.y()).changeCost(10)
         new Array(h1, p2, p3).forEach(p => 
             line().setStart(p).setEnd(incenter).setLineDash([2,6]).setStrokeStyle("#800")
         )
         dot().at(incenter)
         align("abut", "center", incenter, hspace(7), label("incenter"))
-        const ip1 = point(), ip2 = point(), ip3 = point()
-        between(ip1, h1, p2).changeCost(100)
-        between(ip2, p2, p3).changeCost(100)
-        between(ip3, p3, h1).changeCost(100)
 
-        perpendicular(incenter, ip1, h1, p2)
-        perpendicular(incenter, ip2, p2, p3)
-        perpendicular(incenter, ip3, p3, h1)
-        const di1 = distance(ip1, incenter),
-              di2 = distance(ip2, incenter),
-              di3 = distance(ip3, incenter)
-        equal(times(0.5, inscribed.w()), di1, di2, di3)
+        // The signed distance from point p0 to the line p1 -> p2.
+        // Distance is negative if the point is on the left side of the line
+        // and positive if on the right side.
+        function point_to_line_dist(p0, p1, p2) {
+            const tl = times(minus(projection(p1, 0), projection(p0, 0)),
+                             minus(projection(p2, 1), projection(p1, 1)))
+            const tr = times(minus(projection(p1, 1), projection(p0, 1)),
+                             minus(projection(p2, 0), projection(p1, 0)))
+            const rad = plus(sq(minus(projection(p2, 0), projection(p1, 0))),
+                             sq(minus(projection(p2, 1), projection(p1, 1))))
+            return divide(minus(tr, tl), sqrt(rad))
+        }
+
+        const dj1 = point_to_line_dist(incenter, p2, p3),
+              dj2 = point_to_line_dist(incenter, p3, h1),
+              dj3 = point_to_line_dist(incenter, h1, p2)
+        geq(dj1, 0)
+        geq(dj2, 0)
+        geq(dj3, 0)
+        equal(times(0.5, inscribed.w()), dj1, dj2, dj3)
     }
 
     if (ORTHOCENTER) {

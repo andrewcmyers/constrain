@@ -26,10 +26,10 @@ const figure = new Constrain.Figure(canvas)
 
 canvas.style.backgroundColor = "#eee"
 
-const CIRCUMCENTER = true,
+const CIRCUMCENTER = false,
       INCENTER = true,
-      ORTHOCENTER = true,
-      CENTROID = true
+      ORTHOCENTER = false,
+      CENTROID = false
 
 Constrain.setupTouchListeners()
 with (figure) {
@@ -86,7 +86,7 @@ with (figure) {
         line().setStart(p2).setEnd(m2).setLineDash([2,6]).setStrokeStyle("#080")
         line().setStart(p3).setEnd(m1).setLineDash([2,6]).setStrokeStyle("#080")
         centroid = point(plus(times(1/3, h1.x()), times(2/3, m3.x())),
-                        plus(times(1/3, h1.y()), times(2/3, m3.y())))
+                         plus(times(1/3, h1.y()), times(2/3, m3.y())))
         align("abut", "center", centroid, hspace(7), label("centroid"))
         dot().at(centroid)
     }

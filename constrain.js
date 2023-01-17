@@ -678,10 +678,22 @@ class Figure {
                 delete component.invHessian
                 if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
             }
-            solution = this.solveConstraints(this.currentValuation, tol, component.invHessian)
+            solution = this.minimizeConstraintLoss(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
             this.postMinActions.forEach(solver => solver(solution[0]))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
+            if (DEBUG_CONSTRAINTS) {
+                for (const c of this.activeConstraints) {
+                    if (c instanceof Loss) {
+                        const loss = evaluate(c.expr, solution[0])
+                        if (Math.abs(loss > 0.01)) {
+                            console.log("Constraint " + c + ": loss = " + loss)
+                        }
+                    } else {
+                        //      console.error("huh?" + c)
+                    }
+                }
+            }
         }
       }
       if (PROFILE_EVALUATIONS) {
@@ -720,7 +732,7 @@ class Figure {
     }
     // Run the minimization-based solver. The parameter invHessian is optional, useful
     // for incrementally solving from a previous solution.
-    solveConstraints(valuation, tol, invHessian) {
+    minimizeConstraintLoss(valuation, tol, invHessian) {
         let doGrad = true, fig = this
         if (valuation === undefined) {
             console.error("Need initial valuation")
@@ -1511,7 +1523,15 @@ class Figure {
     variable(name, hint) {
         return new Variable(this, name, hint)
     }
+    /** Select a component of an array-valued expression like a point or
+     *  or graphical object. n is the size of the array, which is 2 by default.
+     */
     projection(expr, i, n) {
+        if (expr instanceof LayoutObject) {
+            if (i == 0) return expr.x()
+            if (i == 1) return expr.y()
+        }
+        if (n == undefined) n = 2
         return new Projection(expr, i, n)
     }
 
@@ -1550,6 +1570,7 @@ class Figure {
 
     plus(...args) {
         args = args.flat().map(a => legalExpr(a)).filter(x => x != 0)
+        if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x+y, 1)
         switch (args.length) {
             case 0: return 0
             case 1: return args[0]
@@ -1559,11 +1580,13 @@ class Figure {
     }
     minus(x, y) {
         if (y == 0) return x
+        if (typeof x == NUMBER && typeof y == NUMBER) return x - y
         return new Minus(legalExpr(x), legalExpr(y))
     }
     times(...args) {
         args = args.flat().map(a => legalExpr(a)).filter(x => x != 1)
         if (args.some(x => x == 0)) return 0
+        if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x*y, 1)
         switch (args.length) {
             case 0: return 1
             case 1: return args[0]
@@ -1572,6 +1595,7 @@ class Figure {
         }
     }
     divide(x, y) {
+        if (typeof x == NUMBER && typeof y == NUMBER) return x / y
         return new Divide(legalExpr(x), legalExpr(y))
     }
     abs(e) { return new Abs(legalExpr(e)) }
@@ -2023,6 +2047,13 @@ class Expression {
     addDependencies(task) {
         console.error("Don't know how to compute dependencies for this expression")
     }
+    isLegalPoint() {
+        console.error("Not a legal point: " + this)
+        return this
+    }
+    isLegalScalar() {
+        return this
+    }
 }
 
 /** Return e if it is a legal expression; otherwise, return a
@@ -2123,6 +2154,9 @@ class Variable extends Expression {
             return v
         }
         return this
+    }
+    isLegalPoint() {
+        return null
     }
 }
 
@@ -2362,6 +2396,10 @@ class Plus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.add(a, b) }
     gradop(a, b, da, db) { return [numeric.add(a, b), numeric.add(da, db)] }
+    isLegalPoint() {
+        if (legalPoint(this.e1) && legalPoint(this.e2)) return this
+        return null
+    }
     backprop(task) {
         task.propagate(this.e1, this.bpDiff)
         task.propagate(this.e2, this.bpDiff)
@@ -2398,10 +2436,17 @@ class Times extends BinaryExpression {
         const a = currentValue(this.e1),
               b = currentValue(this.e2),
               d = this.bpDiff
-        task.propagate(this.e1, numeric.mul(d,b))
-        task.propagate(this.e2, numeric.mul(d,a))
+        task.propagate(this.e1, numeric.dot(d,b))
+        task.propagate(this.e2, numeric.dot(d,a))
     }
     opName() { return " * " }
+    isLegalPoint() {
+        if (legalPoint(this.e1) && legalScalar(this.e2)
+         || legalPoint(this.e2) && legalScalar(this.e1)) {
+            return this
+        }
+        return null
+    }
 }
 
 // An expression x / y
@@ -3235,6 +3280,8 @@ class LayoutObject extends Expression {
     height() { return this.h() }
     w() { return 0 }
     h() { return 0 }
+    isLegalPoint() { return this }
+    isLegalScalar() { return null }
     variables() { return new Set() }
     connectionPts() {
         return [
@@ -3406,8 +3453,14 @@ function legalLayoutObject(o) {
 
 function legalPoint(p) {
     if (p.x && p.y) return p
-    console.error("Not a legal point: " + p)
-    return p
+    if (p instanceof Expression) return p.isLegalPoint()
+    return null
+}
+
+function legalScalar(e) {
+    if (typeof e == NUMBER) return e
+    if (e instanceof Expression) return e.isLegalScalar()
+    return null
 }
 
 // A Box is a layout object with a width and height. It does not necessarily
@@ -5977,6 +6030,9 @@ class DebugExpr extends Expression {
     }
     h() {
         return this.expr.h()
+    }
+    isLegalPoint() {
+        return legalPoint(this.expr)
     }
 }
 
