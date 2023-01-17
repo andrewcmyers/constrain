@@ -870,11 +870,17 @@ order.
 
 <h3>Costs</h3>
 <p>
-In general, the constraint solver cannot solve every constraint exactly. It works by trying to
-minimize a total cost over all constraints. Every constraint has an associated cost multiplier
-that is equal to 1 by default. Normally, this multiplier does not need to be
-changed, but it can be useful to change the cost of some constraints to make
-them softer or harder constraints relative to other constraints.
+In general, the constraint solver cannot solve every constraint exactly. It
+works by trying to minimize a total cost over all constraints. Every constraint
+has an associated cost multiplier that is equal to 1 by default. Normally, this
+multiplier does not need to be changed, but it can be useful to change the cost
+of some constraints to make them softer or harder constraints relative to other
+constraints. Constraints with a cost multiplier that is at least 1 are assumed
+to be hard constraints than can be solved exactly. The solver may optimize the
+solving process under that assumption; so, if the assumption is violated, it is
+likely to find a suboptimal solution. A cost multiplier strictly less than 1
+means the constraint is treated as a soft constraint that cannot be assumed to
+be satisfied exactly.
 </p>
 <h4>changeCost(c)</h4>
 <p>
@@ -1429,12 +1435,18 @@ problem it is solving.
 <p>
 Constraints are converted into loss terms whose value is always nonnegative and
 is zero when the constraint is solved. The constraints are then converted into
-a minimization problem that is passed to the well-known BFGS algorithm. If the
-constraints can be decomposed into independently solvable subsets, this is done
+a minimization problem that is passed to the well-known BFGS algorithm. If the set
+of constraints can be decomposed into independently solvable subsets, this is done
 automatically. In addition, each call to <code>freeze()</code> partitions the
-set of variables and constraints into a series of stages that are decomposed
-and solved independently.
+set of variables and constraints into a series of stages whose constraints are decomposed
+into independendent components that are solved independently.
 </p>
+<p>
+Loss terms have an associated cost multiplier; when the cost multiplier is less
+than one, the solver treats the constraint as a soft constraint whose loss may
+not be reducible to zero. Hard constraints, with loss greater than one, allow
+the solver to optimize by performing equational manipulations before trying to
+minimize loss.
 <p>
 Once a solution is found, any new instance of the minimization problem is
 passed the previous solution values, along with the approximate inverse
