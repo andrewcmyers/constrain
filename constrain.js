@@ -1665,12 +1665,13 @@ class Figure {
     sqr(x) { return new Sq(legalExpr(x)) }
     sq(x) { return new Sq(legalExpr(x)) }
     average(...args) {
-        if (args.length == 1) return legalExpr(args[0])
-        if (args.length == 2) {
+        const n = args.length
+        if (n == 0) return 0
+        if (n == 1) return legalExpr(args[0])
+        if (n == 2) {
             return new Average(legalExpr(args[0]), legalExpr(args[1]))
         }
-        const n = args.length
-        return plus(times(1/n, args[0]), times((n-1)/n, average(args.slice(1))))
+        return plus(times(1/n, args[0]), times((n-1)/n, average(...args.slice(1))))
     }
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
