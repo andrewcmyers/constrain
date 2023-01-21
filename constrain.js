@@ -1150,6 +1150,9 @@ class Figure {
     setFontSize(s) {
         return this.setStyle('fontSize', s)
     }
+    getFontSize() {
+        return this.getStyle('fontSize')
+    }
 
     // Set default font name
     setFontName(n) {
@@ -5088,7 +5091,7 @@ class LineLabel {
         this.figure = figure
         this.text = text
         this.position = position
-        this.offset = offset || figure.font.getSize()
+        this.offset = offset || figure.getFontSize()
         this.strokeStyle = null
         this.textStyle = figure.textStyle || "#000000"
         this.font = new Font(figure.currentStyle())
