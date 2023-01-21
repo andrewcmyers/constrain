@@ -318,6 +318,7 @@ class Figure {
             if (!enabledConstraints.has(c)) {
                 enabledConstraints.add(c)
                 c.variables().forEach(checkIfNeeded)
+                delete c.directSolved
             }
         }
 
@@ -402,7 +403,7 @@ class Figure {
             if (s.size > 1) return false
             v.solvePending = true
             for (const c of s.keys()) {
-                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus) {
+                if (c instanceof NearZero && c.expr instanceof Sq && c.expr.expr instanceof Minus && !c.directSolved) {
                     let e1 = c.expr.expr.e1, e2 = c.expr.expr.e2
                     let solve1 = solveFor(v, e1),
                         e2v = exprVariables(e2)
@@ -413,7 +414,13 @@ class Figure {
                     }
                     if (solve1 && !e2v.has(v)) {
                         for (const v2 of e2v) tryDirectSolve(v2)
+                        if (c.directSolved) { // oops, used it up already
+                            v.directSolved = false
+                            v.solvePending = false
+                            return false
+                        }
                         postMinActions.push(valuation => {
+                            v.currentValue = 0
                             v.currentValue = solve1(evaluate(e2, valuation), valuation)
                             if (DEBUG_CONSTRAINTS) console.log("Directly solving " + v + " <- " + v.currentValue)
                         })
@@ -427,7 +434,7 @@ class Figure {
                 }
                 v.directSolved = false // can't solve directly
                 v.solvePending = false
-                return
+                return false
             }
             console.error("can't get here")
         }
@@ -2274,7 +2281,7 @@ function evaluate(expr, valuation, doGrad) {
             } else {
                 if (CACHE_ALL_EVALUATIONS) {
                     const result1 = expr.checkCache(valuation, doGrad)
-                    if (result1) return result1
+                    if (result1 != undefined) return result1
                     const result2 = expr.evaluate(valuation, doGrad)
                     if (CHECK_NAN && checkNaNResult(result2)) {
                         console.error("result is NaN")
