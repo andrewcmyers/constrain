@@ -1424,7 +1424,7 @@ class Figure {
         return new CanvasRect(this.figure)
     }
     margin(n) {
-        return new CanvasRect(this.figure).inset(n === undefined ? this.lineWidth : n)
+        return new CanvasRect(this.figure).inset(n === undefined ? this.getLineWidth() : n)
     }
     rectangle(fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
         return new Rectangle(this, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint)
@@ -1664,7 +1664,14 @@ class Figure {
     sqrt(x) { return new Sqrt(legalExpr(x)) }
     sqr(x) { return new Sq(legalExpr(x)) }
     sq(x) { return new Sq(legalExpr(x)) }
-    average(x, y) { return new Average(legalExpr(x), legalExpr(y)) }
+    average(...args) {
+        if (args.length == 1) return legalExpr(args[0])
+        if (args.length == 2) {
+            return new Average(legalExpr(args[0]), legalExpr(args[1]))
+        }
+        const n = args.length
+        return plus(times(1/n, args[0]), times((n-1)/n, average(args.slice(1))))
+    }
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
@@ -4620,7 +4627,7 @@ function flattenGraphicalObjects(objects) {
 // intermediate objects along the way. Bezier splines are used to connect objects.
 class Connector extends GraphicalObject {
     constructor(figure, ...objects) {
-        super(figure, undefined, figure.strokeStyle, figure.lineWidth)
+        super(figure, undefined, figure.getStrokeStyle(), figure.getLineWidth())
         this.fillStyle = this.strokeStyle
         this.objects = flattenGraphicalObjects(objects)
         this.labels = []
