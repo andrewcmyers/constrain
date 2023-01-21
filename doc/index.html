@@ -679,6 +679,40 @@ objects in place. See <a href="#staged_solving">Staged solving</a> for
 more explanation.
 </p>
 
+<h4>saveStyle()</h4>
+<p>
+Save current style settings. Saved styles are pushed onto a stack.
+Further style changes can be made and then undone using <code>restoreStyle()</code>.
+</p>
+
+<pre id="savestyle_ex_code" class=code></pre>
+<div id="savestyle_ex">
+<canvas id=savestyle_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("savestyle_ex_fig")) {
+    setFontSize(12)
+    setFillStyle("lightBlue")
+    const c1 = circle().addText("Hello")
+    saveStyle()
+      setLineWidth(3)
+      setFontName("Times"); setFontStyle("italic")
+      setFontSize(8); setFillStyle("lightGreen")
+      circle().at(c1.lr()).setW(30).addText("X")
+    restoreStyle()
+    circle().at(c1.ul()).setW(30).addText("X")
+  }
+</script>
+</div>
+<script>
+    show_example("savestyle_ex_code", "savestyle_ex")
+</script>
+<h4>restoreStyle()</h4>
+<p>
+Restore the most recently saved style settings, removing them from the stack
+of saved styles. It is an error to call this method when there is no currently
+saved style.
+</p>
+
 <h4>setZoom(zoom)</h4>
 <p>
 By default the coordinate system of the figure is the same as the HTML

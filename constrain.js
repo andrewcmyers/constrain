@@ -136,15 +136,20 @@ class Figure {
         this.currentStage = 0
         this.numStages = 1
     // default styles
+        this.style = new Context()
         this.setFillStyle("white")
         this.setStrokeStyle("black")
         this.setTextStyle("black")
+        this.setFontName(Figure_defaults.FONT_NAME)
+        this.setFontStyle(Figure_defaults.FONT_STYLE)
+        this.setFontSize(Figure_defaults.FONT_SIZE)
         this.setLineWidth(Figure_defaults.LINEWIDTH)
-        this.font = new Font()
-        this.lineSpacing = Figure_defaults.LINE_SPACING
-        this.lineLabelInset = Figure_defaults.LINELABEL_INSET
-        this.arrowSize = Figure_defaults.ARROW_SIZE
-        this.connectionStyle = Figure_defaults.CONNECTION_STYLE
+        this.setLineSpacing(Figure_defaults.LINE_SPACING)
+        this.setLineLabelInset(Figure_defaults.LINELABEL_INSET)
+        this.setArrowSize(Figure_defaults.ARROW_SIZE)
+        this.setConnectionStyle(Figure_defaults.CONNECTION_STYLE)
+        this.setLineDash(null)
+
         this.repeat = false
         this.animatedSolving = false
         this.solverCallbacks = []
@@ -1087,64 +1092,101 @@ class Figure {
 
 // ---- default style control: some objects will use figure defaults if style parameters are not provided ----
 
+    // map key->value in the current figure style
+    setStyle(key, value) {
+        this.currentStyle().set(key, value)
+        return this
+    }
+    getStyle(key, required) {
+        return this.currentStyle().get(key, required)
+    }
+
     // Set the default fill style
     setFillStyle(style) {
-        this.fillStyle = style
+        return this.setStyle('fillStyle', style)
+    }
+    getFillStyle() {
+        return this.getStyle('fillStyle')
     }
 
     // Set the default stroke style
     setStrokeStyle(style) {
-        this.strokeStyle = style
+        return this.setStyle('strokeStyle', style)
+    }
+    getStrokeStyle() {
+        return this.getStyle('strokeStyle')
     }
 
     // Set the default text color/style
     setTextStyle(style) {
-        this.textStyle = style
+        return this.setStyle('textStyle', style)
     }
 
     // Set the default line width
     setLineWidth(w) {
-        this.lineWidth = w
+        return this.setStyle('lineWidth', w)
+    }
+    getLineWidth() {
+        return this.getStyle('lineWidth')
+    }
+
+    // set line dash
+    setLineDash(d) {
+        return this.setStyle('lineDash', d)
+    }
+    getLineDash() {
+        return this.getStyle('lineDash')
     }
 
     // Set the default arrow size
     setArrowSize(s) {
-        this.arrowSize = s
+        return this.setStyle('arrowSize', s)
+    }
+    getArrowSize() {
+        return this.getStyle('arrowSize')
     }
 
     // Set default font size
     setFontSize(s) {
-        this.font.setSize(s)
-        return this
+        return this.setStyle('fontSize', s)
     }
 
     // Set default font name
     setFontName(n) {
-        this.font.setName(n)
-        return this
+        return this.setStyle('fontName', n)
     }
 
     setFontStyle(sty) {
-        this.font.setStyle(sty)
-        return this
+        return this.setStyle('fontStyle', sty)
     }
 
     getFont() {
-        return this.font.copy()
+        return new Font(this.currentStyle())
     }
 
-    // Set default line spacing
+    // Line spacing in text, as a multiplier to the font size
     setLineSpacing(s) {
-        this.lineSpacing = s
-        return this
+        return this.setStyle('lineSpacing', s)
+    }
+    getLineSpacing() {
+        return this.getStyle('lineSpacing')
     }
 
+    // Inset of labels for lines
+    setLineLabelInset(x) {
+        return this.setStyle('lineLabelInset', x)
+    }
+    getLineLabelInset() {
+        return this.getStyle('lineLabelInset')
+    }
+
+    // connection style ('magnet' or 'intersection')
     setConnectionStyle(s) {
-        this.connectionStyle = s
-        return this
+        return this.setStyle('connectionStyle', s)
     }
-
-
+    getConnectionStyle() {
+        return this.getStyle('connectionStyle')
+    }
 
 // ---- utility functions for creating constraints ----
 
@@ -1455,20 +1497,16 @@ class Figure {
     }
     fontName(name, ...t) {
         return this.textContext(tc => {
-            const f = tc.get("font").copy();
-            f.setName(name)
-            return tc.set("font", f)
+            return tc.set('fontName', name)
         }, ...t)
     }
     fontSize(size, ...t) {
         return this.textContext(tc => {
-            const f = tc.get("font").copy();
-            f.setSize(size)
-            return tc.set("font", f)
+            return tc.set('fontSize', size)
         }, ...t)
     }
     textColor(c, ...t) {
-        return this.textContext(tc => tc.set("fillStyle", c), ...t)
+        return this.textContext(tc => tc.set('fillStyle', c), ...t)
     }
     hyphen() {
         return new Hyphen()
@@ -1485,8 +1523,21 @@ class Figure {
     negspace(offset) {
         return new NegSpace(offset)
     }
+    currentStyle() {
+        return this.style
+    }
+    saveStyle() {
+        this.style = new Context(this.style)
+    }
+    restoreStyle() {
+        if (this.style.parent) {
+            this.style = this.style.parent
+        } else {
+            console.error("Cannot pop last context from the context stack")
+        }
+    }
     textContext(f, ...t) {
-        return new ContextTransformer(tc => f(new TextContext(tc)), createText(...t))
+        return new ContextTransformer(tc => f(new Context(tc)), createText(...t))
     }
     textFrame(txt, fillStyle) {
         if (txt && !(txt instanceof ContainedText)) txt = new ContainedText(this, txt)
@@ -3500,15 +3551,16 @@ class Box extends LayoutObject {
 // It also has some style attributes and it may contain text.
 // LineWidth can be a constrained attribute too.
 class GraphicalObject extends Box {
-    constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, w_hint, h_hint) {
+    constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint,
+                y_hint, w_hint, h_hint) {
         super(figure, x_hint, y_hint, w_hint, h_hint)
 
         figure.GraphicalObjects.push(this)
 
-        this.fillStyle = fillStyle || figure.fillStyle
-        this.strokeStyle = strokeStyle || figure.strokeStyle
-        this.lineWidth = lineWidth || figure.lineWidth
-        this.lineDash = figure.lineDash
+        this.fillStyle = fillStyle || figure.getFillStyle()
+        this.strokeStyle = strokeStyle || figure.getStrokeStyle()
+        this.lineWidth = lineWidth || figure.getLineWidth()
+        this.lineDash = figure.getLineDash()
     }
 // builder methods for setting rendering style
     setFillStyle(s) {
@@ -4572,9 +4624,9 @@ class Connector extends GraphicalObject {
         this.fillStyle = this.strokeStyle
         this.objects = flattenGraphicalObjects(objects)
         this.labels = []
-        this.arrowSize = figure.arrowSize
-        this.connectionStyle = figure.connectionStyle
-        this.lineLabelInset = figure.lineLabelInset // may be null
+        this.arrowSize = figure.getArrowSize()
+        this.connectionStyle = figure.getConnectionStyle()
+        this.lineLabelInset = figure.getLineLabelInset() // may be null
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -4701,14 +4753,19 @@ class VSpace extends GraphicalObject {
     renderIfVisible() {}
 }
 
+// A Font object immutably encapsulates all the information needed to select a
+// font to render text in.
 class Font {
-    constructor(figure) {
-        if (!figure) {
+    constructor(context) {
+        if (!context) {
             this.fontStyle = Figure_defaults.FONT_STYLE
             this.fontSize = Figure_defaults.FONT_SIZE
             this.fontName = Figure_defaults.FONT_NAME
         } else {
-            this.copyFrom(figure.font)
+            if (context instanceof Figure) context = context.currentStyle()
+            this.fontStyle = context.get('fontStyle')
+            this.fontSize = context.get('fontSize')
+            this.fontName = context.get('fontName')
         }
     }
     copy() {
@@ -4717,44 +4774,29 @@ class Font {
     copyFrom(font) {
         if (font.fontName) this.fontName = font.fontName
         if (font.fontStyle) this.fontStyle = font.fontStyle
-        if (font.fontObj) this.fontObj - font.fontObj
         this.fontSize = font.fontSize
-        return this
-    }
-    setFontObject(font, size) {
-        this.fontObj = font
-        this.fontSize = size
-        return this
-    }
-    setName(name) {
-        this.fontName = name
-        this.fontObj = null
         return this
     }
     getName() {
         return this.fontName
     }
-    setSize(s) {
-        this.fontSize = s
-        this.fontObj = null
-        return this
-    }
     getSize() {
         return this.fontSize
     }
-    setStyle(style) {
-        this.fontStyle = style
-        this.fontObj = null
-        return this
+    getStyle() {
+        return this.fontStyle
     }
+    // Cause the rendering context `context` to start
+    // rendering in this font.
     setContextFont(context) {
-        if (this.fontObj) {
-            context.font = this.fontObj
-        } else {
-            const f = (this.fontStyle ? this.fontStyle + " " : "")
-                        + this.fontSize + "px " + this.fontName
-            context.font = f
-        }
+        const f = (this.fontStyle ? this.fontStyle + " " : "") +
+                       this.fontSize + "px " + this.fontName
+        context.font = f
+        // console.log("Setting font to " + f)
+    }
+    toString() {
+        return "[Font family=" + this.fontName + " style=" + this.fontStyle
+            + " size=" + this.fontSize + "]"
     }
 }
 
@@ -4807,7 +4849,7 @@ function lowerCost(ly1, ly2, x) {
 // with the following structure:
 //    {
 //       item: the text item 
-//       context: the context of the item (TextContext)
+//       context: the context of the item (Context)
 //    }
 // Only the first n items in citems are to be laid out.
 // 
@@ -4837,7 +4879,7 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
     const citem = citems[n-1],
           item = citem.item,
           tc = citem.context, // XXX
-          ls = tc.get("lineSpacing"), 
+          ls =  tc.get('lineSpacing') * tc.get('fontSize'), 
           res0 = item.layout(figure, tc, x, y, x0, x1, ymax)
     if (!res0.success || res0.positions.length == 0) {
         return {
@@ -4902,22 +4944,24 @@ class Label extends GraphicalObject {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
         // this.text is either a string or a ContainedText object
+        const style = this.style = new Context(figure.currentStyle())
+        if (fontSize) style.set('fontSize', fontSize)
+        if (fontName) style.set('fontName', fontName)
         if (text.layout) {
             this.text = new ContainedText(figure, text)
-            this.font = new Font(figure)
+            this.font = new Font(style)
             if (fillStyle != null) {
-                this.fillStyle = this.text.fillStyle = fillStyle
+                this.fillStyle = fillStyle
+                text.setFillStyle(fillStyle)
             } else {
-                this.fillStyle = figure.textStyle
+                this.fillStyle = style.get('textStyle')
             }
         } else {
             this.text = text
-            this.font = new Font(figure)
+            this.font = new Font(style)
             if (fillStyle != undefined) this.fillStyle = fillStyle
-            else this.fillStyle = figure.textStyle
+            else this.fillStyle = style.get('textStyle')
         }
-        if (fontSize) this.font.setSize(fontSize)
-        if (fontName) this.font.setName(fontName)
 
         this.setStrokeStyle(undefined)
 
@@ -4928,11 +4972,6 @@ class Label extends GraphicalObject {
         }
         this.h = () => this.font.getSize()
         this.variables = function() { return new Set().add(this.x()).add(this.y()) }
-    }
-    setFont(font) {
-        this.font = font
-        delete this.computedWidth
-        return this
     }
     installFont() {
         this.font.setContextFont(this.figure.ctx)
@@ -4955,13 +4994,17 @@ class Label extends GraphicalObject {
                 ctx.strokeText(this.text, x, y)
             }
         } else {
-            const tc = new TextContext(null, figure)
-            tc.setAll({font: this.font, verticalAlign: "center",
-              justification: "center", lineSpacing: 0, inset: 0,
-              layoutAlgorithm: "greedy", baseline: 0,
-              fillStyle: this.fillStyle, strokeStyle: null,
-              container: this
-            })
+            const tc = new Context([
+              [ 'verticalAlign', "center"],
+              [ 'justification', "center"],
+              [ 'lineSpacing', 0],
+              [ 'inset', 0],
+              [ 'layoutAlgorithm', "greedy"],
+              [ 'baseline', 0],
+              [ 'fillStyle', this.fillStyle],
+              [ 'strokeStyle', null],
+              [ 'container', this]
+            ])
             const layout = findLayout(figure, [{item: this.text.text, context: tc}], 1,
                                        x, y, x, Figure_defaults.LARGE_SPAN, y)
             let w = 0, items = layout.lines[0].items.reverse()
@@ -4990,27 +5033,31 @@ class Label extends GraphicalObject {
 
     // Set font size
     setFontSize(s) {
-        this.font.setSize(s)
+        this.style.set('fontSize', s)
+        this.font = new Font(this.style)
         delete this.computedWidth
         return this
     }
 
     // Set font name
     setFontName(n) {
-        this.font.setName(n)
+        this.style.set('fontName', n)
+        this.font = new Font(this.style)
         delete this.computedWidth
         return this
     }
 
     // Set font style
     setFontStyle(n) {
-        this.font.setStyle(n)
+        this.style.set('fontStyle', n)
+        this.font = new Font(this.style)
         delete this.computedWidth
         return this
     }
 
     // set text color etc.
     setTextStyle(s) {
+        this.style.set('fillStyle', s)
         this.fillStyle = s
         this.computeWidth(this.figure.ctx)
         return this
@@ -5036,7 +5083,7 @@ class LineLabel {
         this.offset = offset || figure.font.getSize()
         this.strokeStyle = null
         this.textStyle = figure.textStyle || "#000000"
-        this.font = new Font(figure)
+        this.font = new Font(figure.currentStyle())
     }
     computeSize() {
         const ctx = this.figure.ctx
@@ -5103,77 +5150,77 @@ function countItems(ly) {
 class ContainedText {
     constructor(figure, ...text) {
         this.figure = figure
-        this.justification = "center"
-        this.verticalAlign = "center"
-        this.lineSpacing = figure.lineSpacing
-        this.font = figure.getFont()
-        this.fillStyle = figure.strokeStyle
-        this.strokeStyle = null
-        this.inset = this.font.getSize() / 3
+        this.style = new Context(figure.currentStyle())
+        this.style.set('justification', 
+                       this.style.get('justification') || "center")
+        this.style.set('verticalAlign', this.style.get('verticalAlign') || "center")
+        this.style.set('lineSpacing', this.style.get('lineSpacing')
+            || Figure_defaults.LINE_SPACING),
+        this.style.set('fillStyle', this.style.get('strokeStyle'))
+        this.style.set('strokeStyle', null)
+
+        this.inset = this.style.setDefault('inset', this.style.get('fontSize') / 3)
+        this.font = new Font(this.style)
         this.text = createText(...text)
     }
     setLineSpacing(s) {
-        this.lineSpacing = s
+        this.style.set('lineSpacing', s)
         return this
     }
     setInset(ins) {
+        this.style.set('inset', ins)
         this.inset = ins
         return this
     }
     // justification can be "left", "center" (default), or "full"
     setJustification(j) {
-        this.justification = j
+        this.style.set('justification', j)
         return this
     }
     // can be "top", "center" (default), or "bottom"
     setVerticalAlign(va) {
-        this.verticalAlign = va
-        return this
-    }
-    setFont(f) {
-        this.font = f
+        this.style.set('verticalAlign', va)
         return this
     }
     // Set font size
     setFontSize(s) {
-        this.font.setSize(s)
+        this.style.set('fontSize', s)
         return this
     }
     // Set font name
     setFontName(f) {
-        this.font.setName(f)
+        this.style.set('fontName', f)
         return this
     }
     // Set font style
     setFontStyle(s) {
-        this.font.setStyle(s)
+        this.style.set('fontStyle', s)
         return this
     }
     setFillStyle(s) {
-        this.fillStyle = s
+        this.style.set('fillStyle', s)
         return this
     }
     setLayoutAlgorithm(a) {
-        this.layoutAlgorithm = a
+        this.style.set('layoutAlgorithm', a)
         return this
     }
 
     // Return [w, h] where w and h are the width and height of the smallest rectangle
     // that contains the text when formatted in the smallest possible number of lines.
     minimumSize() {
-        const tc = new TextContext(null, this.figure),
-            font = this.font,
-            lineSpacing = font.getSize() *
-                (typeof this.lineSpacing == NUMBER ? this.lineSpacing : 1)
-        tc.setAll({font, verticalAlign: "center",
-            justification: "left", lineSpacing, inset: 0,
-            layoutAlgorithm: "greedy",
-            fillStyle: this.fillStyle,
-            strokeStyle: null, baseline: 0,
-            forceLayout: false, container: this
-        })
+        const tc = new Context(this.style)
+                        .set('forceLayout', false)
+                        .set('container', this)
+                        .set('layoutAlgorithm', 'greedy')
+                        .set('justification', 'left')
+                        .set('inset', 0)
+                        .set('verticalAlign', 'center')
+                        .set('baseline', 0)
+        const lineSpacing = this.font.getSize() *
+-                (typeof this.lineSpacing == NUMBER ? this.lineSpacing : 1)
         const layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,
-                                  0, 0, 0, Figure_defaults.LARGE_SPAN, Figure_defaults.LARGE_SPAN)
+                    0, 0, 0, Figure_defaults.LARGE_SPAN, Figure_defaults.LARGE_SPAN)
 
         if (!layout.success) {
             console.error("Could not lay out a label")
@@ -5196,29 +5243,29 @@ class ContainedText {
     // Draw this text inside a graphical object (container)
     renderIn(figure, container) {
         const ctx = figure.ctx,
-              valuation = figure.currentValuation,
-              font = this.font,
-              lineSpacing = evaluate(this.lineSpacing, valuation) * font.getSize(),
-              layoutAlgorithm = this.layoutAlgorithm || "TeX",
-              baseline = 0,
-              strokeStyle = this.strokeStyle || null,
-              maxh = evaluate(container.h(), valuation),
-              inset = this.inset,
-              justification = this.justification,
-              verticalAlign = this.verticalAlign,
-              fillStyle = this.fillStyle,
-              tc = new TextContext(null, figure),
-              y0 = evaluate(container.y0(), valuation) + font.getSize() + inset,
-              y1 = evaluate(container.y1(), valuation) - inset,
-              yc = evaluate(container.y(), valuation)
+            tc = new Context(this.style),
+            valuation = figure.currentValuation,
+            fontSize = tc.get('fontSize'),
+            lineSpacing = fontSize * evaluate(tc.setDefault('lineSpacing',
+                                Figure_defaults.LINE_SPACING), valuation),
+            baseline = tc.setDefault('baseline', 0),
+            layoutAlgorithm = tc.setDefault('layoutAlgorithm', "TeX"),
+            strokeStyle = tc.setDefault('strokeStyle', null),
+            inset = tc.setDefault('inset', 0),
+            justification = this.style.setDefault('justification', "center"),
+            verticalAlign = this.style.setDefault('verticalAlign', "center"),
+            fillStyle = this.style.setDefault('fillStyle', "black"),
+            maxh = evaluate(container.h(), valuation),
+            y0 = evaluate(container.y0(), valuation) + fontSize + inset,
+            y1 = evaluate(container.y1(), valuation) - inset,
+            yc = evaluate(container.y(), valuation)
+        tc.set('container', container)
         let layout = {success: false, lines: []}
-        tc.setAll({ font, verticalAlign, justification, fillStyle, lineSpacing, inset,
-                    layoutAlgorithm, strokeStyle, baseline, container })
         this.text.resetCaches()
         let guessed_lines = 1,
             y = y0,
             max_guessed_lines = Math.floor(maxh/lineSpacing)
-        if (this.verticalAlign == "top") guessed_lines = max_guessed_lines
+        if (verticalAlign == "top") guessed_lines = max_guessed_lines
 
         // if (DEBUG) console.log("max guessed lines = " + max_guessed_lines)
 
@@ -5227,7 +5274,7 @@ class ContainedText {
         let x0 = 0, x1 = 0, tries = 0
         for (; guessed_lines <= max_guessed_lines; guessed_lines++, tries++) {
             let ymax = y1
-            switch (this.verticalAlign) {
+            switch (verticalAlign) {
                 case "center":
                     y = yc - (guessed_lines - 1.5) * lineSpacing * 0.5
                     ymax = y + (guessed_lines - 0.25) * lineSpacing
@@ -5388,37 +5435,60 @@ function createText(...text) {
     else return new ConcatText(...result)
 }
 
-//  A context for rendering and laying out text items, to be provided at the point
-//  of rendering. The context is updated imperatively, but it inherits properties
-//  from its parent, so any changes made to it do not affect the parent.
-class TextContext {
-    // Create a text context that inherits from parent
-    constructor(parent, figure) {
-        this.properties = new Map()
-        this.figure = figure
-        this.parent = parent
+//  A context for specifying the style of graphical objects, text items, etc.
+//  It is provided at the point of rendering. The context is updated
+//  imperatively, but it inherits properties from its parent context, so any
+//  changes made to it do not affect the parent.
+class Context {
+    // Create a context that inherits from parent
+    constructor(parent) {
+        if (Array.isArray(parent)) {
+            this.properties = new Map(parent)
+            this.parent = null
+        } else {
+            this.properties = new Map()
+            this.parent = parent
+        }
+    }
+    has(name) {
+        if (this.properties.has(name)) return true
+        if (!this.parent) return false
+        return this.parent.has(name)
     }
     set(name, value) {
+        if (value === undefined) console.error("Setting an undefined style")
         this.properties.set(name, value)
         return this
     }
+    // bind name to value if there is no existing binding
+    setDefault(name, value) {
+        if (this.has(name)) return this.get(name)
+        this.properties.set(name, value)
+        return value
+    }
     setAll(dict) {
-        for (let key in dict) {
-            this.set(key, dict[key])
+        if (Array.isArray(dict)) {
+            for (const pair of dict) {
+                this.set(pair[0], pair[1])
+            }
+        } else {
+            for (let key in dict) {
+                this.set(key, dict[key])
+            }
         }
         return this
     }
-    get(name) {
+    get(name, required) {
         const key = name,
               properties = this.properties,
               val = properties.get(key)
         if (val !== undefined) return val
         if (this.parent) {
             const v2 = this.parent.get(name)
-            properties.set(key, v2)
+            if (v2 !== undefined) properties.set(key, v2)
             return v2
         }
-        console.error("Requested undefined text context attribute " + name)
+        if (required) console.error("Requested undefined style attribute '" + name + "'")
         return undefined
     }
 }
@@ -5442,7 +5512,7 @@ class WordText extends TextItem {
     // See TextItem.layout
     layout(figure, tc, x, y, x0, x1, ymax) {
         const ctx = figure.ctx,
-              font = tc.get("font"),
+              font = new Font(tc),
               width = this.getWidth(ctx, font)
         if (x + width > x1) {
             return { success: false }
@@ -5491,7 +5561,7 @@ class Whitespace extends TextItem {
         return space
     }
     layout(figure, tc, x, y, x0, x1, ymax) {
-        const space = this.getWidth(figure.ctx, tc.get("font"))
+        const space = this.getWidth(figure.ctx, new Font(tc))
         const positions = []
         if (x + space <= x1) {
             positions.push( { newLine: false,
@@ -5503,7 +5573,7 @@ class Whitespace extends TextItem {
                               }
                             } )
         }
-        const ls = tc.get("lineSpacing")
+        const ls = tc.get('lineSpacing') * tc.get('fontSize')
         if (y + ls <= ymax) {
             positions.push({
                 newLine: true
@@ -5565,13 +5635,13 @@ class Hyphen extends TextItem {
     layout(figure, tc, x, y, x0, x1, ymax) {
         let width = this.width
         if (!width) {
-              const font = tc.get("font")
+              const font = new Font(tc)
               font.setContextFont(figure.ctx)
               width = figure.ctx.measureText("-").width
               this.width = width
         }
         const positions = [{ newLine: false, x }]
-        const ls = tc.get("lineSpacing")
+        const ls = tc.get('lineSpacing') * tc.get('fontSize')
         if (x + width <= x1 && y + ls <= ymax) {
             positions.push( { newLine: true,
                               renderable: {
@@ -5602,7 +5672,7 @@ class LineBreak extends TextItem {
     // See TextItem.layout
     layout(figure, tc, x, y, x0, x1, ymax) {
         const positions = []
-        const ls = tc.get("lineSpacing")
+        const ls = tc.get('lineSpacing') * tc.get('fontSize')
         if (y + ls <= ymax) {
             positions.push( { newLine: true } )
         }
@@ -5668,8 +5738,7 @@ class ContextTransformer extends TextItem {
     // Transform the outside context in some way. Default
     // implementation: do nothing to context.
     transformContext(tc, figure) {
-        let tc2 = new TextContext(tc, figure)
-        return this.fun(tc2)
+        return this.fun(new Context(tc))
     }
     resetCaches() {
         this.text.resetCaches()
@@ -5679,14 +5748,15 @@ class ContextTransformer extends TextItem {
 class SuperscriptText extends ContextTransformer {
     constructor(text) { super(null, text) }
     transformContext(tc, figure) {
-        const baseline = tc.get("baseline"), font = tc.get("font"),
-              fontSize = font.getSize()
-        tc = new TextContext(tc, figure)
-        const scriptFont = new Font(figure)
-        scriptFont.copyFrom(font)
-        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
-        tc.set("font", scriptFont)
-        tc.set("baseline", baseline + Figure_defaults.SUPERSCRIPT_OFFSET * fontSize)
+        const baseline = tc.get("baseline") || 0,
+              font = new Font(tc),
+              fontSize = tc.get("fontSize") || Figure_defaults.FONT_SIZE,
+              scriptSize = tc.get("scriptSize") || Figure_defaults.SCRIPTSIZE,
+              superscriptOffset = tc.get("superscriptOffset") ||
+                                  Figure_defaults.SUPERSCRIPT_OFFSET
+        tc = new Context(tc)
+        tc.set('fontSize', fontSize * scriptSize)
+          .set('baseline', baseline + superscriptOffset * fontSize)
         return tc
     }
 }
@@ -5694,14 +5764,15 @@ class SuperscriptText extends ContextTransformer {
 class SubscriptText extends ContextTransformer {
     constructor(text) { super(null, text) }
     transformContext(tc, figure) {
-        const baseline = tc.get("baseline"), font = tc.get("font"),
-              fontSize = font.getSize()
-        tc = new TextContext(tc, figure)
-        const scriptFont = new Font(figure)
-        scriptFont.copyFrom(font)
-        scriptFont.setSize(fontSize * Figure_defaults.SCRIPTSIZE)
-        tc.set("font", scriptFont)
-        tc.set("baseline", baseline + Figure_defaults.SUBSCRIPT_OFFSET * fontSize)
+        const baseline = tc.get("baseline") || 0,
+              font = new Font(tc),
+              fontSize = tc.get("fontSize") || Figure_defaults.FONT_SIZE,
+              scriptSize = tc.get("scriptSize") || Figure_defaults.SCRIPTSIZE,
+              subscriptOffset = tc.get("subscriptOffset") ||
+                                Figure_defaults.SUBSCRIPT_OFFSET
+        tc = new Context(tc)
+        tc.set('fontSize', fontSize * scriptSize)
+          .set('baseline', baseline + subscriptOffset * fontSize)
         return tc
     }
 }
@@ -5709,12 +5780,8 @@ class SubscriptText extends ContextTransformer {
 class ItalicText extends ContextTransformer {
     constructor(text) { super(null, text) }
     transformContext(tc, figure) {
-        const font = tc.get("font")
-        tc = new TextContext(tc, figure)
-        const italicFont = new Font(figure)
-        italicFont.copyFrom(font)
-        italicFont.setStyle("italic")
-        tc.set("font", italicFont)
+        tc = new Context(tc)
+        tc.set('fontStyle', "italic")
         return tc
     }
 }
@@ -5722,12 +5789,8 @@ class ItalicText extends ContextTransformer {
 class BoldText extends ContextTransformer {
     constructor(text) { super(null, text) }
     transformContext(tc, figure) {
-        const font = tc.get("font")
-        tc = new TextContext(tc, figure)
-        const newFont = new Font(figure)
-        newFont.copyFrom(font)
-        newFont.setStyle("bold")
-        tc.set("font", newFont)
+        tc = new Context(tc)
+        tc.set('fontStyle', "bold")
         return tc
     }
 }
@@ -5778,7 +5841,7 @@ class Handle extends InteractiveObject {
         this.y_ = vy
         this.variables = () => new Set().add(vx).add(vy)
         this.size = 5
-        this.strokeStyle = strokeStyle || figure.strokeStyle
+        this.strokeStyle = strokeStyle || figure.getStyle('strokeStyle')
         this.isActive = true
         this.isVisible = true
         figure.positive(vx, 0)
@@ -6181,7 +6244,7 @@ function reportPerformance(b) {
   return ({
     Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
     Point, Box, Line, Connector, Rectangle, Square, Circle, Ellipse, Polygon,
-    ContainedText, TextContext, TextItem, createText, InteractiveObject,
+    ContainedText, Context, TextItem, createText, InteractiveObject,
     CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,
     Expression, Minus, Plus, Times, Divide, Sqrt, Distance, Average, Min, Max,
     Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
