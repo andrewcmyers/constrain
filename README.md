@@ -1,4 +1,4 @@
-# [Constrain](https://andrewcmyers.github.io/constrain/) - a JS (ES6) library for animated, interactive figures, based on declarative constraint solving
+# [Constrain](https://andrewcmyers.github.io/constrain/) - a JS (ES6) library for animated, interactive web figures, based on declarative constraint solving
 ![Triangle image](images/triangle.png)
 - Responsive, animated figures embedded in web pages
 - Figures implemented declaratively with time-dependent constraints on graphical objects
