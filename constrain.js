@@ -1575,7 +1575,6 @@ class Figure {
     }
     group(...objects) {
         objects = flattenGraphicalObjects(objects)
-        if (objects.length == 1) return objects[0]
         return new Group(this, ...objects)
     }
     linear(frame, e1, e2) {
