@@ -717,6 +717,24 @@ of saved styles. It is an error to call this method when there is no currently
 saved style.
 </p>
 
+<h4>setStyle(name, value)</h4>
+<p>
+Set the named style parameter to have the given value. The various figure
+style settings that are inheritable have corresponding style parameters.
+For example, calling <code>figure.setFillStyle(f)</code> is the same as calling
+<code>figure.setStyle('fillStyle', f)</code>.
+</p>
+
+<h4>getStyle(name)</h4>
+<p>
+Return the value of the named style parameter.
+</p>
+
+<h4>hasStyle(name)</h4>
+<p>
+Report whether the named style parameter is defined for the figure.
+</p>
+
 <h4>setZoom(zoom)</h4>
 <p>
 By default the coordinate system of the figure is the same as the HTML
@@ -755,10 +773,11 @@ This function causes figures to automatically resize to their containing canvase
 
 <h4>Constrain.setupTouchListeners()</h4>
 <p>
-By default, touch events are not tracked by figures, which means that handles will
-not work correctly on tablets and phones. Calling this method will enable touch events.
-They are not turned on by default because handling touch events seems to require interposing
-on touch events at the level of the entire window.
+By default, touch events are not tracked by figures, which means that handles
+will not work correctly on tablets and phones. Calling this method enables
+tracking of touch events.  They are not turned on by default because handling
+touch events seems to require interposing on touch events at the level of the
+entire window.
 </p>
 
 <h4>Constrain.getFigureByName(name)</h4>
@@ -770,19 +789,27 @@ currently exists.
 <h3>Default styles</h3>
 
 <p>
-Graphical objects can set their own style, but if no style is specified, the style is inherited
-from the figure. The following figure methods support defining the default styles for the entire
-figure, taking the same arguments as the corresponding methods on graphical objects.
+Graphical objects can set their own style, but if no style is specified, the
+style is inherited from the figure. The following figure methods support
+defining the default styles for the entire figure, taking the same arguments as
+the corresponding methods on graphical objects.
 </p>
 
 <h4>setFillStyle(style)<br>
     setStrokeStyle(style)<br>
     setTextStyle(style)<br>
-    setLineWidth(w)<br>
     setFontSize(s)<br>
     setFontName(n)<br>
+    setLineWidth(w)<br>
+    setLineDash(d)<br>
     setConnectionStyle(s)<br>
-    </h4>
+</h4>
+
+<p>
+See also the <code>setStyle()</code> method, which can also be used to set
+these styles under corresponding names: <code>fillStyle</code>,
+<code>strokeStyle</code>, etc.
+</p>
 
 <h2>Constraints</h2>
 
