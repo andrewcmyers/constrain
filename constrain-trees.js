@@ -215,8 +215,8 @@ Constrain.Trees = function() {
         drawEdge(n1, n2) {
             return this.figure.connector(n1.gobj, n2.gobj)
         }
-        // Optionally create some graphical objects indicating that n is the root node. They
-        // are not included in the tree's bounding box
+        // Optionally create some graphical objects indicating that n is the
+        // root node. They are not included in the tree's bounding box
         decorateRoot(n) {}
 
         // Amount of glue space to insert on either side of the tree, which is
@@ -229,10 +229,28 @@ Constrain.Trees = function() {
     // Transitions between different structures are smoothly animated.
     // The tree is laid out vertically with the root at the top.
     class AnimatedTree {
+        // Create a tree with the given root and list of children. Children
+        // may be arrays that recursively specify subtrees in the same way.
+        // The conversion of the tree data into graphical objects is specified
+        // by the style parameter, which is a TreeStyle. If 'null' is passed
+        // as the tree style, the figure style provides the tree styling operations
+        // instead.
         constructor(figure, style, root, ...children) {
             this.figure = figure
             const frame = this.currentFrame = figure.currentFrame
-            this.style = style
+            if (style) {
+                this.style = style
+            } else {
+                this.style = new TreeStyle(figure)
+                if (figure.hasStyle('drawNode'))
+                    this.style.drawNode = figure.getStyle('drawNode')
+                if (figure.hasStyle('drawEdge'))
+                    this.style.drawEdge = figure.getStyle('drawEdge')
+                if (figure.hasStyle('decorateRoot'))
+                    this.style.decorateRoot = figure.getStyle('decorateRoot')
+                if (figure.hasStyle('glue'))
+                    this.style.glue = figure.getStyle('glue')
+            }
             this.vertSpacings = new Map()
             this.horzSpacings = new Map()
             this.roots = new Map()

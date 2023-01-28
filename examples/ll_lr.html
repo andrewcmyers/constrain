@@ -36,12 +36,17 @@ In the LL case, a single tree rotation is used; in the LR case, there are two tr
 
 <canvas id=case_LL_LR style="width: 500px; height: 180px"></canvas>
 <script>
-class RotTree extends Constrain.Trees.TreeStyle {
-    constructor(figure) {super(figure)}
-    decorateRoot(n) {
-      return this.figure.connector(n.gobj.toTop(15), n.gobj)
-    }
-    drawNode(v) {
+function measure(p1, p2) {
+    return this.line(p1, p2)
+        .setEndArrow("curved").setStartArrow("curved")
+        .setArrowSize(8).setStrokeStyle("#06c")
+}
+Constrain.Figure.prototype.measure = measure
+
+with (new Constrain.Figure("case_LL_LR")) {
+    setFontSize(14)
+    setConnectionStyle("intersection")
+    setStyle('drawNode', function(v) {
         const f = this.figure
         if (v === undefined) return f.point()
         if (v.match("^[A-Z]")) {
@@ -54,22 +59,18 @@ class RotTree extends Constrain.Trees.TreeStyle {
         } else {
             return f.label(v).expand(3)
         }
-    }
-    drawEdge(n1, n2) { return this.figure.connector(n1.gobj, n2.gobj) }
-}
-function measure(p1, p2) {
-    return this.line(p1, p2)
-        .setEndArrow("curved").setStartArrow("curved")
-        .setArrowSize(8).setStrokeStyle("#06c")
-}
-Constrain.Figure.prototype.measure = measure
+    })
+    setStyle('drawEdge', function (n1, n2) {
+        return this.figure.connector(n1.gobj, n2.gobj)
+    })
+    setStyle('decorateRoot', function(n) {
+        return this.figure.connector(n.gobj.toTop(15), n.gobj)
+    })
 
-with (new Constrain.Figure("case_LL_LR")) {
-    setFontSize(14)
-    setConnectionStyle("intersection")
+
     setFillStyle("#fdc")
-    const ll = tree(new RotTree(thisFigure()), "z", ["y", ["x", "A", "B"],"C"], "D"),
-          lr = tree(new RotTree(thisFigure()), "z", ["x", "A", ["y", "B","C"]], "D")
+    const ll = tree(null, "z", ["y", ["x", "A", "B"],"C"], "D"),
+          lr = tree(null, "z", ["x", "A", ["y", "B","C"]], "D")
     const trees = group(ll.bbox, lr.bbox).align("none", "TB")
     equal(ll.bbox.w(), lr.bbox.w(), 200)
     equal(trees.y0(), 10)
