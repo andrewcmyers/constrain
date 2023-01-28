@@ -154,7 +154,7 @@ class Figure {
         this.animatedSolving = false
         this.solverCallbacks = []
         this.minimizationOptions = {...defaultMinimizationOptions}
-        this.fadeColor = 'white'
+        this.fadeColor = window.getComputedStyle(canvas).backgroundColor || "white"
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
             console.error("Canvas input will not work correctly with padding")
@@ -1106,6 +1106,9 @@ class Figure {
     }
     getStyle(key, required) {
         return this.currentStyle().get(key, required)
+    }
+    hasStyle(key) {
+        return this.currentStyle().has(key)
     }
 
     // Set the default fill style
@@ -2150,13 +2153,12 @@ function currentValue(e) {
 // that determines its location in the valuation array. A variable is associated
 // with a particular stage. Before that stage, its value should not be needed.
 //
-// XXX Does it really need to know its figure?
 class Variable extends Expression {
     constructor(figure, basename, hint) {
         super()
         this.basename = basename + "_" + figure.numVariables
         this.index = figure.numVariables // overridden later by numberVariables()
-        this.figure = figure
+        this.figure = figure             // a variable is associated with one figure
         this.stage = figure.currentStage
         figure.Variables.push(this)
         figure.numVariables++
@@ -2185,7 +2187,7 @@ class Variable extends Expression {
                 g[this.index] = 1
                 this.grad = g // save gradient for later
             }
-            if (this.figure.activeVariables[this.index] !== this) {
+            if (DEBUG && this.figure.activeVariables[this.index] !== this) {
                 console.error("Variable index does not agree with active variables list")
             }
             return [valuation[this.index], g]
