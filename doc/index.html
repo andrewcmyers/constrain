@@ -24,6 +24,7 @@
     h3 { font-size: 150% }
     h4 { font-size: 95%; font-family: Menlo, Consolas, fixed }
     div.content { max-width: 100ex; margin: 4em auto }   
+    div.inset { border: 1px solid #ccc; padding: 1ex 4ex }
     body  {background-color: #fed }
     p, ul li { font-size: 12pt; font-family: Georgia, serif }       
     pre.code, textarea { padding: 1ex; font-size: 10pt; width: 60ex; float:right; border: 1px solid black; background-color: #ddd; font-family: Menlo, fixed }
@@ -1727,8 +1728,125 @@ If true, gravity pulls to the right.
 
 <h2>Animated Trees</h2>
 <p>
-The module <kbd>constrain-trees.js</kbd> includes support for automatically laying out trees.
-These trees can be animated to support changes to the tree structure over multiple frames.
+The module <kbd>constrain-trees.js</kbd> includes support for automatically
+laying out trees.  These trees can be animated to support changes to the tree
+structure over multiple frames. The tree automatically lays out the 
+</p>
+<p>
+Tree nodes are objects that are not graphical objects, but have the following
+two methods:
+</p>
+<div class=inset>
+  <h4>getValue()</h4>
+  <p>
+    Return the value from which this node was constructed.
+  </p>
+  <h4>getGraphicalObject()</h4>
+  <p>
+    Return the graphical object representing this node.
+  </p>
+</div>
+<p>
+Trees have the following methods:
+</p>
+<h4>tree(style, root, ...children)</h4>
+<p>
+Trees are created using the <code>tree</code> method. The nodes of the tree are
+specified using values that are mapped to graphical objects according to the specified
+tree style.
+
+<p>
+If the provided tree style is <code>null</code>, the current figure style
+is used instead. There are four style parameters, which can be bound to different
+functions or provided as methods of the style objects:
+<div class=inset>
+
+    <h4>drawNode(figure, value)</h4>
+    <p>
+      The tree is built out of graphical objects, which are created from the values
+      provided in <code>root</code> and <code>children</code>, using the
+      <code>drawNode</code> method. It should return the graphical object
+      representing the node.
+    </p>
+    <h4>drawEdge(figure, n1, n2)</h4>
+    <p>
+      This method creates graphical objects representing an edge from node
+      <code>n1</code> to node <code>n2</code>.
+    </p>
+    <h4>decorateRoot(figure, n)</h4>
+    <p>
+      This method optionally creates and returns a graphical object
+      decorating the root node <code>n</code> of the tree.
+    </p>
+    <h4>glue(figure)</h4>
+    <p>
+      This method returns an expression representing the amount of glue space
+      to insert on the sides of the tree.
+    </p>
+</div>
+
+<h4>view(frame)</h4>
+<p>
+The view method returns a <code>TreeView</code> object, which represents
+the configuration of the tree in the specified frame. The tree can be
+conveniently manipulated using the <code>TreeView</code> with the following
+methods. It is important to perform tree operations in frame order, because
+when an operation is performed on a tree, it is assumed to not require any
+changes between the last operation and the current one.
+</p>
+
+<div class=inset>
+  <h4>rootObject()</h4>
+  <p>
+    Return the graphical object that corresponds to the root node of the
+    tree in this frame. Its position may be animated during the frame.
+  </p>
+  <h4>rootPosition()</h4>
+  <p>
+    Return a graphical object representing the final position of the root
+    node at the end of this frame.
+  </p>
+  <h4>findNode(v)</h4>
+  <p>
+    Return a tree node with the value v.
+  </p>
+  <h4>findObj(v)</h4>
+  <p>
+    Return a tree node with the value v.
+  </p>
+  <h4>swapNodeWithParent(value)</h4>
+  <p>
+    Swap the node with the specified value with its parent node.
+  </p>
+  <h4>rotateNodeWithParent(value)</h4>
+  <p>
+    Rotate the node with the specified value up to the position of
+    its parent node while keeping the rest of the nodes in the same
+    in-order traversal order.
+  </p>
+  <h4>addLeaf(value, parentValue, position)</h4>
+  <p>
+    Create a new leaf node containing the value at the given position in the
+    children of the given parent node. Children at that position or later
+    have their position increased. If position is omitted, the new leaf
+    is added as the last child.
+  </p>
+  <h4>removeLeaf(value)</h4>
+  <p>
+    Remove the leaf node with the specified value in this frame.
+  </p>
+  <h4>spliceNode(value)</h4>
+  <p>
+    Remove the single-child node identified by value, connecting its
+    parent node to its single child.
+  </p>
+  <h4>replaceLeaf(value1, value2)</h4>
+  <p>
+    Remove the node with value <code>value1</code> with a new node
+    with value <code>value2</code>.
+</div>
+
+<h4>
 
 <h2>Reveal.js integration</h2>
 <p>

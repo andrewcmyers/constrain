@@ -46,8 +46,7 @@ Constrain.Figure.prototype.measure = measure
 with (new Constrain.Figure("case_LL_LR")) {
     setFontSize(14)
     setConnectionStyle("intersection")
-    setStyle('drawNode', function(v) {
-        const f = this.figure
+    setStyle('drawNode', function(f, v) {
         if (v === undefined) return f.point()
         if (v.match("^[A-Z]")) {
             const top = f.point()
@@ -60,11 +59,11 @@ with (new Constrain.Figure("case_LL_LR")) {
             return f.label(v).expand(3)
         }
     })
-    setStyle('drawEdge', function (n1, n2) {
-        return this.figure.connector(n1.gobj, n2.gobj)
+    setStyle('drawEdge', function (f, n1, n2) {
+        return f.connector(n1.gobj, n2.gobj)
     })
-    setStyle('decorateRoot', function(n) {
-        return this.figure.connector(n.gobj.toTop(15), n.gobj)
+    setStyle('decorateRoot', function(f, n) {
+        return f.connector(n.gobj.toTop(15), n.gobj)
     })
 
 
