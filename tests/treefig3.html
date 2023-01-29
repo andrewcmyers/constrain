@@ -20,11 +20,10 @@
 const fig3 = new Constrain.Figure("treefig3")
 with (fig3) {
     class BSTTree extends Constrain.Trees.TreeStyle {
-        constructor(figure) {super(figure)}
-      decorateRoot(n) {
-        return this.figure.line(margin().uc(), n.gobj.toTop(5))
+      decorateRoot(figure, n) {
+        return figure.line(margin().uc(), n.gobj.toTop(5))
       }
-      drawNode(v) {
+      drawNode(figure, v) {
         if (v.match("^[<>]")) {
             const top = point()
             const result = polygon(top,
@@ -37,7 +36,7 @@ with (fig3) {
             return label(v).expand(3)
         }
       }
-      drawEdge(n1, n2) { return this.figure.connector(n1.gobj, n2.gobj) }
+      drawEdge(figure, n1, n2) { return figure.connector(n1.gobj, n2.gobj) }
     }
     setConnectionStyle("intersection")
     const t = tree(new BSTTree(fig3), "data", "<data", ">data")

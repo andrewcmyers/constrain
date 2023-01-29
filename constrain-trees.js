@@ -180,7 +180,7 @@ Constrain.Trees = function() {
         constructor(tree, value) {
             this.value = value
             // A node is associated with a particular graphical object
-            this.gobj = tree.style.drawNode(value)
+            this.gobj = tree.style.drawNode(tree.figure, value)
             // this.positions.get(f) is an object that describes the position of this node
             // in frame i, as well as the animation plan for how to get 
             this.positions = new Map()
@@ -196,6 +196,12 @@ Constrain.Trees = function() {
             }
             return null
         }
+        getValue() {
+            return this.value
+        }
+        getGraphicalObject() {
+            return this.gobj
+        }
         toString() {
             return "Node(" + this.value + ")"
         }
@@ -203,25 +209,19 @@ Constrain.Trees = function() {
 
     // A TreeStyle encapsulates choices about how trees are graphically rendered
     class TreeStyle {
-        constructor(figure) {
-            this.figure = figure
-            if (!(figure instanceof Constrain.Figure)) {
-                console.error("Not a figure")
-            }
-        }
         // Create a graphical object representing the tree node
-        drawNode(obj) { return obj ? obj : this.figure.point() }
+        drawNode(figure, obj) { return obj ? obj : figure.point() }
+
         // Create a graphical object representing the edge from node n1 to node n2
-        drawEdge(n1, n2) {
-            return this.figure.connector(n1.gobj, n2.gobj)
-        }
-        // Optionally create some graphical objects indicating that n is the root node. They
-        // are not included in the tree's bounding box
-        decorateRoot(n) {}
+        drawEdge(figure, n1, n2) { return figure.connector(n1.gobj, n2.gobj) }
+
+        // Optionally create some graphical objects indicating that n is the
+        // root node. They are not included in the tree's bounding box
+        decorateRoot(figure, n) {}
 
         // Amount of glue space to insert on either side of the tree, which is
         // weakly set equal to 0. The default implementation is that there is no glue.
-        glue() { return 0 }
+        glue(figure) { return 0 }
     }
 
     // An AnimatedTree is a tree of nodes that can be animated over
@@ -229,10 +229,28 @@ Constrain.Trees = function() {
     // Transitions between different structures are smoothly animated.
     // The tree is laid out vertically with the root at the top.
     class AnimatedTree {
+        // Create a tree with the given root and list of children. Children
+        // may be arrays that recursively specify subtrees in the same way.
+        // The conversion of the tree data into graphical objects is specified
+        // by the style parameter, which is a TreeStyle. If 'null' is passed
+        // as the tree style, the figure style provides the tree styling operations
+        // instead.
         constructor(figure, style, root, ...children) {
             this.figure = figure
             const frame = this.currentFrame = figure.currentFrame
-            this.style = style
+            if (style) {
+                this.style = style
+            } else {
+                this.style = new TreeStyle(figure)
+                if (figure.hasStyle('drawNode'))
+                    this.style.drawNode = figure.getStyle('drawNode')
+                if (figure.hasStyle('drawEdge'))
+                    this.style.drawEdge = figure.getStyle('drawEdge')
+                if (figure.hasStyle('decorateRoot'))
+                    this.style.decorateRoot = figure.getStyle('decorateRoot')
+                if (figure.hasStyle('glue'))
+                    this.style.glue = figure.getStyle('glue')
+            }
             this.vertSpacings = new Map()
             this.horzSpacings = new Map()
             this.roots = new Map()
@@ -309,7 +327,7 @@ Constrain.Trees = function() {
                         figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3])
                     ))
                     */
-                    const a = figure.after(frame, this.style.drawEdge(node, c))
+                    const a = figure.after(frame, this.style.drawEdge(figure, node, c))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
                     // console.log(a.description)
                     this.exclusiveAfters.add(a)
@@ -379,7 +397,7 @@ Constrain.Trees = function() {
                 console.error("No tree configuration for previous frame")
             }
             let parentNode
-            const oldRoot = this.getFrameRoot(prevFrame)
+            const oldRoot = this.getFrameRoot(frame)
             parentNode = prevEdges.getParentNode(node)
             for (const e of prevEdges.getEdges()) {
                 let [src, dst] = e
@@ -519,7 +537,7 @@ Constrain.Trees = function() {
                 figure.geq(horzSpacing, 0),
                 figure.geq(vertSpacing, 0))
               .forEach(a => this.inclusiveAfters.add(a))
-            const decoration = this.style.decorateRoot(root)
+            const decoration = this.style.decorateRoot(figure, root)
             if (decoration) {
                 const a = figure.after(frame, decoration)
                 a.description = 'Root decoration for ' + root.value
@@ -559,7 +577,8 @@ Constrain.Trees = function() {
             return new TreeView(this, frame)
         }
         addFrame(length, name) {
-            return new TreeView(this, this.figure.addFrame(name || "tree_animation").setLength(length))
+            return new TreeView(this,
+                this.figure.addFrame(name || "tree_animation").setLength(length))
         }
     }
 
@@ -603,8 +622,7 @@ Constrain.Trees = function() {
             const node = this.tree.findNode(value)
             this.tree.spliceNode(this.frame, node)
         }
-
-        rootGraphicalObject() {
+        rootObject() {
             return this.tree.getFrameRoot(this.frame).gobj
         }
         rootPosition() {

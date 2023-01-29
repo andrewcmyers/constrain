@@ -18,8 +18,8 @@
 <canvas id=avl_exercise1 style="width:600px; height: 100px"></canvas>
 <script class=graphics>
 class DotTree extends Constrain.Trees.TreeStyle {
-    drawNode(n) {
-        return n ? this.figure.circle().setW(8).setFillStyle('black') : this.figure.point()
+    drawNode(figure, n) {
+        return n ? figure.circle().setW(8).setFillStyle('black') : figure.point()
     }
 }
 let fig1 = new Constrain.Figure("avl_exercise1")
