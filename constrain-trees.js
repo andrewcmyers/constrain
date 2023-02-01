@@ -325,9 +325,11 @@ Constrain.Trees = function() {
                 this.frameNodeConstraints(frame, c, edges, horzSpacing, vertSpacing)
                 const cpos = c.positions.get(frame)
                 if (c.value !== undefined) {
+                    /*
                     this.exclusiveAfters.add(figure.after(frame,
                         figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3])
                     ))
+                    */
                     const a = figure.after(frame, this.style.drawEdge(figure, node, c))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
                     // console.log(a.description)
