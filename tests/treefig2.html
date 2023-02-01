@@ -32,7 +32,7 @@ with (fig1) {
         t4 = tree(dots, x, [x,x,x], [x,x,x] ),
         t5 = tree(dots, x, [x,x,u], [x, x, [x,u,x]] )
 
-    const b = [t4, t2, t3, t1, t5].map(t => t.bbox)
+    const b = [t4, t2, t3, t1, t5]
     b.forEach(bbox => bbox.setW(70))
     let trees = group(b[0], hspace(10), b[1], hspace(10), b[2], hspace(10), b[3], hspace(10), b[4])
         .align("abut", "TB")

@@ -60,23 +60,22 @@ with (new Constrain.Figure("case_LL_LR")) {
         }
     })
     setStyle('drawEdge', function (f, n1, n2) {
-        return f.connector(n1.gobj, n2.gobj)
+        return f.connector(n1.getObject(), n2.getObject())
     })
     setStyle('decorateRoot', function(f, n) {
-        return f.connector(n.gobj.toTop(15), n.gobj)
+        return null; //f.line(n.getObject().toTop(15), n.getObject())
     })
-
 
     setFillStyle("#fdc")
     const ll = tree(null, "z", ["y", ["x", "A", "B"],"C"], "D"),
           lr = tree(null, "z", ["x", "A", ["y", "B","C"]], "D")
-    const trees = group(ll.bbox, lr.bbox).align("none", "TB")
-    equal(ll.bbox.w(), lr.bbox.w(), 200)
-    equal(trees.y0(), 10)
+    const trees = group(ll, lr).align("none", "TB")
+    equal(ll.w(), lr.w(), 210)
+    equal(ll.y0(), lr.y0(), 0)
     const ll_label = label("LL case"), lr_label = label("LR case")
     align("none", "B", ll_label, lr_label, margin().toBottom(-5))
-    align("center", "abut", ll.bbox, vspace(10), ll_label)
-    align("center", "abut", lr.bbox, vspace(10), lr_label)
+    align("center", "abut", ll, vspace(10), ll_label)
+    align("center", "abut", lr, vspace(10), lr_label)
     const ll1 = ll.view(), lr1 = lr.view()
     
     setStrokeStyle("#06c")
@@ -105,13 +104,17 @@ with (new Constrain.Figure("case_LL_LR")) {
 
     setStrokeStyle("black")
 
-    equal(lr.bbox.x1(), minus(margin().x1(), 20))
+    equal(lr.x1(), minus(margin().x1(), 20))
 
     equal(p1.x(), 10)
     let f1, f2, f3
     ll.view(f1 = addFrame().setLength(1500)).rotateNodeWithParent("y")
     lr.view(f2 = addFrame().setLength(1500)).rotateNodeWithParent("y")
     lr.view(f3 = addFrame().setLength(1500)).rotateNodeWithParent("y")
+
+    setLineDash([4,4])
+    align("LR", "TB", ll, rectangle().setFillStyle(null))
+    align("LR", "TB", lr, rectangle().setFillStyle(null))
 
     align("right", "bottom", advanceButton(), margin())
     setRepeat(true)

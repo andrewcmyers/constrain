@@ -154,7 +154,7 @@ class Figure {
         this.animatedSolving = false
         this.solverCallbacks = []
         this.minimizationOptions = {...defaultMinimizationOptions}
-        this.fadeColor = window.getComputedStyle(canvas).backgroundColor || "white"
+        this.fadeColor = this.findFadeColor(canvas)
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
             console.error("Canvas input will not work correctly with padding")
@@ -167,6 +167,16 @@ class Figure {
         this.canvas.width = _width * this.scale
         this.canvas.height = _height * this.scale
         this.ctx.setTransform(this.scale * this.zoom, 0, 0, this.scale * this.zoom, 0, 0)
+    }
+    findFadeColor(canvas) {
+        let elt = canvas, c
+        while (elt) {
+            c = window.getComputedStyle(canvas).backgroundColor
+            if (c != "rgba(0, 0, 0, 0)") break
+            elt = elt.parentNode
+        }
+        if (c == "rgba(0, 0, 0, 0)") return "#fff"
+        return c
     }
     toString() {
         return "Figure"
@@ -2109,6 +2119,7 @@ class Expression {
         this.cachedResult = result
         return result
     }
+    // The set of variables that are needed to evaluate this expression.
     variables() { return new Set() }
     initDiff() { this.bpDiff = 0 }
     // actually propagate differentials backward to dependencies
@@ -3551,7 +3562,7 @@ class Box extends LayoutObject {
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
-        return new Set().add(this.x_).add(this.y_).add(this.w_).add(this.h_)
+        return new Set([this.x_, this.y_, this.w_, this.h_])
     }
 // convenience methods for positioning (by adding constraints)
 
@@ -4646,6 +4657,10 @@ class Connector extends GraphicalObject {
         this.arrowSize = figure.getArrowSize()
         this.connectionStyle = figure.getConnectionStyle()
         this.lineLabelInset = figure.getLineLabelInset() // may be null
+        // figure.equal(this.x0(), figure.min(...objects.map(o => o.x0())))
+        // figure.equal(this.x1(), figure.max(...objects.map(o => o.x1())))
+        // figure.equal(this.y0(), figure.min(...objects.map(o => o.y0())))
+        // figure.equal(this.y1(), figure.max(...objects.map(o => o.y1())))
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -4989,8 +5004,8 @@ class Label extends GraphicalObject {
             if (!this.hasOwnProperty('computedWidth')) this.computeWidth(figure.ctx)
             return this.computedWidth
         }
-        this.h = () => this.font.getSize()
-        this.variables = function() { return new Set().add(this.x()).add(this.y()) }
+        this.h = function() { return this.font.getSize() }
+        this.variables = function() { return new Set([this.x(),this.y()]) }
     }
     installFont() {
         this.font.setContextFont(this.figure.ctx)
@@ -5858,7 +5873,7 @@ class Handle extends InteractiveObject {
               vy = new Variable(figure, "hy")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => new Set().add(vx).add(vy)
+        this.variables = () => new Set([vx, vy])
         this.size = 5
         this.strokeStyle = strokeStyle || figure.getStyle('strokeStyle')
         this.isActive = true
@@ -5949,7 +5964,7 @@ class Button extends InteractiveObject {
               vy = new Variable(figure, "y")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => new Set().add(vx).add(vy)
+        this.variables = () => new Set([vx,vy])
         figure.geq(vx,0)
         figure.geq(vy,0)
         figure.leq(vx, figure.canvasRect().x1())
