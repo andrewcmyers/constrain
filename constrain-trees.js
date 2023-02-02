@@ -201,7 +201,7 @@ Constrain.Trees = function() {
         getValue() {
             return this.value
         }
-        getObject() {
+        getRendering() {
             return this.gobj
         }
         toString() {
@@ -546,7 +546,7 @@ Constrain.Trees = function() {
                 const a = f.after(frame, decoration)
                 a.description = 'Root decoration for ' + root.value
                 this.exclusiveAfters.add(a)
-                // top = f.min(top, decoration.y0())
+                top = f.min(top, decoration.y0())
             }
             const glue = this.style.glue(),
                   [ddescendants, depth] = edges.deepestDescendants(root)
@@ -576,7 +576,6 @@ Constrain.Trees = function() {
                                     f.minus(c.gobj.y1(), c.gobj.target().y()))))
                })
             }
-            console.log("frame " + frame.index + "tree", this, deepest, "lchild", lchild, "rchild", rchild)
             const bottom = f.max(...deepest)
             const bbox_constraints = f.after(frame,
                 f.geq(glue, 0),
