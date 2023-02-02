@@ -1,4 +1,6 @@
 Constrain.Trees = function() {
+
+    const DEBUG = false;
     // A mutable, ordered set of edges [src, dst]
     class Edges {
         constructor(oldEdges) {
@@ -311,13 +313,13 @@ Constrain.Trees = function() {
         frameNodeConstraints(frame, node, edges, horzSpacing, vertSpacing) {
             let prev = null, prev_sib = null
             const constraints = this.constraints.get(frame)
-            const figure = this.figure
+            const f = this.figure
             constraints || console.error("No constraints for " + frame)
             if (node.positions && node.positions.get(frame)) {
                 console.error("cycle detected")
                 return
             }
-            let pos = figure.point()
+            let pos = f.point()
             node.positions.set(frame, pos)
             const outgoing = edges.getOutgoing(node) || []
             // console.log("outgoing from " + node.value + ":" + outgoing.map(n => n.value).join(","))
@@ -325,19 +327,18 @@ Constrain.Trees = function() {
                 this.frameNodeConstraints(frame, c, edges, horzSpacing, vertSpacing)
                 const cpos = c.positions.get(frame)
                 if (c.value !== undefined) {
-                    /*
-                    this.exclusiveAfters.add(figure.after(frame,
-                        figure.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3])
-                    ))
-                    */
-                    const a = figure.after(frame, this.style.drawEdge(figure, node, c))
+                    if (DEBUG)
+                      this.inclusiveAfters.add(f.after(frame,
+                        f.connector(pos, cpos).setStrokeStyle("#acf").setLineDash([3,3])
+                      ))
+                    const a = f.after(frame, this.style.drawEdge(f, node, c))
                     a.description = "Connecting in frame " + frame.index + " parent " + node.value + " to child " + c.value
                     // console.log(a.description)
                     this.exclusiveAfters.add(a)
                 }
 
-                const vconstr = figure.after(frame,
-                    figure.equal(figure.minus(cpos.y(), pos.y()), vertSpacing))
+                const vconstr = f.after(frame,
+                    f.equal(f.minus(cpos.y(), pos.y()), vertSpacing))
                 vconstr.description = 'vertical separation of ' + node.value + ' and ' + c.value
                 constraints.push(vconstr)
                 this.inclusiveAfters.add(vconstr)
@@ -345,11 +346,11 @@ Constrain.Trees = function() {
                     const sib_rightmost = edges.rightmostDescendant(prev_sib),
                           c_leftmost =  edges.leftmostDescendant(c)
                           // console.log("because of siblings " + prev_sib + " and " + c + ", separating " + sib_rightmost.value + " and "  + c_leftmost.value)
-                    const hconstr = figure.after(frame,
-                        figure.equal(figure.minus(c_leftmost.positions.get(frame).x(),
+                    const hconstr = f.after(frame,
+                        f.equal(f.minus(c_leftmost.positions.get(frame).x(),
                                                   sib_rightmost.positions.get(frame).x()),
-                                     figure.plus(figure.times(0.5, sib_rightmost.gobj.w()),
-                                                 figure.times(0.5, c_leftmost.gobj.w()),
+                                     f.plus(f.times(0.5, sib_rightmost.gobj.w()),
+                                                 f.times(0.5, c_leftmost.gobj.w()),
                                                  horzSpacing)))
                     hconstr.description = 'Horizontal spacing of children of ' + node.value
                     constraints.push(hconstr)
@@ -359,28 +360,28 @@ Constrain.Trees = function() {
             }
             switch (outgoing.length) {
                 case 0: break
-                case 1: constraints.push(figure.equal(pos.x(), outgoing[0].positions.get(frame).x()))
+                case 1: constraints.push(f.equal(pos.x(), outgoing[0].positions.get(frame).x()))
                         // console.log("frame " + frame.index + ": stacking " + node.value + " on " + outgoing[0].value)
                         break
                 default:
-                     constraints.push(figure.equal(pos.x(),
-                         figure.average(outgoing[0].positions.get(frame).x(),
+                     constraints.push(f.equal(pos.x(),
+                         f.average(outgoing[0].positions.get(frame).x(),
                                  outgoing[outgoing.length-1].positions.get(frame).x())))
             }
             /*
-                const r = figure.rectangle().at(obj_group).setStrokeStyle("orange").setFillStyle(null)
-                figure.sameSize(r, obj_group)
+                const r = f.rectangle().at(obj_group).setStrokeStyle("orange").setFillStyle(null)
+                f.sameSize(r, obj_group)
             */
-            constraints.push(...figure.align("none", "center",
+            constraints.push(...f.align("none", "center",
                                     ...outgoing.map(c => c.positions.get(frame))))
 
-            const pf = figure.prevFrame(frame),
+            const pf = f.prevFrame(frame),
                   prevpos = pf && this.getFramePos(pf, node),
                   gobj = node.gobj,
                   target = gobj.target(),
                   gobj_constrs = prevpos
-                    ? figure.after(frame, figure.equal(target, figure.smooth(frame, prevpos, pos)))
-                    : figure.after(frame, figure.equal(target, pos))
+                    ? f.after(frame, f.equal(target, f.smooth(frame, prevpos, pos)))
+                    : f.after(frame, f.equal(target, pos))
             for (const a of [gobj_constrs]) {
                 this.exclusiveAfters.add(a)
                 constraints.push(a)
@@ -525,10 +526,9 @@ Constrain.Trees = function() {
             const edges = this.edges.get(frame)
             const root = this.getFrameRoot(frame),
                   lchild = edges.leftmostDescendant(root),
-                  rchild = edges.rightmostDescendant(root),
-                  [dchildren, depth] = edges.deepestDescendants(root)
+                  rchild = edges.rightmostDescendant(root)
 
-            // console.log('deepest descendants in frame ' + frame.index + ' at depth ' + depth,  dchildren)
+            // console.log('deepest descendants in frame ' + frame.index + ' at depth ' + depth,  ddescendants)
             this.constraints.set(frame, constraints)
             const horzSpacing = f.variable("horzSpacing" + frame.index),
                   vertSpacing = f.variable("vertSpacing" + frame.index)
@@ -539,17 +539,46 @@ Constrain.Trees = function() {
                 f.geq(vertSpacing, 0))
               .forEach(a => this.inclusiveAfters.add(a))
             this.frameNodeConstraints(frame, root, edges, horzSpacing, vertSpacing)
-            let top = f.plus(root.positions.get(frame).y(), f.times(-0.5, root.gobj.h()))
+            let rootpos = root.positions.get(frame)
+            let top = f.plus(rootpos.y(), f.times(-0.5, root.gobj.h()))
             const decoration = this.style.decorateRoot(f, root)
             if (decoration) {
                 const a = f.after(frame, decoration)
                 a.description = 'Root decoration for ' + root.value
                 this.exclusiveAfters.add(a)
-                top = f.min(top, decoration.y0())
+                // top = f.min(top, decoration.y0())
             }
-            const prevFrame = f.prevFrame(frame) || frame,
-                  glue = this.style.glue()
-            const bbox_constraints = f.after(prevFrame, 
+            const glue = this.style.glue(),
+                  [ddescendants, depth] = edges.deepestDescendants(root)
+
+            const deepest = []
+            ddescendants.forEach(c => {
+                deepest.push(f.plus(c.positions.get(frame).y(), 
+                                    f.minus(c.gobj.y1(), c.gobj.target().y())))
+                if (DEBUG)
+                  f.inFrame(frame,
+                    f.circle().setW(5).setFillStyle("green").at(
+                        c.positions.get(frame).x(),
+                            f.plus(c.positions.get(frame).y(), f.minus(c.gobj.y1(), c.gobj.target().y()))))
+            })
+            const prevFrame = this.figure.prevFrame(frame)
+            if (prevFrame) {
+               const [pddescendants, pdepth] = this.getFrameEdges(prevFrame)
+                                                .deepestDescendants(this.getFrameRoot(prevFrame))
+               pddescendants.forEach(c =>  {
+                  deepest.push(f.plus(this.getFramePos(frame, c).y(), 
+                                    f.minus(c.gobj.y1(), c.gobj.target().y())))
+                  if (DEBUG)
+                    f.inFrame(frame,
+                      f.circle().setW(5).setFillStyle("red").at(
+                        c.positions.get(frame).x(),
+                            f.plus(this.getFramePos(frame, c).y(), 
+                                    f.minus(c.gobj.y1(), c.gobj.target().y()))))
+               })
+            }
+            console.log("frame " + frame.index + "tree", this, deepest, "lchild", lchild, "rchild", rchild)
+            const bottom = f.max(...deepest)
+            const bbox_constraints = f.after(frame,
                 f.geq(glue, 0),
                 f.equal(glue, 0).changeCost(0.001),
                 f.equal(this.y0(), top),
@@ -557,16 +586,12 @@ Constrain.Trees = function() {
                                                         f.times(0.5, lchild.gobj.w()))),
                 f.equal(f.minus(this.x1(), glue), f.plus(rchild.positions.get(frame).x(),
                                                         f.times(0.5, rchild.gobj.w()))),
-                f.equal(this.y1(), 
-                    f.max(...dchildren.map(c =>
-                        f.plus(c.positions.get(frame).y(), 
-                                    f.minus(c.gobj.y1(), c.gobj.target().y())))))
+                f.equal(this.y1(), bottom)
             )
             for (const a of bbox_constraints) {
-                this.exclusiveAfters.add(a)
+                this.inclusiveAfters.add(a)
                 constraints.push(a)
             }
-
         }
         findNode(v) {
             for (const frame of this.roots.keys()) {

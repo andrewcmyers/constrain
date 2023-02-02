@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false
 let REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -704,12 +704,12 @@ class Figure {
             component.invHessian = solution[2]
             this.postMinActions.forEach(solver => solver(solution[0]))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
-            if (DEBUG_CONSTRAINTS) {
+            if (DEBUG_CONSTRAINTS || REPORT_UNSOLVED_CONSTRAINTS) {
                 for (const c of this.activeConstraints) {
                     if (c instanceof Loss) {
                         const loss = evaluate(c.expr, solution[0])
                         if (Math.abs(loss > 0.01)) {
-                            console.log("Constraint " + c + ": loss = " + loss)
+                            console.log("** Badly solved constraint " + c + ": loss = " + loss)
                         }
                     } else {
                         //      console.error("huh?" + c)
