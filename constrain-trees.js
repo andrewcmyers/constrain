@@ -201,7 +201,7 @@ Constrain.Trees = function() {
         getValue() {
             return this.value
         }
-        getRendering() {
+        graphic() {
             return this.gobj
         }
         toString() {

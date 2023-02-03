@@ -60,10 +60,10 @@ with (new Constrain.Figure("case_LL_LR")) {
         }
     })
     setStyle('drawEdge', function (f, n1, n2) {
-        return f.connector(n1.getRendering(), n2.getRendering())
+        return f.connector(n1.graphic(), n2.graphic())
     })
     setStyle('decorateRoot', function(f, n) {
-        return f.line(n.getRendering().toTop(15), n.getRendering().uc())
+        return f.line(n.graphic().toTop(15), n.graphic().uc())
     })
 
     setFillStyle("#fdc")
