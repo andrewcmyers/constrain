@@ -19,11 +19,11 @@ const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
-      CHECK_NAN = true,
+      CHECK_NAN = false,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false
 let REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -91,7 +91,7 @@ function wrongSizedInvHessian(nvars, invHessian) {
 // They have a cost that is supposed to be as small as possible (zero, if the constraint
 // is fully satisfiable). The solver tries to minimize the total cost of all constraints.
 //
-// Associated with each figure is a set of GraphicalObjects that know how to
+// Associated with each figure is a set of Graphics that know how to
 // render themselves based on associated Variables.  When new graphical objects
 // are created, their style is set to their figure's style by default, but can
 // be changed later.
@@ -154,7 +154,7 @@ class Figure {
         this.animatedSolving = false
         this.solverCallbacks = []
         this.minimizationOptions = {...defaultMinimizationOptions}
-        this.fadeColor = 'white'
+        this.fadeColor = this.findFadeColor(canvas)
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
             console.error("Canvas input will not work correctly with padding")
@@ -167,6 +167,16 @@ class Figure {
         this.canvas.width = _width * this.scale
         this.canvas.height = _height * this.scale
         this.ctx.setTransform(this.scale * this.zoom, 0, 0, this.scale * this.zoom, 0, 0)
+    }
+    findFadeColor(canvas) {
+        let elt = canvas, c
+        while (elt) {
+            c = window.getComputedStyle(canvas).backgroundColor
+            if (c != "rgba(0, 0, 0, 0)") break
+            elt = elt.parentNode
+        }
+        if (c == "rgba(0, 0, 0, 0)") return "#fff"
+        return c
     }
     toString() {
         return "Figure"
@@ -219,7 +229,7 @@ class Figure {
         })
     }
     initObjects() {
-        this.GraphicalObjects = []
+        this.Graphics = []
         this.Constraints = []
         this.Graphs = []
         this.Variables = []
@@ -333,7 +343,7 @@ class Figure {
             const cons = constraintsByVar.get(v)
             if (cons) cons.forEach(enableConstraint)
         }
-        this.GraphicalObjects.forEach(g => {
+        this.Graphics.forEach(g => {
             if (g.active() && g.visible()) {
                 g.variables().forEach(v => {
                     checkIfNeeded(v)
@@ -685,7 +695,9 @@ class Figure {
             this.activeComponent = component
             this.numberVariables(stage, component)
             this.resetValuation()
-            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.size} constraints`)
+            if (DEBUG_CONSTRAINTS) {
+               console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
+            }
             if (component.invHessian && wrongSizedInvHessian(this.currentValuation.length, component.invHessian)) {
                 delete component.invHessian
                 if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
@@ -694,12 +706,12 @@ class Figure {
             component.invHessian = solution[2]
             this.postMinActions.forEach(solver => solver(solution[0]))
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
-            if (DEBUG_CONSTRAINTS) {
+            if (DEBUG_CONSTRAINTS || REPORT_UNSOLVED_CONSTRAINTS) {
                 for (const c of this.activeConstraints) {
                     if (c instanceof Loss) {
                         const loss = evaluate(c.expr, solution[0])
                         if (Math.abs(loss > 0.01)) {
-                            console.log("Constraint " + c + ": loss = " + loss)
+                            console.log("** Badly solved constraint " + c + ": loss = " + loss)
                         }
                     } else {
                         //      console.error("huh?" + c)
@@ -818,7 +830,7 @@ class Figure {
 
     // Render the figure using the current valuation, whatever it is.
     renderFromValuation() {
-        for (const g of this.GraphicalObjects) {
+        for (const g of this.Graphics) {
             if (g.parent === undefined && g.renderIfVisible && g.active())
               g.renderIfVisible()
         }
@@ -1107,6 +1119,9 @@ class Figure {
     getStyle(key, required) {
         return this.currentStyle().get(key, required)
     }
+    hasStyle(key) {
+        return this.currentStyle().has(key)
+    }
 
     // Set the default fill style
     setFillStyle(style) {
@@ -1243,7 +1258,7 @@ class Figure {
 
     // constraints to pin all the objects at the same location
     pin(...objects) {
-        objects = flattenGraphicalObjects(objects)
+        objects = flattenGraphics(objects)
         const r = []
         for (let i = 1; i < objects.length; i++) {
             r.push(this.equal(objects[0].x(), objects[i].x()))
@@ -1287,7 +1302,7 @@ class Figure {
         const result = []
         if (objlist === undefined) return []
         if (!Array.isArray(objlist))
-            objlist = flattenGraphicalObjects(argsToArray(arguments, 2))
+            objlist = flattenGraphics(argsToArray(arguments, 2))
         switch (horizontal) {
             case "":
             case "none": break
@@ -1571,7 +1586,7 @@ class Figure {
         return new DOMElementBox(this, id)
     }
     group(...objects) {
-        objects = flattenGraphicalObjects(objects)
+        objects = flattenGraphics(objects)
         return new Group(this, ...objects)
     }
     linear(frame, e1, e2) {
@@ -2106,6 +2121,7 @@ class Expression {
         this.cachedResult = result
         return result
     }
+    // The set of variables that are needed to evaluate this expression.
     variables() { return new Set() }
     initDiff() { this.bpDiff = 0 }
     // actually propagate differentials backward to dependencies
@@ -2149,13 +2165,12 @@ function currentValue(e) {
 // that determines its location in the valuation array. A variable is associated
 // with a particular stage. Before that stage, its value should not be needed.
 //
-// XXX Does it really need to know its figure?
 class Variable extends Expression {
     constructor(figure, basename, hint) {
         super()
         this.basename = basename + "_" + figure.numVariables
         this.index = figure.numVariables // overridden later by numberVariables()
-        this.figure = figure
+        this.figure = figure             // a variable is associated with one figure
         this.stage = figure.currentStage
         figure.Variables.push(this)
         figure.numVariables++
@@ -2184,7 +2199,7 @@ class Variable extends Expression {
                 g[this.index] = 1
                 this.grad = g // save gradient for later
             }
-            if (this.figure.activeVariables[this.index] !== this) {
+            if (DEBUG && this.figure.activeVariables[this.index] !== this) {
                 console.error("Variable index does not agree with active variables list")
             }
             return [valuation[this.index], g]
@@ -2353,8 +2368,9 @@ class BackPropagation {
             if (e.currentValue === undefined) {
                 evaluate(e, valuation)
             }
-            if (e.bpDiff == 0) continue
-            e.backprop(this)
+            if (e.bpDiff != 0) {
+                e.backprop(this)
+            }
         }
     }
 
@@ -2992,7 +3008,7 @@ class Projection extends Expression {
 }
 
 // A Temporal is an object that might only exist in some frames. It can be
-// a GraphicalObject or a Constraint. By default an object exists and
+// a Graphic or a Constraint. By default an object exists and
 // is visible in every frame.
 //
 class Temporal {
@@ -3549,7 +3565,7 @@ class Box extends LayoutObject {
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
-        return new Set().add(this.x_).add(this.y_).add(this.w_).add(this.h_)
+        return new Set([this.x_, this.y_, this.w_, this.h_])
     }
 // convenience methods for positioning (by adding constraints)
 
@@ -3564,15 +3580,15 @@ class Box extends LayoutObject {
     setH(h) { this.figure.equal(this.h(), h); return this }
 }
 
-// A GraphicalObject is centered at (x,y) and has a width w and height h.
+// A Graphic is centered at (x,y) and has a width w and height h.
 // It also has some style attributes and it may contain text.
 // LineWidth can be a constrained attribute too.
-class GraphicalObject extends Box {
+class Graphic extends Box {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint,
                 y_hint, w_hint, h_hint) {
         super(figure, x_hint, y_hint, w_hint, h_hint)
 
-        figure.GraphicalObjects.push(this)
+        figure.Graphics.push(this)
 
         this.fillStyle = fillStyle || figure.getFillStyle()
         this.strokeStyle = strokeStyle || figure.getStrokeStyle()
@@ -3679,7 +3695,7 @@ class GraphicalObject extends Box {
 
     // Make this object appear immediately underneath the named object
     placeUnder(obj) {
-        let objects = this.figure.GraphicalObjects
+        let objects = this.figure.Graphics
         let new_objects = []
         for (const o of objects) {
             if (o == obj) {
@@ -3689,12 +3705,12 @@ class GraphicalObject extends Box {
                 new_objects.push(o)
             }
         }
-        this.figure.GraphicalObjects = new_objects
+        this.figure.Graphics = new_objects
         return this
     }
     // Make this object appear immediately over the named object
     placeOver(obj) {
-        let objects = this.figure.GraphicalObjects
+        let objects = this.figure.Graphics
         let new_objects = []
         for (const o of objects) {
             if (o == obj) {
@@ -3704,7 +3720,7 @@ class GraphicalObject extends Box {
                 new_objects.push(o)
             }
         }
-        this.figure.GraphicalObjects = new_objects
+        this.figure.Graphics = new_objects
         return this
     }
     active(f) {
@@ -3733,9 +3749,9 @@ class GraphicalObject extends Box {
     }
     installHolder(figure, holder, child) {
         const oldParent = child.parent
-        for (let i = 0; i < figure.GraphicalObjects.length; i++) {
-            if (figure.GraphicalObjects[i] === child) {
-                figure.GraphicalObjects[i] = holder
+        for (let i = 0; i < figure.Graphics.length; i++) {
+            if (figure.Graphics[i] === child) {
+                figure.Graphics[i] = holder
                 child.parent = holder
                 if (oldParent) {
                     this.installHolder(figure, oldParent, holder)
@@ -3745,11 +3761,11 @@ class GraphicalObject extends Box {
         }
         if (child.parent !== holder) {
             console.error("Child object not in top-level list")
-            figure.GraphicalObjects.push(holder)
+            figure.Graphics.push(holder)
         }
     }
     className() {
-        return "GraphicalObject"
+        return "Graphic"
     }
     toString() {
         return this.constructor.name
@@ -3785,10 +3801,10 @@ class Point extends LayoutObject {
 
 // A Group groups together a set of layout objects into a single object that
 // is rendered together and whose location and bounds can be used to constrain
-class Group extends GraphicalObject {
+class Group extends Graphic {
     constructor(figure, ...objects) {
         super(figure)
-        this.objects = flattenGraphicalObjects(objects).map(o => legalLayoutObject(o))
+        this.objects = flattenGraphics(objects).map(o => legalLayoutObject(o))
         this.objects.forEach(o => {
             o.parent = this
         })
@@ -3852,7 +3868,7 @@ class Group extends GraphicalObject {
 
 // A TextFrame is a graphical object that doesn't have any rendering but does
 // format contained text into a rectangular shape.
-class TextFrame extends GraphicalObject {
+class TextFrame extends Graphic {
     // text should be a ContainedText object
     constructor(figure, text, fillStyle) {
         super(figure, fillStyle)
@@ -3871,7 +3887,7 @@ class TextFrame extends GraphicalObject {
 }
 
 // A filled rectangle. It can have text inside it.
-class Rectangle extends GraphicalObject {
+class Rectangle extends Graphic {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y, w_hint, h_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y, w_hint, h_hint)
         figure.positive(this.h())
@@ -4123,7 +4139,7 @@ class Square extends Rectangle {
     }
 }
 
-class Ellipse extends GraphicalObject {
+class Ellipse extends Graphic {
     constructor(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint) {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
         figure.positive(this.h())
@@ -4191,10 +4207,10 @@ class Circle extends Ellipse {
 // polygon.points is an array of the points.
 // Doesn't support cornerRadius yet.
 //
-class Polygon extends GraphicalObject {
+class Polygon extends Graphic {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
         super(figure, fillStyle, strokeStyle, lineWidth)
-        points = flattenGraphicalObjects(points)
+        points = flattenGraphics(points)
         this.points = points
         figure.equal(this.x1(), figure.max(points.map(p => p.x())))
         figure.equal(this.y1(), figure.max(points.map(p => p.y())))
@@ -4241,7 +4257,7 @@ class Polygon extends GraphicalObject {
         return this
     }
     variables() {
-        let result = GraphicalObject.prototype.variables.call(this)
+        let result = Graphic.prototype.variables.call(this)
         this.points.forEach(p => {
             result = union(result, exprVariables(p))
         })
@@ -4484,7 +4500,7 @@ function drawLineEndDir(ctx, style, size, x, y, cosa, sina) {
 }
 
 // A straight line
-class Line extends GraphicalObject {
+class Line extends Graphic {
     // create a line from p1 to p2 (optionally specified)
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, undefined, strokeStyle, lineWidth)
@@ -4625,7 +4641,7 @@ function argsForEach(args, i, f) {
     }
 }
 
-function flattenGraphicalObjects(objects) {
+function flattenGraphics(objects) {
     return objects.flat().filter(o => {
         if (o && o.variables) return true
         console.error("Not a graphical object: " + o)
@@ -4635,15 +4651,19 @@ function flattenGraphicalObjects(objects) {
 
 // A Connector draws a curve from a first object to a last object, passing near 
 // intermediate objects along the way. Bezier splines are used to connect objects.
-class Connector extends GraphicalObject {
+class Connector extends Graphic {
     constructor(figure, ...objects) {
         super(figure, undefined, figure.getStrokeStyle(), figure.getLineWidth())
         this.fillStyle = this.strokeStyle
-        this.objects = flattenGraphicalObjects(objects)
+        this.objects = flattenGraphics(objects)
         this.labels = []
         this.arrowSize = figure.getArrowSize()
         this.connectionStyle = figure.getConnectionStyle()
         this.lineLabelInset = figure.getLineLabelInset() // may be null
+        // figure.equal(this.x0(), figure.min(...objects.map(o => o.x0())))
+        // figure.equal(this.x1(), figure.max(...objects.map(o => o.x1())))
+        // figure.equal(this.y0(), figure.min(...objects.map(o => o.y0())))
+        // figure.equal(this.y1(), figure.max(...objects.map(o => o.y1())))
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -4751,7 +4771,7 @@ class Connector extends GraphicalObject {
 }
 
 // Horizontal space.
-class HSpace extends GraphicalObject {
+class HSpace extends Graphic {
     constructor(figure, w) {
         super(figure)
         if (w) figure.equal(this.w(), w)
@@ -4761,7 +4781,7 @@ class HSpace extends GraphicalObject {
 }
 
 // Vertical space.
-class VSpace extends GraphicalObject {
+class VSpace extends Graphic {
     constructor(figure, h) {
         super(figure)
         if (h) figure.equal(this.h(), h)
@@ -4957,7 +4977,7 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
 }
 
 // A label.
-class Label extends GraphicalObject {
+class Label extends Graphic {
     constructor(figure, text, fontSize, fontName, fillStyle, x, y) {
         super(figure, fillStyle, undefined, 1, x, y)
         // this.text is either a string or a ContainedText object
@@ -4982,13 +5002,13 @@ class Label extends GraphicalObject {
 
         this.setStrokeStyle(undefined)
 
-        // Have to override GraphicalObject in the object itself
+        // Have to override Graphic in the object itself
         this.w = function() {
             if (!this.hasOwnProperty('computedWidth')) this.computeWidth(figure.ctx)
             return this.computedWidth
         }
-        this.h = () => this.font.getSize()
-        this.variables = function() { return new Set().add(this.x()).add(this.y()) }
+        this.h = function() { return this.font.getSize() }
+        this.variables = function() { return new Set([this.x(),this.y()]) }
     }
     installFont() {
         this.font.setContextFont(this.figure.ctx)
@@ -5812,10 +5832,10 @@ class BoldText extends ContextTransformer {
     }
 }
 
-// A GraphicalObject intended to be overridden by users with arbitrary
+// A Graphic intended to be overridden by users with arbitrary
 // rendering code.  It draws itself by calling a method draw(context, frame,
 // time, x0, y0, x1, y1), simplifying the coding.
-class UserDefined extends GraphicalObject {
+class UserDefined extends Graphic {
     constructor(figure) {
         super(figure)
     }
@@ -5837,16 +5857,16 @@ class UserDefined extends GraphicalObject {
 class InteractiveObject extends LayoutObject {
     constructor(figure) {
         super()
-        figure.GraphicalObjects.push(this)
+        figure.Graphics.push(this)
         figure.interactives.push(this)
         this.figure = figure
     }
     render() {}
 }
-InteractiveObject.prototype.renderIfVisible = GraphicalObject.prototype.renderIfVisible
-InteractiveObject.prototype.visible = GraphicalObject.prototype.visible
-InteractiveObject.prototype.placeOver = GraphicalObject.prototype.placeOver
-InteractiveObject.prototype.placeUnder = GraphicalObject.prototype.placeUnder
+InteractiveObject.prototype.renderIfVisible = Graphic.prototype.renderIfVisible
+InteractiveObject.prototype.visible = Graphic.prototype.visible
+InteractiveObject.prototype.placeOver = Graphic.prototype.placeOver
+InteractiveObject.prototype.placeUnder = Graphic.prototype.placeUnder
 
 // A handle that can be dragged interactively.
 class Handle extends InteractiveObject {
@@ -5856,7 +5876,7 @@ class Handle extends InteractiveObject {
               vy = new Variable(figure, "hy")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => new Set().add(vx).add(vy)
+        this.variables = () => new Set([vx, vy])
         this.size = 5
         this.strokeStyle = strokeStyle || figure.getStyle('strokeStyle')
         this.isActive = true
@@ -5947,7 +5967,7 @@ class Button extends InteractiveObject {
               vy = new Variable(figure, "y")
         this.x_ = vx
         this.y_ = vy
-        this.variables = () => new Set().add(vx).add(vy)
+        this.variables = () => new Set([vx,vy])
         figure.geq(vx,0)
         figure.geq(vy,0)
         figure.leq(vx, figure.canvasRect().x1())
@@ -6049,7 +6069,7 @@ class AdvanceButton extends Button {
         this.figure.advance()
     }
 }
-AdvanceButton.prototype.installHolder = GraphicalObject.prototype.installHolder
+AdvanceButton.prototype.installHolder = Graphic.prototype.installHolder
 
 // A global is an expression whose value may change but is not affected by 
 // the values of variables that are being solved for. Its value is provided
@@ -6234,7 +6254,7 @@ function drawCorners(figure) {
     ctx.stroke()
 }
 
-class Corners extends GraphicalObject {
+class Corners extends Graphic {
     constructor(figure)  {
         super(figure) 
     }
@@ -6259,7 +6279,7 @@ function reportPerformance(b) {
 }
 
   return ({
-    Figure, Figures, Frame, Variable, LayoutObject, GraphicalObject,
+    Figure, Figures, Frame, Variable, LayoutObject, Graphic, GraphicalObject: Graphic,
     Point, Box, Line, Connector, Rectangle, Square, Circle, Ellipse, Polygon,
     ContainedText, Context, TextItem, createText, InteractiveObject,
     CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,

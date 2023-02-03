@@ -36,7 +36,7 @@ with (fig1) {
     }
 
     class Style extends Constrain.Trees.TreeStyle {
-      drawNode(s) {
+      drawNode(figure, s) {
         if (s === undefined) {
             return point()
         } else {
@@ -44,7 +44,7 @@ with (fig1) {
         }
       }
     }
-    t = tree(new Style(fig1), 4, [3, [6, 2, undefined], [5, [4, undefined, 9], 0]], 1)
+    t = tree(new Style(), 4, [3, [6, 2, undefined], [5, [4, undefined, 9], 0]], 1)
     // t = tree(l => node(l + ""), 4, [5, 0, 2], 9)
     // t = tree(num, 4, 0, 5)
     // t = tree(l => l !== undefined ? node(l + "") : point(), 4, 2, [3, undefined, 5])
@@ -66,7 +66,8 @@ with (fig1) {
     const glue = figure.variable()
     figure.equal(glue, 0).changeCost(0.01)
     align("none", "TB", tbox, margin().inset(10))
-    align("abut", "B", margin().ll(), figure.hspace(glue), tbox, figure.hspace(glue), advanceButton(), margin().lr())
+    align("abut", "B", margin().ll(), figure.hspace(glue), tbox, figure.hspace(glue),
+        advanceButton(), margin().lr())
 
     align("LR", "TB", bbox, tbox)
 

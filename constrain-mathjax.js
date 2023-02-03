@@ -17,7 +17,7 @@
     }
   }
 
-  class MathJaxImage extends Constrain.GraphicalObject {
+  class MathJaxImage extends Constrain.Graphic {
     constructor(figure, input, displayMath) {
         super(figure)
         MathJax.texReset()

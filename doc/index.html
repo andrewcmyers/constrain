@@ -24,6 +24,7 @@
     h3 { font-size: 150% }
     h4 { font-size: 95%; font-family: Menlo, Consolas, fixed }
     div.content { max-width: 100ex; margin: 4em auto }   
+    div.inset { border: 1px solid #ccc; padding: 1ex 4ex }
     body  {background-color: #fed }
     p, ul li { font-size: 12pt; font-family: Georgia, serif }       
     pre.code, textarea { padding: 1ex; font-size: 10pt; width: 60ex; float:right; border: 1px solid black; background-color: #ddd; font-family: Menlo, fixed }
@@ -90,17 +91,21 @@
   <a href="https://github.com/andrewcmyers/constrain">GitHub repository</a>.
 </p>
 <p>
-  This page is intended to be a reference manual for Constrain. It is written
-  using Constrain, so it is also an example of its use. The reference manual
-  is a work in progress, so not all features are covered yet and many features
-  deserve more explanation.
+  This document is a reference manual for Constrain. It is written using
+  Constrain, so it is also an example of its use. The reference manual is a
+  work in progress, so not all features are covered yet and many features
+  deserve more explanation. There are many features that are not explicitly
+  documented here. These features should be considered very much subject to
+  change.
 </p>
 <p>
-Heydon and Nelson wrote in their introduction to the Juno 2 constraint-based drawing editor in 1994,
-“thirty years after Sketchpad, the sad
-fact is that constraints have so far been more promising than useful” <a href="#juno_2_ref">[1]</a>.
-It has now been almost sixty years since Sketchpad <a href="#sketchpad_ref">[2]</a>,
-but Constrain does seem to make constraints useful for graphics.
+  Heydon and Nelson wrote in their introduction to the Juno 2 constraint-based
+  drawing editor in 1994, “thirty years after Sketchpad, the sad fact is that
+  constraints have so far been more promising than useful” <a
+  href="#juno_2_ref">[1]</a>.  It has now been almost sixty years since Sketchpad
+  <a href="#sketchpad_ref">[2]</a>, but Constrain does seem to make constraints
+  useful for graphics. Of course, there have been many other constraint-based
+  graphical systems, such as Garnet <a href="#garnet_ref">[3]</a>.
 </p>
 
 <h2>Overview</h2>
@@ -164,7 +169,8 @@ device.
 <h2>Graphical objects</h2>
 
 <p>
-Constrain supports a number of useful graphical objects that support a common
+Constrain supports a number of useful graphical objects (class <code>Constrain.Graphic</code>
+that support a common
 API for defining their appearance. The <code>Figure</code> class provides
 convenience methods for creating these objects, although they can also be
 created by invoking the constructors of the corresponding classes.  Constrain
@@ -713,6 +719,24 @@ of saved styles. It is an error to call this method when there is no currently
 saved style.
 </p>
 
+<h4>setStyle(name, value)</h4>
+<p>
+Set the named style parameter to have the given value. The various figure
+style settings that are inheritable have corresponding style parameters.
+For example, calling <code>figure.setFillStyle(f)</code> is the same as calling
+<code>figure.setStyle('fillStyle', f)</code>.
+</p>
+
+<h4>getStyle(name)</h4>
+<p>
+Return the value of the named style parameter.
+</p>
+
+<h4>hasStyle(name)</h4>
+<p>
+Report whether the named style parameter is defined for the figure.
+</p>
+
 <h4>setZoom(zoom)</h4>
 <p>
 By default the coordinate system of the figure is the same as the HTML
@@ -751,10 +775,11 @@ This function causes figures to automatically resize to their containing canvase
 
 <h4>Constrain.setupTouchListeners()</h4>
 <p>
-By default, touch events are not tracked by figures, which means that handles will
-not work correctly on tablets and phones. Calling this method will enable touch events.
-They are not turned on by default because handling touch events seems to require interposing
-on touch events at the level of the entire window.
+By default, touch events are not tracked by figures, which means that handles
+will not work correctly on tablets and phones. Calling this method enables
+tracking of touch events.  They are not turned on by default because handling
+touch events seems to require interposing on touch events at the level of the
+entire window.
 </p>
 
 <h4>Constrain.getFigureByName(name)</h4>
@@ -766,19 +791,27 @@ currently exists.
 <h3>Default styles</h3>
 
 <p>
-Graphical objects can set their own style, but if no style is specified, the style is inherited
-from the figure. The following figure methods support defining the default styles for the entire
-figure, taking the same arguments as the corresponding methods on graphical objects.
+Graphical objects can set their own style, but if no style is specified, the
+style is inherited from the figure. The following figure methods support
+defining the default styles for the entire figure, taking the same arguments as
+the corresponding methods on graphical objects.
 </p>
 
 <h4>setFillStyle(style)<br>
     setStrokeStyle(style)<br>
     setTextStyle(style)<br>
-    setLineWidth(w)<br>
     setFontSize(s)<br>
     setFontName(n)<br>
+    setLineWidth(w)<br>
+    setLineDash(d)<br>
     setConnectionStyle(s)<br>
-    </h4>
+</h4>
+
+<p>
+See also the <code>setStyle()</code> method, which can also be used to set
+these styles under corresponding names: <code>fillStyle</code>,
+<code>strokeStyle</code>, etc.
+</p>
 
 <h2>Constraints</h2>
 
@@ -1336,10 +1369,10 @@ advances past the last frame.
 
 <h4>setFadeColor(color)</h4>
 <p>
-For repeating figures, there is a period in which the figure
-fades out to a color (by default, white). If the fade color is
-set to the background color of the page, the fade effect will
-be effective.
+For repeating figures, there is a period in which the figure fades out to a
+color. By default it is the same as the background color of the canvas, which
+usually the most effective choice, but this method can be used to change the fade
+color.
 </p>
 
 <h4>setAnimatedSolving(b)</h4>
@@ -1703,6 +1736,123 @@ is not a graphical object, but it coordinates placement and animation of
 the graphical objects that depicts its nodes and edges. Changes to the configuration
 of a tree can be tied to animation frames.
 </p>
+<p>
+Tree nodes are not graphical objects, but are tied to graphical objects that
+represent them. They have the following two methods:
+</p>
+<div class=inset>
+  <h4>getValue()</h4>
+  <p>
+    Return the value from which this node was constructed.
+  </p>
+  <h4>getGraphic()</h4>
+  <p>
+    Return the graphical object representing this node.
+  </p>
+</div>
+<p>
+Tree objects are created by the following Figure method:
+</p>
+<h4>tree(style, root, ...children)</h4>
+<p>
+Trees are created using the <code>tree</code> method. The nodes of the tree are
+specified using values that are mapped to graphical objects according to the specified
+tree style.
+</p>
+<p>
+If the provided tree style is <code>null</code>, the current figure style
+is used instead. There are four style parameters, which can be bound to different
+functions or provided as methods of the style objects:
+<div class=inset>
+
+    <h4>drawNode(figure, value)</h4>
+    <p>
+      The tree is built out of graphical objects, which are created from the values
+      provided in <code>root</code> and <code>children</code>, using the
+      <code>drawNode</code> method. It should return the graphical object
+      representing the node.
+    </p>
+    <h4>drawEdge(figure, n1, n2)</h4>
+    <p>
+      This method creates graphical objects representing an edge from node
+      <code>n1</code> to node <code>n2</code>.
+    </p>
+    <h4>decorateRoot(figure, n)</h4>
+    <p>
+      This method optionally creates and returns a graphical object
+      decorating the root node <code>n</code> of the tree.
+    </p>
+    <h4>glue(figure)</h4>
+    <p>
+      This method returns an expression representing the amount of glue space
+      to insert on the sides of the tree.
+    </p>
+</div>
+
+<p>
+Tree objects offer the following methods for controlling their appearance over
+time.</p>
+
+<h4>view(frame)</h4>
+<p>
+The view method returns a <code>TreeView</code> object, which represents
+the configuration of the tree in the specified frame. The tree can be
+conveniently manipulated using the <code>TreeView</code> with the following
+methods. It is important to perform tree operations in frame order, because
+when an operation is performed on a tree, it is assumed to not require any
+changes between the last operation and the current one.
+</p>
+
+<div class=inset>
+  <h4>rootGraphic()</h4>
+  <p>
+    Return the graphical object that corresponds to the root node of the
+    tree in this frame. Its position may be animated during the frame.
+  </p>
+  <h4>rootPosition()</h4>
+  <p>
+    Return a graphical object representing the final position of the root
+    node at the end of this frame.
+  </p>
+  <h4>findNode(v)</h4>
+  <p>
+    Return a tree node with the value v.
+  </p>
+  <h4>findObj(v)</h4>
+  <p>
+    Return a tree node with the value v.
+  </p>
+  <h4>swapNodeWithParent(value)</h4>
+  <p>
+    Swap the node with the specified value with its parent node.
+  </p>
+  <h4>rotateNodeWithParent(value)</h4>
+  <p>
+    Rotate the node with the specified value up to the position of
+    its parent node while keeping the rest of the nodes in the same
+    in-order traversal order.
+  </p>
+  <h4>addLeaf(value, parentValue, position)</h4>
+  <p>
+    Create a new leaf node containing the value at the given position in the
+    children of the given parent node. Children at that position or later
+    have their position increased. If position is omitted, the new leaf
+    is added as the last child.
+  </p>
+  <h4>removeLeaf(value)</h4>
+  <p>
+    Remove the leaf node with the specified value in this frame.
+  </p>
+  <h4>spliceNode(value)</h4>
+  <p>
+    Remove the single-child node identified by value, connecting its
+    parent node to its single child.
+  </p>
+  <h4>replaceLeaf(value1, value2)</h4>
+  <p>
+    Remove the node with value <code>value1</code> with a new node
+    with value <code>value2</code>.
+</div>
 
 <h2>Reveal.js integration</h2>
 <p>
@@ -1726,11 +1876,14 @@ References
 <ol>
 <li id=juno_2_ref>
 Allan Heydon and Greg Nelson. <a href="https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-131A.html">
-The Juno-2 Constraint-Based Drawing Editor.</a>
+The Juno-2 constraint-based drawing editor.</a>
 HP Labs Technical Report SRC-RR-131A, Dec. 1994.
 </li>
 <li id=sketchpad_ref>
-Ivan E. Sutherland. <a href="https://journals.sagepub.com/doi/pdf/10.1177/003754976400200514?casa_token=lVb6FYwFvaUAAAAA:r1puPgv_qABGNn3HKCmNYith6ZRkVSEgEiv2fmnY2_QMIaILWDgWD3V8ghK5eUm6fai2PT3Y6CLh">Sketchpad: A Man–Machine Graphical Communication System.</a> Simulation 2.5 (1964): R-3.
+Ivan E. Sutherland. <a href="https://journals.sagepub.com/doi/pdf/10.1177/003754976400200514?casa_token=lVb6FYwFvaUAAAAA:r1puPgv_qABGNn3HKCmNYith6ZRkVSEgEiv2fmnY2_QMIaILWDgWD3V8ghK5eUm6fai2PT3Y6CLh">Sketchpad: A man–machine graphical communication system.</a> Simulation 2.5 (1964): R-3.
+</li>
+<li id=garnet_ref>
+Myers BA, Giuse DA, Dannenberg RB, Vander Zanden B, Kosbie DS, Pervin E, Mickish A, Marchal P. <a href="https://ieeexplore.ieee.org/document/60882">Garnet: Comprehensive support for graphical, highly-interactive user interfaces</a>. IEEE Computer 23(11):71–85, 1990.
 </li>
 </ol>
 

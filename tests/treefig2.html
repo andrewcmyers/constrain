@@ -18,8 +18,8 @@
 <canvas id=avl_exercise1 style="width:600px; height: 100px"></canvas>
 <script class=graphics>
 class DotTree extends Constrain.Trees.TreeStyle {
-    drawNode(n) {
-        return n ? this.figure.circle().setW(8).setFillStyle('black') : this.figure.point()
+    drawNode(figure, n) {
+        return n ? figure.circle().setW(8).setFillStyle('black') : figure.point()
     }
 }
 let fig1 = new Constrain.Figure("avl_exercise1")
@@ -32,7 +32,7 @@ with (fig1) {
         t4 = tree(dots, x, [x,x,x], [x,x,x] ),
         t5 = tree(dots, x, [x,x,u], [x, x, [x,u,x]] )
 
-    const b = [t4, t2, t3, t1, t5].map(t => t.bbox)
+    const b = [t4, t2, t3, t1, t5]
     b.forEach(bbox => bbox.setW(70))
     let trees = group(b[0], hspace(10), b[1], hspace(10), b[2], hspace(10), b[3], hspace(10), b[4])
         .align("abut", "TB")
