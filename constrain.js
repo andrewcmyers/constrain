@@ -19,7 +19,7 @@ const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
-      CHECK_NAN = true,
+      CHECK_NAN = false,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
@@ -695,7 +695,9 @@ class Figure {
             this.activeComponent = component
             this.numberVariables(stage, component)
             this.resetValuation()
-            // console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} variables, ${this.activeConstraints.size} constraints`)
+            if (DEBUG_CONSTRAINTS) {
+               console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
+            }
             if (component.invHessian && wrongSizedInvHessian(this.currentValuation.length, component.invHessian)) {
                 delete component.invHessian
                 if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
@@ -2366,8 +2368,9 @@ class BackPropagation {
             if (e.currentValue === undefined) {
                 evaluate(e, valuation)
             }
-            if (e.bpDiff == 0) continue
-            e.backprop(this)
+            if (e.bpDiff != 0) {
+                e.backprop(this)
+            }
         }
     }
 
