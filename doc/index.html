@@ -1696,8 +1696,13 @@ If true, gravity pulls to the right.
 
 <h2>Animated Trees</h2>
 <p>
-The module <kbd>constrain-trees.js</kbd> includes support for automatically laying out trees.
-These trees can be animated to support changes to the tree structure over multiple frames.
+The module <kbd>constrain-trees.js</kbd> includes support for automatically
+laying out trees via the class <code>AnimatedTree</code>.  These trees can be
+animated to support changes to the tree structure over multiple frames.  A tree
+is not a graphical object, but it coordinates placement and animation of
+the graphical objects that depicts its nodes and edges. Changes to the configuration
+of a tree can be tied to animation frames.
+</p>
 
 <h2>Reveal.js integration</h2>
 <p>
