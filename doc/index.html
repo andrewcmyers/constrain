@@ -1069,13 +1069,14 @@ solutions. The call returns the expression <code>e</code>.
 
 <h3>Other expressions</h3>
 
-<h4>new Global(f)</h4>
+<h4>new Global(f, name)</h4>
 <p>
 The class <code>Global</code> represents an expression whose value may change but which is
 not affected by any variables that are solved for. Its value is provided by a function <code>f</code>
 passed to the constructor. The function is expected to return a number or array of numbers.
 This class is used to interface Constrain diagrams with external data sources such as the user
-interface.
+interface. The optional argument <code>name</code> can be used to give the global a name, for
+debugging purposes.
 </p>
 
 <h4>new DebugExpr(e)</h4>
