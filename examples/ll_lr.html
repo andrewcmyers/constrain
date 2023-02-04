@@ -82,24 +82,24 @@ with (new Constrain.Figure("case_LL_LR")) {
     setTextStyle("#06c")
     setFontSize(10)
 
-    const p1 = ll1.findObj("A").ll().toLeft(10)
-    const l1 = measure(p1, point(p1.x(), ll1.findObj("x").y0()))
+    const p1 = ll1.findGraphic("A").ll().toLeft(10)
+    const l1 = measure(p1, point(p1.x(), ll1.findGraphic("x").y0()))
     align("abut", "center", l1, hspace(3), label("h + 1"))
 
-    const pc1 = ll1.findObj("C").lr().toRight(5)
-    const l2 = measure(pc1, point(pc1.x(), ll1.findObj("C").y0()))
+    const pc1 = ll1.findGraphic("C").lr().toRight(5)
+    const l2 = measure(pc1, point(pc1.x(), ll1.findGraphic("C").y0()))
     align("abut", "center", l2, hspace(3), label("h"))
 
-    const pd1 = ll1.findObj("D").lr().toRight(5)
-    const l3 = measure(pd1, point(pd1.x(), ll1.findObj("D").y0()))
+    const pd1 = ll1.findGraphic("D").lr().toRight(5)
+    const l3 = measure(pd1, point(pd1.x(), ll1.findGraphic("D").y0()))
     align("abut", "center", l3, hspace(3), label("h"))
 
-    const pa2 = lr1.findObj("A").ll().toLeft(5)
-    const l4 = measure(pa2, point(pa2.x(), lr1.findObj("A").y0()))
+    const pa2 = lr1.findGraphic("A").ll().toLeft(5)
+    const l4 = measure(pa2, point(pa2.x(), lr1.findGraphic("A").y0()))
     align("abut", "center", l4, hspace(3), label("h"))
 
-    const pd2 = lr1.findObj("D").lr().toRight(5)
-    const l5 = measure(pd2, point(pd2.x(), lr1.findObj("D").y0()))
+    const pd2 = lr1.findGraphic("D").lr().toRight(5)
+    const l5 = measure(pd2, point(pd2.x(), lr1.findGraphic("D").y0()))
     align("abut", "center", l5, hspace(3), label("h"))
 
     setStrokeStyle("black")

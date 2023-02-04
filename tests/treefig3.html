@@ -43,7 +43,7 @@ with (fig3) {
     align("LR", "none", t.bbox, margin().inset(30))
     equal(plus(margin().y0(), 20), t.bbox.y0())
     equal(plus(45, t.bbox.y1()), margin().y1())
-    console.log("bottom left node = " + t.view().findObj('<data').y0())
+    console.log("bottom left node = " + t.view().findGraphic('<data').y0())
 }
 fig3.start()
 </script>

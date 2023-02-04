@@ -655,11 +655,11 @@ Constrain.Trees = function() {
         rootPosition() {
             return this.tree.getFrameRoot(this.frame).positions(this.frame)
         }
-        findNode(n) {
-            return this.tree.findNode(n)
+        findNode(v) {
+            return this.tree.findNode(v)
         }
-        findObj(n) {
-            return this.findNode(n).gobj
+        findGraphic(v) {
+            return this.findNode(v).gobj
         }
     }
     Constrain.Figure.prototype.tree = function(style, ...args) {
