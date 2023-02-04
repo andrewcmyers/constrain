@@ -649,7 +649,7 @@ Constrain.Trees = function() {
             const node = this.tree.findNode(value)
             this.tree.spliceNode(this.frame, node)
         }
-        rootObject() {
+        rootGraphic() {
             return this.tree.getFrameRoot(this.frame).gobj
         }
         rootPosition() {
