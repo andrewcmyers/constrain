@@ -144,6 +144,8 @@ to the <code>Figure</code> constructor.
 <p>
 The code of this figure, like other code seen in this document, can be edited by clicking on it.
 Clicking elsewhere on the page will cause the figure to be regenerated with the edited code.
+Here's something you can try right now: make the circle smaller by
+clicking on the code above and adding the code <code>.setW(60)</code> at line 7.
 </p>
 <p>
 Typically, the methods of <code>Figure</code> are used to define graphical objects to appear
@@ -642,17 +644,33 @@ A box containing a set of objects. The box is just large enough to surround all 
 <h3 id=UserDefined>User-defined graphical objects</h3>
 <p>
 The class <code>UserDefined</code> provides a template for building new graphical objects.
-By default, a user-defined object is drawn as a plain gray rectangle.
+By default, a user-defined object is drawn as a plain gray rectangle, but much fancier
+effects can be achieved. For an example, see <a href="https://andrewcmyers.github.io/constrain/examples/talk.html#/7">the fireworks in this demo presentation</a>.
 It is the responsibility of the user to define a subclass of <code>UserDefined</code>, in
-which the following method is overridden:
+which the following methods may be overridden:
 
+<div class=inset>
 <h4>draw(context, frame, time, x0, y0, x1, y1)</h4>
 <p>
-Draw a user-defined object in the graphical context <code>context</code>. The current
-animation frame is <code>frame</code> and the time (0–1) within that frame is <code>time</code>.
-The parameters <code>x0</code>, <code>y0</code>, <code>x1</code>, <code>y1</code> define the
-box that nominally contains the object.
+This method defines how the user-defined object appears.  Draw a user-defined
+object in the graphical context <code>context</code>. The current animation
+frame is <code>frame</code> and the time (0–1) within that frame is
+<code>time</code>.  The numeric parameters <code>x0</code>, <code>y0</code>,
+<code>x1</code>, <code>y1</code> define the box that nominally contains the
+object. Rendering may in general rely on other expressions that may be solved
+for using constraints. The method <code>Constrain.evaluate</code> may be used
 </p>
+<h4>variables()</h4>
+<p>
+Constrain solves for variables that it knows are needed by graphical objects,
+and avoids solving for variables that aren't needed for rendering. However, the
+<code>draw()</code> method might need additional variables. To ensure they are
+solved for, the <code>variables()</code> method may be overridden to return a
+larger set of variables than the default. The expression <code>super.variables()</code>
+may be used to obtain the default set of variables, and that set can then be added to
+appropriately.
+</p>
+</div>
 
 <h2>Figure control</h2>
 
