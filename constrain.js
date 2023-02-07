@@ -4682,14 +4682,6 @@ class Connector extends Graphic {
         const pts = objs.map(o => 
             [ evaluate(o.x(), valuation),
               evaluate(o.y(), valuation) ]);
-        const labelPosns = (this.labels && this.labels.length > 0)
-            ? positionLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
-                              this.endArrowStyle ? this.arrowSize : 0)
-            : null
-
-        ctx.save()
-        if (labelPosns) setupClipRegion(figure, labelPosns, this.lineLabelInset)
-
         switch (this.connectionStyle) {
             case 'magnet':
                 [ pts[0][0], pts[0][1] ] = objs[0].bestMagnetPt(pts[1][0],
@@ -4704,6 +4696,14 @@ class Connector extends Graphic {
                                                     pts[m-1][1], valuation);
                 break
         }
+        const labelPosns = (this.labels && this.labels.length > 0)
+            ? positionLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
+                              this.endArrowStyle ? this.arrowSize : 0)
+            : null
+
+        ctx.save()
+        if (labelPosns) setupClipRegion(figure, labelPosns, this.lineLabelInset)
+
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth, valuation)
         ctx.setLineDash(this.lineDash || [])
