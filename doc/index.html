@@ -705,15 +705,6 @@ objects in place. See <a href="#staged_solving">Staged solving</a> for
 more explanation.
 </p>
 
-<h4>enableSubstitution(b)</h4>
-<p>
-By default, Constrain tries to accelerate solving by simplifying the system of constraints.
-For hard constraints, it may use substitution to achieve this simplification. Substitution
-usually speeds up solving but in some cases can make it harder for the minimization algorithm
-to escape local minima, by overconstraining related variables. This method allows substitution
-to be prevented, by passing <code>false</code> as an argument.
-</p>
-
 <h4>saveStyle()</h4>
 <p>
 Save current style settings. Saved styles are pushed onto a stack.
@@ -789,6 +780,14 @@ with (new Constrain.Figure("figure1")) {
 This method simply returns the figure object itself, a functionality that
 is handy when used in conjunction with the <code>with</code>
 statement.
+</p>
+<h4>enableSubstitution(b)</h4>
+<p>
+By default, Constrain tries to accelerate solving by simplifying the system of constraints.
+For hard constraints, it may use substitution to achieve this simplification. Substitution
+usually speeds up solving but in some cases can make it harder for the minimization algorithm
+to escape local minima, by overconstraining related variables. This method allows substitution
+to be prevented, by passing <code>false</code> as an argument.
 </p>
 
 <h3>Other figure control operations</h3>
