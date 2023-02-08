@@ -705,6 +705,15 @@ objects in place. See <a href="#staged_solving">Staged solving</a> for
 more explanation.
 </p>
 
+<h4>enableSubstitution(b)</h4>
+<p>
+By default, Constrain tries to accelerate solving by simplifying the system of constraints.
+For hard constraints, it may use substitution to achieve this simplification. Substitution
+usually speeds up solving but in some cases can make it harder for the minimization algorithm
+to escape local minima, by overconstraining related variables. This method allows substitution
+to be prevented, by passing <code>false</code> as an argument.
+</p>
+
 <h4>saveStyle()</h4>
 <p>
 Save current style settings. Saved styles are pushed onto a stack.
@@ -761,12 +770,12 @@ Report whether the named style parameter is defined for the figure.
 <p>
 By default the coordinate system of the figure is the same as the HTML
 coordinate system, with 1 HTML pixel per horizontal or vertical unit. (Note
-that HTML pixels do not necessarily correspond to actual screen pixels.) The
+that HTML pixels typically do not correspond to actual screen pixels.) The
 <code>setZoom()</code> method can be used to change the number of HTML pixels
-per figure unit to the specified value. Changing the zoom affects everything
+per figure pixel to the specified value. Changing the zoom affects everything
 that is rendered, including font sizes and line widths. For example, if you
-want figure units to correspond to PostScript/PDF points, you should set a zoom
-of 1 1/3 ≅ 1.333. To make them correspond to TeX points, the zoom value should
+want a figure pixel to correspond to a PostScript/PDF point, you should set a zoom
+of 1 1/3 ≅ 1.333. To make it correspond to a TeX point, the zoom value should
 be 96/72.27 ≅ 1.328.
 </p>
 <h4>thisFigure()</h4>

@@ -43,7 +43,8 @@ function measure(p1, p2) {
 }
 Constrain.Figure.prototype.measure = measure
 
-with (new Constrain.Figure("case_LL_LR")) {
+let fig1
+with (fig1 = new Constrain.Figure("case_LL_LR")) {
     setFontSize(14)
     setConnectionStyle("intersection")
     setStyle('drawNode', function(f, v) {

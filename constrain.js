@@ -24,7 +24,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false
-let REPORT_PERFORMANCE = false
+const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -135,6 +135,7 @@ class Figure {
         this.wrapFrames = false // does advancing from last frame go back to first
         this.currentStage = 0
         this.numStages = 1
+        this.substitutionEnabled = true
     // default styles
         this.style = new Context()
         this.setFillStyle("white")
@@ -286,6 +287,15 @@ class Figure {
         })
         return constraintsByVar
     }
+
+    // Control whether substitution is used to solve for variables. It usually
+    // speeds up solving but by overconstraining related variables can make it
+    // harder to escape local minima.
+    enableSubstitution(b) {
+        if (b === undefined) b = true
+        this.substitutionEnabled = b
+    }
+
 
     // Variables are solved either by minimization or by direct solution after
     // minimization is complete.  This function identifies which variables need
@@ -483,8 +493,10 @@ class Figure {
             }
         }
 
-        for (const v of solvedVariables) {
-            if (!v.directSolved) trySubstitution(v)
+        if (this.substitutionEnabled) {
+            for (const v of solvedVariables) {
+                if (!v.directSolved) trySubstitution(v)
+            }
         }
 
         // Assign a fresh index to variable v if it is not to be solved directly
@@ -821,11 +833,15 @@ class Figure {
         // if (!animating) {
             // this.components = undefined;
         // }
-        [this.currentValuation, solved] = this.updateValuation(animating ? 0.05 : 0.01)
+        [this.currentValuation, solved] = this.updateValuation(this.solutionAccuracy(animating))
         this.renderFromValuation()
         if (!solved) {
             setTimeout(() => this.render(animating), 10) // XXX might be nice to use Promise
         }
+    }
+    // Required solution accuracy
+    solutionAccuracy(animating) {
+        return animating ? 0.05 : 0.01
     }
 
     // Render the figure using the current valuation, whatever it is.
