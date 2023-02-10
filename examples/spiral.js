@@ -26,8 +26,7 @@ class SpiralPiece extends Constrain.Square {
     }
     render() {
         super.render()
-        let valuation = this.figure.currentValuation
-        let [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], valuation)
+        let [x0, x1, y0, y1] = Constrain.evaluate([this.x0(), this.x1(), this.y0(), this.y1()])
         let ax = x0, ay = y0, bx = x0, by = y1, cx = x1, cy = y1, dx = x1, dy = y0, s = this.side
         while (s--) {
             const tx = ax, ty = ay
@@ -70,8 +69,8 @@ let success;
 
 [figure.currentValuation, success] = updateValuation()
 
-let mw = Constrain.evaluate(border.w(), figure.currentValuation),
-    mh = Constrain.evaluate(border.h(), figure.currentValuation)
+let mw = Constrain.evaluate(border.w()),
+    mh = Constrain.evaluate(border.h())
 let phi = mw/mh
     t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow")
 align("center", "none", t, border)
