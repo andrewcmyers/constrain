@@ -2197,10 +2197,11 @@ class Variable extends Expression {
         // evaluating the substituted expression. Otherwise, the
         // variable is treated as a constant and its currentValue property
         // specifies its value.
-        if (this.index === undefined || valuation === undefined) {
+        if (valuation === undefined || this.index === undefined) {
             const substitution = this.substitution
             if (substitution) return evaluate(substitution, valuation, doGrad)
-            if (this.hasOwnProperty('currentValue')) return this.currentValue
+            const currentValue = this.currentValue
+            if (currentValue !== undefined) return currentValue
             return this.hint
                    || (console.error("undefined variable??"), 0)
         }
