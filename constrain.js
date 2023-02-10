@@ -55,6 +55,8 @@ const CALLBACK_RETURNED_TRUE = "Callback returned true",
 
 const ADAM_BETA1 = 0.9, ADAM_BETA2 = 0.999, ADAM_EPSILON = 1e-8
 const RANDOM_GRADIENT_SCALING = 0.001
+const SOLVE_TIME_ALPHA = 0.1
+const TARGET_TWEEN_FRAMES = 4
 
 const defaultMinimizationOptions = {
     UNCMIN_MAXIT : 1000,
@@ -686,7 +688,7 @@ class Figure {
         }
         return components
     }
-    // update the current valuation to solve constraints within tolerance tol
+    // compute a valuation to solve constraints within tolerance tol
     updateValuation(tol) {
       let solution, figure = this
       if (PROFILE_EVALUATIONS) evaluations = 0
@@ -717,6 +719,7 @@ class Figure {
             solution = this.minimizeConstraintLoss(this.currentValuation, tol, component.invHessian)
             component.invHessian = solution[2]
             this.postMinActions.forEach(solver => solver(solution[0]))
+
             if (PROFILE_EVALUATIONS) console.log("  evaluations = " + evaluations)
             if (DEBUG_CONSTRAINTS || REPORT_UNSOLVED_CONSTRAINTS) {
                 for (const c of this.activeConstraints) {
@@ -815,29 +818,115 @@ class Figure {
             return
         }
         if (this.renderNeeded) {
-            this.render(animating)
+            this.renderFrame(animating)
             this.renderNeeded = false
         }
     }
-    // Render this figure for current time t in [0,1] (fraction of completion of current frame)
-    // Parameter animating is whether this is just an intermediate animation frame
-    render(animating) {
-        if (undefined === this.animationTime) {
-            console.log("Animation time not set")
-            this.animationTime = 0
+
+    // Render this figure for time this.renderTime (whic is a fraction in [0,1]
+    // measuring completion of current frame) Parameter animating is whether
+    // this is just an intermediate animation frame.
+    //
+    // Implementation notes:
+    // The figure maintains up to 3 valuations for solvable variables,
+    // in this.valuations.
+    // this.prevValuation : the solved valuation for a time before the current time
+    // this.nextValuation : the solved valuation for a time after the current time
+    // this.pendingValuation : the solved valuation for a time after the time for valuations[1].
+    //    Once the current time goes beyond the time for nextValuation, that valuation becomes
+    //    the prevValuation and pendingValuation becomes nextValuation.
+    // the properties this.prevTime, this.nextTime, and this.pendingTime are the values of time
+    // for each of these valuations. In addition, the property this.renderTime is the time
+    // at which rendering is supposed to happen, and what is rendering is an interpolation between
+    // prevValuation and nextValuation, which is in this.currentValuation.
+    //
+    // cases:
+    //   1. no existing valuations: compute the valuation for current time and render it,
+    //       and also start a solving job for the next time.
+    //   2. have previous valuation but not next valuation.
+    //       compute the valuation for the next time and render an interpolated value, and
+    //       also start a solving job for the pending valuation.
+    //   3. have previous and next valuation but not pending valuation
+    //       render an interpolated valuation and start a solving job for the pending valuation
+    //   4. have previous, next, and pending valuation
+    //       simply render an interpolated valuation.
+    renderFrame(animating, frameInterval, frameLength) {
+        const figure = this,
+              T = figure.realTime,
+              t = figure.renderTime
+        function updateSolveTime() {
+            const dT = (new Date().getTime() - figure.startRealTime) - T
+            figure.avgSolveTime = figure.avgSolveTime * (1 - SOLVE_TIME_ALPHA) + dT * SOLVE_TIME_ALPHA
         }
-        this.setupCanvas()
-        this.ctx.clearRect(0, 0, this.width, this.height)
-        this.Graphs.forEach(g => g.setupHints())
-        let solved;
-        // if (!animating) {
-            // this.components = undefined;
-        // }
-        [this.currentValuation, solved] = this.updateValuation(this.solutionAccuracy(animating))
-        this.renderFromValuation()
-        if (!solved) {
-            setTimeout(() => this.render(animating), 10) // XXX might be nice to use Promise
+        function nextSolveTime(t) {
+            return Math.min(1, t + TARGET_TWEEN_FRAMES * figure.avgSolveTime/frameLength)
         }
+        if (!animating) {
+            this.Graphs.forEach(g => g.setupHints())
+            const [nextValuation, solved] = this.updateValuation(this.solutionAccuracy(animating))
+            this.currentValuation = nextValuation
+            if (!solved) { // animating solution
+                setTimeout(() => this.renderFrame(false), 10)
+            }
+            this.setupCanvas()
+            this.clearCanvas()
+            this.renderFromValuation()
+            return
+        }
+        frameInterval = frameInterval || 1000/this.frameRate
+
+        const t1 = this.nextTime
+        if (t1 !== undefined && t > t1) {
+            console.log("advancing to next time segment")
+            this.prevTime = this.nextTime
+            this.prevValuation = this.nextValuation
+            this.nextTime = this.pendingTime
+            this.nextValuation = this.pendingValuation
+            delete this.pendingTime
+        }
+        if (this.prevTime === undefined) { // case 1
+            this.prevTime = this.nextTime = this.currentTime = t
+            
+            const [valuation, solved] = this.updateValuation(this.solutionAccuracy(animating))
+            this.prevValuation = this.nextValuation = this.currentValuation = valuation
+            this.setupCanvas()
+            this.clearCanvas()
+            this.renderFromValuation()
+            updateSolveTime()
+            this.startBackgroundSolve(nextSolveTime(t))
+            return
+        }
+        if (this.nextTime === undefined) { // case 2
+            this.currentTime = this.nextTime = nextSolveTime(t)
+            const [valuation, solved] = this.updateValuation(this.solutionAccuracy(animating))
+            this.nextValuation = valuation
+            this.currentTime = t
+            this.currentValuation = 
+                numeric.add(this.prevValuation,
+                    numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
+                        (t - this.prevTime)/(this.nextTime - this.prevTime)))
+            this.setupCanvas()
+            this.clearCanvas()
+            this.renderFromValuation()
+            updateSolveTime()
+        } else { // case 3 or 4
+            this.currentTime = t
+            this.currentValuation = 
+                numeric.add(this.prevValuation,
+                    numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
+                        (t - this.prevTime)/(this.nextTime - this.prevTime)))
+            console.log("tweening")
+            this.setupCanvas()
+            this.clearCanvas()
+            this.renderFromValuation()
+        }
+        if (this.pendingTime == undefined) {
+            this.startBackgroundSolve(nextSolveTime(t))
+            return
+        }
+    }
+    startBackgroundSolve(t) {
+        console.log("starting background solve at " + t)
     }
     // Required solution accuracy
     solutionAccuracy(animating) {
@@ -911,10 +1000,13 @@ class Figure {
     // Clear this figure and move it back to unready status
     stop() {
         if (this.is_started) {
-            this.ctx.clearRect(0, 0, this.width, this.height)
+            this.clearCanvas()
             this.is_started = false
             this.is_ready = false
         }
+    }
+    clearCanvas() {
+        this.ctx.clearRect(0, 0, this.width, this.height)
     }
     // Stop this figure and remove it from the list of figures
     destroy() {
@@ -929,7 +1021,7 @@ class Figure {
     reset() {
         this.ensureFrame()
         this.currentFrame = this.Frames[0]
-        this.render(false)
+        this.renderFrame(false)
     }
 
     // return the next frame to f (or to the current frame if f is omitted),
@@ -984,7 +1076,7 @@ class Figure {
                   () => {
                     this.ctx.globalAlpha = 1
                     this.reset()
-                    this.render(false)
+                    this.renderFrame(false)
                   })
             }
             return false
@@ -1033,7 +1125,7 @@ class Figure {
 
     // Whether this figure is at the end of the last frame
     isComplete() {
-        return (this.nextFrame() == null) && (this.animationTime >= 1 || this.currentFrame.length == 0)
+        return (this.nextFrame() == null) && (this.currentTime >= 1 || this.currentFrame.length == 0)
     }
 
     // Whether this figure is at the first frame
@@ -1046,32 +1138,81 @@ class Figure {
         this.endCurrentFrame()
     }
 
+    /** Start an animation that takes frameLength seconds, with an interval of
+     *  frameInterval ms between frames. For each frame, the function action()
+     *  is called with the amount of elapsed time since the beginning of the
+     *  animation. Elapsed time begins with the first return from the action().
+     *  If the animation has completed, the completedAction function is called
+     *  instead.
+     */
     animate(frameLength, frameInterval, action, completedAction) {
-        const t0 = new Date().getTime()
-        let steps_rendered = 0
-        this.interval = setInterval(() => {
-            const t = new Date().getTime() - t0,
-                  frac = t/frameLength
-            this.animationTime = frac
+        let figure = this,
+            steps_rendered = 0,
+            T0 = new Date().getTime()
+        figure.startRealTime = T0
+        const handleFrame = () => {
+            steps_rendered++
+            console.log("  step " + steps_rendered)
+            const T = new Date().getTime(), dT = T - T0
+            const frac = dT/frameLength
+            if (frac >= 1) {
+                figure.stopTimer()
+                completedAction()
+                if (DEBUG || REPORT_PERFORMANCE)  {
+                    console.log("rendered " + steps_rendered + " steps in " + (T - T0) +
+                                " ms (" + Math.round(1000*steps_rendered/(T - T0)) + "/sec)")
+                }
+                return
+            } else {
+                action(frac, dT, frameLength)
+                const T1 = new Date().getTime()
+                if (steps_rendered == 1) {
+                    // reset the start time if necessary to give some headroom to the
+                    // solver.
+                    if (T1 - frameInterval > T0) {
+                        figure.stopTimer()
+                        T0 = Math.max(T0, T1 - frameInterval)
+                        this.interval = setInterval(handleFrame, frameInterval)
+                    }
+                }
+            }
+        }
+        this.interval = setInterval(handleFrame, frameInterval)
+    }
+
+/*
+    animate(frameLength, frameInterval, action, completedAction) {
+        const avgTime = this.avgSolveTime = this.avgSolveTime || frameInterval/2
+        let figure = this,
+            steps_rendered = 0,
+            t0 = new Date().getTime() + avgTime,
+            tprev = t0
+        const handleFrame = () => {
+            const avgTime = figure.avgSolveTime,
+                  t = tprev + avgTime,
+                  tweenFrames = figure.tweenFrames = Math.round(avgTime/frameInterval),
+                  frac = (t + figure.avgSolveTime)/frameLength
+            figure.currentTime = frac
             steps_rendered++
             if (frac >= 1) {
-                this.animationTime = 1
-                this.stopTimer()
-                if (DEBUG || REPORT_PERFORMANCE)  {
-                    console.log("rendered " + steps_rendered + " steps in " + t +
-                                " ms (" + Math.round(1000*steps_rendered/t) + "/sec)")
-                }
+                figure.currentTime = 1
+                figure.stopTimer()
                 completedAction()
             } else {
-                this.animationTime = frac
-                action()
+                figure.currentTime = frac
+                if (tweenFrames < 2 || !tweenAction) action(frac)
+                else tweenAction(frac, tweenFrames)
             }
-        }, frameInterval)
+            tprev = new Date().getTime()
+            figure.interval = setTimeout(() => handleFrame(), frameInterval)
+        }
+        handleFrame()
     }
+*/
 
     // Start rendering (and animating, if necessary) the current frame
     startCurrentFrame() {
-        this.animationTime = 0
+        this.currentTime = 0
         delete this.components // cannot safely reuse components across frames
         this.stopTimer()
         if (!this.currentFrame) {
@@ -1081,27 +1222,41 @@ class Figure {
             if (DEBUG) {
                console.log("starting animated frame " + this.currentFrame.name + " in " + this.name)
             }
-            this.animate(this.currentFrame.length, 1000/this.frameRate,
-                () => this.render(true),
-                () => this.endCurrentFrame()
-            )
+            this.startAnimatedFrame()
         } else {
             if (DEBUG) {
                console.log("starting static frame " + this.currentFrame.name + " in " + this.name)
             }
             delete this.interval
-            this.render(false)
+            this.renderFrame(false)
         }
+    }
+
+    startAnimatedFrame() {
+        let solvePt
+        this.currentTime = undefined
+        this.renderTime = this.currentTime = 0
+        this.prevTime = 0
+        this.prevValuation = this.currentValuation
+        const frameInterval = 1000/this.frameRate // ms
+        this.avgSolveTime = frameInterval * TARGET_TWEEN_FRAMES
+        this.animate(this.currentFrame.length, frameInterval,
+            (frac, t) => {
+                this.renderTime = frac
+                this.realTime = t
+                this.renderFrame(true, frameInterval, this.currentFrame.length)
+            },
+            () => {
+                this.endCurrentFrame()
+            }
+        )
     }
 
     endCurrentFrame() {
         if (this.currentFrame === undefined) return
-        if (DEBUG) {
-          console.log("Ending frame " + this.currentFrame.name)
-        }
-        this.animationTime = 1
+        this.currentTime = this.renderTime = 1
         this.stopTimer()
-        this.render(false)
+        this.renderFrame(false)
         if (this.nextFrame() && this.nextFrame().autoAdvance) {
             this.advance()
         }
@@ -1606,10 +1761,10 @@ class Figure {
         return new Group(this, ...objects)
     }
     linear(frame, e1, e2) {
-        return new Linear(this, frame, e1, e2)
+        return new LinearInterpolation(this, frame, e1, e2)
     }
     smooth(frame, e1, e2) {
-        return new Smooth(this, frame, e1, e2)
+        return new SmoothInterpolation(this, frame, e1, e2)
     }
     variable(name, hint) {
         return new Variable(this, name, hint)
@@ -2885,7 +3040,7 @@ class Time extends Expression {
         this.figure = figure
     }
     evaluate(valuation, doGrad) {
-        const t = this.figure.animationTime
+        const t = this.figure.currentTime
         return doGrad ? [t, getZeros(valuation.length)] : t
     }
     variables() { return new Set() }
@@ -2895,9 +3050,9 @@ class Time extends Expression {
     }
 }
 
-// A Linear can interpolate, as a function of time, between two numbers or
+// A LinearInterpolation can interpolate, as a function of time, between two numbers or
 // between any two expressions that evaluate to 1-D arrays, such as Points.
-class Linear extends Expression {
+class LinearInterpolation extends Expression {
     constructor(figure, frame, e1, e2) {
         super()
         this.figure = figure
@@ -2918,7 +3073,7 @@ class Linear extends Expression {
     // if (v) return v
         const v1 = evaluate(this.e1, valuation, doGrad),
               v2 = evaluate(this.e2, valuation, doGrad),
-              b = this.interp(this.figure.animationTime),
+              b = this.interp(this.figure.currentTime),
               a = 1 - b
         switch (doGrad ? typeof v1[0] : typeof v1) {
             case NUMBER:
@@ -2950,7 +3105,7 @@ class Linear extends Expression {
       } else if (currentFrame.isAfter(this.frame) && currentFrame != this.frame) {
         task.propagate(this.e2, this.bpDiff)
       } else {
-        const b = this.interp(this.figure.animationTime),
+        const b = this.interp(this.figure.currentTime),
               a = 1 - b
         task.propagate(this.e1, numeric.mul(a, this.bpDiff))
         task.propagate(this.e2, numeric.mul(b, this.bpDiff))
@@ -2964,19 +3119,19 @@ class Linear extends Expression {
             task.prepareBackProp(this.e2)
     }
     toString() {
-        return "Linear(" + this.e1 + "," + this.e2 + ")"
+        return "LinearInterpolation(" + this.e1 + "," + this.e2 + ")"
     }
 }
 
 // A cubic spline interpolator with slow out
 // and slow in
-class Smooth extends Linear {
+class SmoothInterpolation extends LinearInterpolation {
     constructor(figure, frame, e1, e2) {
         super(figure, frame, e1, e2)
     }
     interp(t) { return cubicInterpWeight(t) }
     toString() {
-        return "Smooth(" + this.e1 + "," + this.e2 + ")"
+        return "SmoothInterpolation(" + this.e1 + "," + this.e2 + ")"
     }
 }
 
@@ -5858,7 +6013,7 @@ class UserDefined extends Graphic {
     render() {
         const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(), this.x1(), this.y1()], this.figure.currentValuation),
               fig = this.figure
-        this.draw(fig.ctx, fig.currentFrame.index, fig.animationTime, x0, x1, y0, y1)
+        this.draw(fig.ctx, fig.currentFrame.index, fig.renderTime, x0, x1, y0, y1)
     }
     // Override this to change the appearance of this object
     //   context: the 2D rendering context
