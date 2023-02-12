@@ -271,10 +271,6 @@ class Figure {
         }
         return result
     }
-    evaluate(e, valuation, doGrad) {
-        if (!valuation) valuation = this.currentValuation
-        return evaluate(e, valuation, doGrad)
-    }
     // Create a map from each variable to the set of constraints that mention it.
     constraintsByVar() {
         const constraintsByVar = new Map()
@@ -2416,10 +2412,11 @@ class Variable extends Expression {
         // evaluating the substituted expression. Otherwise, the
         // variable is treated as a constant and its currentValue property
         // specifies its value.
-        if (this.index === undefined) {
+        if (valuation === undefined || this.index === undefined) {
             const substitution = this.substitution
             if (substitution) return evaluate(substitution, valuation, doGrad)
-            if (this.hasOwnProperty('currentValue')) return this.currentValue
+            const currentValue = this.currentValue
+            if (currentValue !== undefined) return currentValue
             return this.hint
                    || (console.error("undefined variable??"), 0)
         }
@@ -2511,6 +2508,8 @@ let evaluations = 0,
 // The value of expression expr in the given valuation (an array of variable values).
 // If doGrad is true, it returns an array [v, g] where is the value of the expression and
 // g is its gradient with respect to all the variables.
+// The valuation may be omitted, in which case the current value of the variable is used
+// instead of what the valuation array says.
 function evaluate(expr, valuation, doGrad) {
     if (PROFILE_EVALUATIONS) {
         evaluations++
@@ -4061,8 +4060,8 @@ class Group extends Graphic {
     render() {
         if (!this.visible()) return
         if (DEBUG_GROUPS) {
-            const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
-            const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], figure.currentValuation)
+            const figure = this.figure, ctx = figure.ctx
+            const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()])
             ctx.save()
             ctx.strokeStyle = 'magenta'
             ctx.lineWidth = 2
@@ -4127,7 +4126,7 @@ class Rectangle extends Graphic {
         this.cornerRadius = 0
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         ctx.save()
         const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()])
         ctx.translate(x0, y0)
@@ -4144,7 +4143,7 @@ class Rectangle extends Graphic {
         }
         ctx.lineWidth = evaluate(this.lineWidth)
         if (this.opacity) {
-            ctx.globalAlpha = evaluate(this.opacity, this.figure.currentValuation)
+            ctx.globalAlpha = evaluate(this.opacity)
         }
         this.fill()
         if (this.strokeStyle != null) {
@@ -4378,7 +4377,7 @@ class Ellipse extends Graphic {
         figure.positive(this.w())
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         ctx.save()
         const [x, y, w, h] = evaluate([this.x(), this.y(), this.w(), this.h()])
         ctx.translate(x - w/2, y - h/2)
@@ -4395,7 +4394,7 @@ class Ellipse extends Graphic {
             this.text.renderIn(this.figure, this)
         }
     }
-    bestMagnetPt(px, py, valuation) {
+    bestMagnetPt(px, py) {
         const x = evaluate(this.x()),
               y = evaluate(this.y()),
               pdx = px - x,
@@ -4406,8 +4405,8 @@ class Ellipse extends Graphic {
         const d = Math.sqrt(pdy*pdy*xr*xr + pdx*pdx*yr*yr)
         return [x + pdx*xr*yr/d, y + pdy*xr*yr/d]
     }
-    intersectionPt(px, py, valuation) {
-        return this.bestMagnetPt(px, py, valuation)
+    intersectionPt(px, py) {
+        return this.bestMagnetPt(px, py)
     }
 
     xSpan(y0, y1) {
@@ -4425,7 +4424,7 @@ class Circle extends Ellipse {
         super(figure, fillStyle, strokeStyle, lineWidth, x_hint, y_hint, size_hint, size_hint)
         figure.equal(this.h(), this.w())
     }
-    bestMagnetPt(px, py, valuation) {
+    bestMagnetPt(px, py) {
         const x = evaluate(this.x()),
               y = evaluate(this.y()),
               r = evaluate(this.h())/2,
@@ -4450,7 +4449,7 @@ class Polygon extends Graphic {
         figure.equal(this.y0(), figure.min(points.map(p => p.y())))
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         ctx.save()
         let pts = this.points.map(pt => evaluate(pt))
         const x0 = pts[0][0], y0 = pts[0][1]
@@ -4502,7 +4501,7 @@ class ClosedCurve extends Polygon {
         super(figure, points)
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         ctx.save()
         const [x0, y0] = evaluate([this.x0(), this.y0()])
         ctx.translate(x0, y0)
@@ -4554,10 +4553,8 @@ function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
     }
 
     labels.forEach(linelabel => {
-      let pos = evaluate(linelabel.position,
-                            figure.currentValuation),
-          offset = evaluate(linelabel.offset,
-                            figure.currentValuation),
+      let pos = evaluate(linelabel.position)
+          offset = evaluate(linelabel.offset)
           dpos = pos * total_d
       let i = 0
       for (i = 0; i < n - 1; i++) {
@@ -4751,7 +4748,7 @@ class Line extends Graphic {
         return this.p2
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         ctx.beginPath()
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth)
@@ -4908,22 +4905,18 @@ class Connector extends Graphic {
         return this
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         let objs = this.objects,
             i = 0, m = objs.length-1
         const pts = objs.map(o => evaluate([o.x(), o.y()]));
         switch (this.connectionStyle) {
             case 'magnet':
-                [ pts[0][0], pts[0][1] ] = objs[0].bestMagnetPt(pts[1][0],
-                                                    pts[1][1], valuation);
-                [ pts[m][0], pts[m][1] ] = objs[m].bestMagnetPt(pts[m-1][0],
-                                                    pts[m-1][1], valuation);
+                [ pts[0][0], pts[0][1] ] = objs[0].bestMagnetPt(pts[1][0], pts[1][1]);
+                [ pts[m][0], pts[m][1] ] = objs[m].bestMagnetPt(pts[m-1][0], pts[m-1][1]);
                 break
             case 'intersection':
-                [ pts[0][0], pts[0][1] ] = objs[0].intersectionPt(pts[1][0],
-                                                    pts[1][1], valuation);
-                [ pts[m][0], pts[m][1] ] = objs[m].intersectionPt(pts[m-1][0],
-                                                    pts[m-1][1], valuation);
+                [ pts[0][0], pts[0][1] ] = objs[0].intersectionPt(pts[1][0], pts[1][1]);
+                [ pts[m][0], pts[m][1] ] = objs[m].intersectionPt(pts[m-1][0], pts[m-1][1]);
                 break
         }
         const labelPosns = (this.labels && this.labels.length > 0)
@@ -5244,7 +5237,7 @@ class Label extends Graphic {
         this.font.setContextFont(this.figure.ctx)
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         this.installFont()
         const x = evaluate(this.x0()),
               y = evaluate(figure.average(this.y(), this.y1()))
@@ -5512,8 +5505,7 @@ class ContainedText {
         const ctx = figure.ctx,
             tc = new Context(this.style),
             fontSize = tc.get('fontSize'),
-            lineSpacing = fontSize * evaluate(tc.setDefault('lineSpacing',
-                                Figure_defaults.LINE_SPACING)),
+            lineSpacing = fontSize * evaluate(tc.setDefault('lineSpacing', Figure_defaults.LINE_SPACING)),
             baseline = tc.setDefault('baseline', 0),
             layoutAlgorithm = tc.setDefault('layoutAlgorithm', "TeX"),
             strokeStyle = tc.setDefault('strokeStyle', null),
@@ -6069,7 +6061,7 @@ class UserDefined extends Graphic {
         super(figure)
     }
     render() {
-        const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(), this.x1(), this.y1()], this.figure.currentValuation),
+        const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(), this.x1(), this.y1()]),
               fig = this.figure
         this.draw(fig.ctx, fig.currentFrame.index, fig.renderTime, x0, x1, y0, y1)
     }
@@ -6147,8 +6139,7 @@ class Handle extends InteractiveObject {
     mousedown(x, y, e) {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return }
-        const hx = evaluate(this.x(), this.figure.currentValuation),
-              hy = evaluate(this.y(), this.figure.currentValuation),
+        const hx = evaluate(this.x()), hy = evaluate(this.y()),
               expand = e.type == "touchstart" ? 20 : 0,
               // XXX should use radiusX/radiusX property when available
               r = this.size + expand
@@ -6222,8 +6213,7 @@ class Button extends InteractiveObject {
     mousedown(mx, my, e) {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return }
-        const valuation = this.figure.currentValuation,
-              [x, y] = evaluate([this.x(), this.y()])
+        const [x, y] = evaluate([this.x(), this.y()])
         if (!this.inbounds(mx, my, x, y)) return true
         this.pressed = true
         this.figure.focused = this
@@ -6233,8 +6223,7 @@ class Button extends InteractiveObject {
     mouseup(e) {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return true }
-        const valuation = this.figure.currentValuation,
-              [x, y] = evaluate([this.x(), this.y()])
+        const [x, y] = evaluate([this.x(), this.y()])
         if (!this.pressed) return true
         this.pressed = false
         this.figure.focused = null
@@ -6243,8 +6232,7 @@ class Button extends InteractiveObject {
         return false
     }
     mousemove(mx, my, e) {
-        const valuation = this.figure.currentValuation,
-              [x, y] = evaluate([this.x(), this.y()])
+        const [x, y] = evaluate([this.x(), this.y()])
         if (this.inbounds(mx, my, x, y)) return
         if (this.pressed) {
             this.pressed = false
@@ -6264,7 +6252,7 @@ class AdvanceButton extends Button {
     h() { return this.size * 0.7 }
 
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         if (ctx.printMedia) return
         const s = this.size
         ctx.beginPath()
