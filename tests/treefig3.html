@@ -41,7 +41,7 @@ with (fig3) {
     setConnectionStyle("intersection")
     const t = tree(new BSTTree(fig3), "data", "<data", ">data")
     align("LR", "none", t.bbox, margin().inset(30))
-    equal(plus(margin().y0(), 20), t.bbox.y0())
+    equal(margin().y0(), t.bbox.y0())
     equal(plus(45, t.bbox.y1()), margin().y1())
     console.log("bottom left node = " + t.view().findGraphic('<data').y0())
 }
