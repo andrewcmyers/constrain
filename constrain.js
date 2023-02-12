@@ -19,11 +19,11 @@ const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = false,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
-      CHECK_NAN = false,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
+      CHECK_NAN = DEBUG
 const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -590,6 +590,7 @@ class Figure {
                 grad[i] = 0
             } else {
                 grad[i] = v.bpDiff
+                if (CHECK_NAN) checkNaNResult(v.bpDiff)
             }
         }
         if (COMPARE_GRADIENTS) {
@@ -910,7 +911,6 @@ class Figure {
         if (!animating) {
             this.Graphs.forEach(g => g.setupHints())
             const solved = this.updateValuation(this.solutionAccuracy(false))
-            console.log("solved = " + solved)
             this.currentValuation = true
             this.unnumberVariables()
             if (!solved) { // animating solution
@@ -936,6 +936,7 @@ class Figure {
         if (this.prevTime === undefined) { // case 1
             this.prevTime = this.nextTime = this.currentTime = t
             
+            console.log("tweening case 1: no previous value to use")
             const valuation = this.recordUpdatedValuation(accuracy)
             this.prevValuation = this.nextValuation = this.currentValuation = valuation
             this.setupCanvas()
@@ -954,7 +955,7 @@ class Figure {
                 numeric.add(this.prevValuation,
                     numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
                         (t - this.prevTime)/(this.nextTime - this.prevTime)))
-            console.log("tweening case 2")
+            console.log("tweening case 2: no next value to use")
             this.applyValuation(this.currentValuation)
             this.setupCanvas()
             this.clearCanvas()
@@ -966,7 +967,7 @@ class Figure {
                 numeric.add(this.prevValuation,
                     numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
                         (t - this.prevTime)/(this.nextTime - this.prevTime)))
-            console.log("tweening case 3/4")
+            console.log("tweening case 3/4: tweening should work")
             this.applyValuation(this.currentValuation)
             this.setupCanvas()
             this.clearCanvas()
@@ -2597,6 +2598,7 @@ class BackPropagation {
             const e = es[i]
             if (e.currentValue === undefined) {
                 evaluate(e, valuation)
+                if (CHECK_NAN) checkNaNResult(e.currentValue)
             }
             if (e.bpDiff != 0) {
                 e.backprop(this)
@@ -3607,8 +3609,8 @@ class LayoutObject extends Expression {
                ]
     }
     bestMagnetPt(px, py, valuation) {
-        let [x,y] = evaluate([this.x(), this.y()], valuation)
-        const scs = evaluate(this.connectionPts(), valuation),
+        let [x,y] = evaluate([this.x(), this.y()])
+        const scs = evaluate(this.connectionPts()),
               scdirs = scs.map(p => {
                                   const [sx,sy] = p,
                                         nm = norm2d(sx - x, sy - y)
@@ -3626,7 +3628,7 @@ class LayoutObject extends Expression {
     // Return the intersection of the line from (x,y) to this
     // shape with the shape's boundary, as an array [x, y]
     intersectionPt(x, y, valuation) {
-        let [xc, yc] = evaluate([this.target().x(), this.target().y()], valuation)
+        let [xc, yc] = evaluate([this.target().x(), this.target().y()])
         let [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
                                          this.x1(), this.y1()], valuation)
         if (Math.abs(x - xc) < TINY) {
@@ -3648,8 +3650,8 @@ class LayoutObject extends Expression {
     // Return a range [x0, x1] that lies inside this object for the entirety of
     // the y range [y0, y1]. This is used to decide how to format text inside a shape.
     // Default is the full range [x0, x1]
-    xSpan(y0, y1, valuation) {
-        return evaluate([this.x0(), this.x1()], valuation)
+    xSpan(y0, y1) {
+        return evaluate([this.x0(), this.x1()])
     }
     render() {
         console.log("Attempted to render an object that has no rendering defined.")
@@ -4127,7 +4129,7 @@ class Rectangle extends Graphic {
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.save()
-        const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()], valuation)
+        const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()])
         ctx.translate(x0, y0)
         const w = x1-x0, h = y1-y0
         if (this.cornerRadius == 0) {
@@ -4140,7 +4142,7 @@ class Rectangle extends Graphic {
         } else {
             Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
         }
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.lineWidth = evaluate(this.lineWidth)
         if (this.opacity) {
             ctx.globalAlpha = evaluate(this.opacity, this.figure.currentValuation)
         }
@@ -4378,9 +4380,9 @@ class Ellipse extends Graphic {
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.save()
-        const [x, y, w, h] = evaluate([this.x(), this.y(), this.w(), this.h()], valuation)
+        const [x, y, w, h] = evaluate([this.x(), this.y(), this.w(), this.h()])
         ctx.translate(x - w/2, y - h/2)
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.lineWidth = evaluate(this.lineWidth)
         Paths.ellipse(ctx, w/2, h/2, w/2, h/2)
         this.fill()
         if (this.strokeStyle != null) {
@@ -4394,12 +4396,12 @@ class Ellipse extends Graphic {
         }
     }
     bestMagnetPt(px, py, valuation) {
-        const x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation),
+        const x = evaluate(this.x()),
+              y = evaluate(this.y()),
               pdx = px - x,
               pdy = py - y
-        let xr = evaluate(this.w(), valuation)/2,
-            yr = evaluate(this.h(), valuation)/2
+        let xr = evaluate(this.w())/2,
+            yr = evaluate(this.h())/2
         if (xr == 0 || yr == 0) return [x,y]
         const d = Math.sqrt(pdy*pdy*xr*xr + pdx*pdx*yr*yr)
         return [x + pdx*xr*yr/d, y + pdy*xr*yr/d]
@@ -4408,8 +4410,8 @@ class Ellipse extends Graphic {
         return this.bestMagnetPt(px, py, valuation)
     }
 
-    xSpan(y0, y1, valuation) {
-        const [x,y,w,h] = evaluate([this.x(), this.y(), this.w(), this.h()], valuation)
+    xSpan(y0, y1) {
+        const [x,y,w,h] = evaluate([this.x(), this.y(), this.w(), this.h()])
         const y2 = Math.max(Math.abs(y - y0), Math.abs(y - y1))
         // equation: ((X - x)/(w/2))^2 + ((Y - y)/(h/2))^2 = 1
         const t = Math.min(1, 2*y2/h),
@@ -4424,9 +4426,9 @@ class Circle extends Ellipse {
         figure.equal(this.h(), this.w())
     }
     bestMagnetPt(px, py, valuation) {
-        const x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation),
-              r = evaluate(this.h(), valuation)/2,
+        const x = evaluate(this.x()),
+              y = evaluate(this.y()),
+              r = evaluate(this.h())/2,
               d = norm2d(px - x, py - y)
         if (d == 0) return [x,y]
         return [x + (px - x)*r/d, y + (py-y)*r/d]
@@ -4450,11 +4452,11 @@ class Polygon extends Graphic {
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.save()
-        let pts = this.points.map(pt => evaluate(pt, valuation))
+        let pts = this.points.map(pt => evaluate(pt))
         const x0 = pts[0][0], y0 = pts[0][1]
         pts = pts.map(p => [p[0] - x0, p[1] - y0])
         ctx.translate(x0, y0)
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.lineWidth = evaluate(this.lineWidth)
         ctx.lineDash = this.lineDash
         ctx.fillStyle = this.fillStyle
         if (this.cornerRadius) {
@@ -4502,14 +4504,14 @@ class ClosedCurve extends Polygon {
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.save()
-        const [x0, y0] = evaluate([this.x0(), this.y0()], valuation)
+        const [x0, y0] = evaluate([this.x0(), this.y0()])
         ctx.translate(x0, y0)
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.lineWidth = evaluate(this.lineWidth)
         ctx.lineDash = this.lineDash
         ctx.fillStyle = this.fillStyle
         const pts = []
         for (let i = 0; i < this.points.length; i++) {
-            const [x, y] = evaluate(this.points[i], valuation)
+            const [x, y] = evaluate(this.points[i])
             pts.push([x - x0, y - y0])
         }
         Paths.curve(ctx, pts)
@@ -4752,8 +4754,8 @@ class Line extends Graphic {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         ctx.beginPath()
         ctx.strokeStyle = this.strokeStyle
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
-        const [x1, x2, y1, y2] = evaluate([this.p1.x(), this.p2.x(), this.p1.y(), this.p2.y()], valuation)
+        ctx.lineWidth = evaluate(this.lineWidth)
+        const [x1, x2, y1, y2] = evaluate([this.p1.x(), this.p2.x(), this.p1.y(), this.p2.y()])
         const xd = x2 - x1, yd = y2 - y1,
                 d = norm2d(xd, yd),
                 cosa = xd/d, sina = yd/d
@@ -4909,9 +4911,7 @@ class Connector extends Graphic {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         let objs = this.objects,
             i = 0, m = objs.length-1
-        const pts = objs.map(o => 
-            [ evaluate(o.x(), valuation),
-              evaluate(o.y(), valuation) ]);
+        const pts = objs.map(o => evaluate([o.x(), o.y()]));
         switch (this.connectionStyle) {
             case 'magnet':
                 [ pts[0][0], pts[0][1] ] = objs[0].bestMagnetPt(pts[1][0],
@@ -4935,7 +4935,7 @@ class Connector extends Graphic {
         if (labelPosns) setupClipRegion(figure, labelPosns, this.lineLabelInset)
 
         ctx.strokeStyle = this.strokeStyle
-        ctx.lineWidth = evaluate(this.lineWidth, valuation)
+        ctx.lineWidth = evaluate(this.lineWidth)
         ctx.setLineDash(this.lineDash || [])
         if (this.fillStyle) ctx.fillStyle = this.fillStyle
         if (this.startArrowStyle) {
@@ -5170,7 +5170,7 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
         let rest
         if (posn.newLine) {
             const inset = tc.get("inset"), container = tc.get("container")
-            let [nx0, nx1] = container.xSpan(y, y + ls, figure.currentValuation)
+            let [nx0, nx1] = container.xSpan(y, y + ls)
             nx0 += inset
             nx1 -= inset
             rest = findLayout(figure, citems, n, nx0, y + ls, nx0, nx1, ymax)
@@ -5246,8 +5246,8 @@ class Label extends Graphic {
     render() {
         const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
         this.installFont()
-        const x = evaluate(this.x0(), valuation),
-              y = evaluate(figure.average(this.y(), this.y1()), valuation)
+        const x = evaluate(this.x0()),
+              y = evaluate(figure.average(this.y(), this.y1()))
         if (typeof this.text == STRING_STR) { // instanceof String doesn't work
             if (this.fillStyle) {
                 ctx.fillStyle = this.fillStyle
@@ -5256,7 +5256,7 @@ class Label extends Graphic {
             if (this.strokeStyle != null) {
                 ctx.strokeStyle = this.strokeStyle
                 if (this.lineWidth) {
-                    ctx.lineWidth = evaluate(this.lineWidth, valuation)
+                    ctx.lineWidth = evaluate(this.lineWidth)
                 }
                 ctx.strokeText(this.text, x, y)
             }
@@ -5284,7 +5284,7 @@ class Label extends Graphic {
         }
     }
     // A label will stretch as far as necessary to fit its text
-    xSpan(y0, y1, valuation) {
+    xSpan(y0, y1) {
         return [0, Figure_defaults.LARGE_SPAN]
     }
     computeWidth(ctx) {
@@ -5511,10 +5511,9 @@ class ContainedText {
     renderIn(figure, container) {
         const ctx = figure.ctx,
             tc = new Context(this.style),
-            valuation = figure.currentValuation,
             fontSize = tc.get('fontSize'),
             lineSpacing = fontSize * evaluate(tc.setDefault('lineSpacing',
-                                Figure_defaults.LINE_SPACING), valuation),
+                                Figure_defaults.LINE_SPACING)),
             baseline = tc.setDefault('baseline', 0),
             layoutAlgorithm = tc.setDefault('layoutAlgorithm', "TeX"),
             strokeStyle = tc.setDefault('strokeStyle', null),
@@ -5522,10 +5521,10 @@ class ContainedText {
             justification = this.style.setDefault('justification', "center"),
             verticalAlign = this.style.setDefault('verticalAlign', "center"),
             fillStyle = this.style.setDefault('fillStyle', "black"),
-            maxh = evaluate(container.h(), valuation),
-            y0 = evaluate(container.y0(), valuation) + fontSize + inset,
-            y1 = evaluate(container.y1(), valuation) - inset,
-            yc = evaluate(container.y(), valuation)
+            maxh = evaluate(container.h()),
+            y0 = evaluate(container.y0()) + fontSize + inset,
+            y1 = evaluate(container.y1()) - inset,
+            yc = evaluate(container.y())
         tc.set('container', container)
         let layout = {success: false, lines: []}
         this.text.resetCaches()
@@ -5551,7 +5550,7 @@ class ContainedText {
                     break
                 default: break
             }
-            [x0, x1] = container.xSpan(y - lineSpacing, y, valuation)
+            [x0, x1] = container.xSpan(y - lineSpacing, y)
             x0 += inset
             x1 -= inset
             const ly = findLayout(figure, [{ item: this.text, context: tc }], 1,
@@ -6124,11 +6123,11 @@ class Handle extends InteractiveObject {
         if (this.visible(this.figure.currentFrame)) this.render()
     }
     render() {
-        const figure = this.figure, ctx = figure.ctx, valuation = figure.currentValuation
+        const figure = this.figure, ctx = figure.ctx
         if (ctx.printMedia) return
         ctx.beginPath()
-        const x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
+        const x = evaluate(this.x()),
+              y = evaluate(this.y())
         ctx.moveTo(x - this.size, y)
         ctx.lineTo(x, y + this.size)
         ctx.lineTo(x + this.size, y)
@@ -6224,8 +6223,7 @@ class Button extends InteractiveObject {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return }
         const valuation = this.figure.currentValuation,
-              x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
+              [x, y] = evaluate([this.x(), this.y()])
         if (!this.inbounds(mx, my, x, y)) return true
         this.pressed = true
         this.figure.focused = this
@@ -6236,8 +6234,7 @@ class Button extends InteractiveObject {
         if (this.figure.currentValuation === undefined)
             { console.error("No current valuation"); return true }
         const valuation = this.figure.currentValuation,
-              x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
+              [x, y] = evaluate([this.x(), this.y()])
         if (!this.pressed) return true
         this.pressed = false
         this.figure.focused = null
@@ -6247,8 +6244,7 @@ class Button extends InteractiveObject {
     }
     mousemove(mx, my, e) {
         const valuation = this.figure.currentValuation,
-              x = evaluate(this.x(), valuation),
-              y = evaluate(this.y(), valuation)
+              [x, y] = evaluate([this.x(), this.y()])
         if (this.inbounds(mx, my, x, y)) return
         if (this.pressed) {
             this.pressed = false
