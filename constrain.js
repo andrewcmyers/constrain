@@ -896,26 +896,33 @@ class Figure {
     //   1. no existing valuations: compute the valuation for current time and render it,
     //       and also start a solving job for the next time.
     //   2. have previous valuation but not next valuation.
-    //       compute the valuation for the next time and render an interpolated value, and
-    //       also start a solving job for the pending valuation.
+    //       solve in foreground for the valuation for the next time and render an interpolated value, and
+    //       also start a solving job for the pending valuation, aborting any existing solving job.
     //   3. have previous and next valuation but not pending valuation
     //       render an interpolated valuation and possilby start a solving job for the pending valuation
-    //        3a. No pending background solve. Need to start one.
+    //        3a. No useful pending background solve, so start one, aborting any existing background solve.
     //        3b. Pending background solve for a time in the future. Just interpolate and render.
-    //        3c. Pending background solve for a time in the past. Abort and restart solve.
-    //   4. have previous, next, and pending valuation
-    //        4a. pending valuation is good. Simply render interpolated frame.
-    //        4b. pending valuation is expired. Render but also start a new background solve.
+    //   4. have previous, next, and (good) pending valuation.
+    //        Simply render interpolated frame.
     renderFrame(animating, frameInterval, frameLength) {
         const figure = this,
               T = figure.realTime,
-              t = figure.renderTime
+              t = figure.renderTime,
+              vars = this.Variables
         function updateSolveTime() {
             const dT = (new Date().getTime() - figure.startRealTime) - T
             figure.avgSolveTime = figure.avgSolveTime * (1 - SOLVE_TIME_ALPHA) + dT * SOLVE_TIME_ALPHA
         }
         function nextSolveTime(t) {
             return Math.min(1, t + TARGET_TWEEN_FRAMES * figure.avgSolveTime/frameLength)
+        }
+        function interpolate(v0, v1, x) {
+            const n = v0.length,
+                  result = new Array(n)
+            for (let i = 0; i < n; i++) {
+                result[i] = v0[i] + x * (v1[i] - v0[i])
+            }
+            return result
         }
         if (!animating) {
             this.setupCanvas()
@@ -935,13 +942,19 @@ class Figure {
         frameInterval = frameInterval || 1000/this.frameRate
         const accuracy = this.solutionAccuracy(true)
 
-        const t1 = this.nextTime
-        if (t1 !== undefined && t > t1) {
+        let t1 = this.nextTime
+        while (t1 !== undefined && t > t1) {
             console.log("advancing to next time segment")
             this.prevTime = this.nextTime
             this.prevValuation = this.nextValuation
-            this.nextTime = this.pendingTime
-            this.nextValuation = this.pendingValuation
+            if (this.pendingValuation) {
+                this.nextTime = this.pendingTime
+                this.nextValuation = this.pendingValuation
+            } else {
+                this.nextTime = undefined
+                break
+            }
+            t1 = this.nextTime
             delete this.pendingTime
         }
         if (this.prevTime === undefined) { // case 1
@@ -964,20 +977,22 @@ class Figure {
             const valuation = this.recordUpdatedValuation(accuracy)
             this.nextValuation = valuation
             this.currentTime = t
+            this.currentValuation = interpolate(this.prevValuation, this.nextValuation,
+                                        (t - this.prevTime)/(this.nextTime - this.prevTime))
+            /*
             this.currentValuation = 
                 numeric.add(this.prevValuation,
                     numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
                         (t - this.prevTime)/(this.nextTime - this.prevTime)))
+                */
             this.applyValuation(this.currentValuation)
             this.clearCanvas()
             this.renderFromValuation()
             updateSolveTime()
         } else { // case 3 or 4
             this.currentTime = t
-            this.currentValuation = 
-                numeric.add(this.prevValuation,
-                    numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
-                        (t - this.prevTime)/(this.nextTime - this.prevTime)))
+            this.currentValuation = interpolate(this.prevValuation, this.nextValuation,
+                                        (t - this.prevTime)/(this.nextTime - this.prevTime))
             if (this.pendingTime !== undefined && this.pendingValuation !== undefined) {
                 console.log("tweening case 4: tweening should work")
             } else {
