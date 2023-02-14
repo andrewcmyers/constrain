@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = DEBUG
+      CHECK_NAN = true
 const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -245,29 +245,28 @@ class Figure {
     // Return the valuation to be used for solving
     initialValuation() {
         if (this.Variables.length != this.numVariables) {
-            alert("oops " + this.numVariables + " " + this.Variables.length)
-            console.error("oops")
+            console.error("oops " + this.numVariables + " " + this.Variables.length)
         }
         const result = new Array(this.activeVariables.length)
         for (let i = 0; i < this.activeVariables.length; i++) {
             const v = this.activeVariables[i]
-            if (v.hasOwnProperty('currentValue')) {
+            if (v.hasOwnProperty('solutionValue')) {
                 if (v.hasOwnProperty('prevValue')) {
                     // predict next solution based on linear motion assumption
-                    const motion = numeric.sub(v.currentValue, v.prevValue)
+                    const motion = numeric.sub(v.solutionValue, v.prevValue)
                     if (isFinite(motion) && Math.abs(motion) < 5) {
-                        result[i] =  numeric.add(v.currentValue, motion)
+                        result[i] =  numeric.add(v.solutionValue, motion)
                     } else {
-                        result[i] = v.currentValue
+                        result[i] = v.solutionValue
                     }
                 } else {
-                    result[i] = v.currentValue
+                    result[i] = v.solutionValue
                 }
-                v.prevValue = v.currentValue
+                v.prevValue = v.solutionValue
             }
             else if (v.hint != null) result[i] = v.hint
             else result[i] = 100
-            v.currentValue = result[i]
+            v.solutionValue = result[i]
         }
         return result
     }
@@ -411,8 +410,8 @@ class Figure {
             const s = constraintsByVar.get(v)
             if (!s || s.size == 0) {
                 postMinActions.push(valuation => {
-                    v.currentValue = v.hasOwnProperty('hint') ? v.hint : 100
-                    if (DEBUG_CONSTRAINTS) console.log("Trivially solving " + v + " <- " + v.currentValue)
+                    v.solutionValue = v.hasOwnProperty('hint') ? v.hint : 100
+                    if (DEBUG_CONSTRAINTS) console.log("Trivially solving " + v + " <- " + v.solutionValue)
                 })
                 directlySolved++
                 v.directSolved = true // unconstrained: any value works!
@@ -438,9 +437,9 @@ class Figure {
                             return false
                         }
                         postMinActions.push(valuation => {
-                            v.currentValue = 0
-                            v.currentValue = solve1(evaluate(e2, valuation), valuation)
-                            if (DEBUG_CONSTRAINTS) console.log("Directly solving " + v + " <- " + v.currentValue)
+                            v.solutionValue = 0
+                            v.solutionValue = solve1(evaluate(e2, valuation), valuation)
+                            if (DEBUG_CONSTRAINTS) console.log("Directly solving " + v + " <- " + v.solutionValue)
                         })
                         directlySolved++
                         v.directSolved = c
@@ -480,8 +479,8 @@ class Figure {
                         v.substitution = substitution
                         directSolvedConstraints.add(c)
                         postMinActions.push(valuation => {
-                            v.currentValue = evaluate(substitution, valuation)
-                            if (DEBUG_CONSTRAINTS) console.log("Solving by substitution " + v + " <- " + v.currentValue)
+                            v.solutionValue = evaluate(substitution, valuation)
+                            if (DEBUG_CONSTRAINTS) console.log("Solving by substitution " + v + " <- " + v.solutionValue)
                         })
                         substitutable++
                         if (DEBUG_CONSTRAINTS) console.log("Substitution: " + v + " <- " + v.substitution)
@@ -543,7 +542,7 @@ class Figure {
     unnumberVariables() {
         const vars = this.Variables, n = vars.length
         for (let i = 0; i < n; i++) {
-            delete vars[i].index
+            vars[i].removeIndex()
         }
     }
     // Add one or more constraints that should be satisfied
@@ -629,9 +628,9 @@ class Figure {
                 console.error("direct-solved constraint appearing in cost minimization", con)
             }
             const result = con.getCost(valuation, doGrad)
+            if (CHECK_NAN && checkNaNResult(result)) return
             let c, dc
             if (doGrad) {
-                if (CHECK_NAN && checkNaNResult(result)) return
                 [c, dc] = result
                 dcost = numeric.add(dcost, dc)
             } else {
@@ -761,35 +760,45 @@ class Figure {
         if (!solved) {
             console.error("not solved??")
         }
-        return this.recordValuation()
+        this.unnumberVariables()
+        return this.recordValuation(true)
     }
 
-    // Return an array holding the current values of all variables
-    recordValuation() {
+    // Return an array holding the current values of all variables. If
+    // valuation is provided as an argument, it's the solver's current value;
+    // otherwise, the renderer's.
+    recordValuation(valuation) {
         const vars = this.Variables
         const n = vars.length
         const result = new Array(n)
         let count = 0
         for (let i = 0; i < n; i++) {
-            result[i] = vars[i].currentValue
+            if (valuation) {
+                result[i] = vars[i].solutionValue
+            } else {
+                result[i] = vars[i].renderValue
+            }
+            // result[i] = evaluate(vars[i], valuation)
             if (result[i]) count++
         }
         // console.log("recorded " + count + " variable values")
         return result
     }
 
-    // set the values of all variables using the valuation array
+    // Set the render values of all variables using the valuation array
     applyValuation(valuation) {
         const vars = this.Variables
         const n = vars.length
-        if (n != valuation.length) console.error("length mismatch")
+        if (n != valuation.length) {
+            console.error("length mismatch")
+        }
         for (let i = 0; i < n; i++) {
             const v = valuation[i], variable = vars[i]
-            delete variable.index
+            variable.removeIndex()
             if (v !== undefined) {
-                variable.currentValue = v
+                variable.renderValue = v
             } else {
-                delete variable.currentValue
+                delete variable.renderValue
             }
         }
     }
@@ -881,7 +890,7 @@ class Figure {
     // the properties this.prevTime, this.nextTime, and this.pendingTime are the values of time
     // for each of these valuations. In addition, the property this.renderTime is the time
     // at which rendering is supposed to happen, and what is rendering is an interpolation between
-    // prevValuation and nextValuation, which is in this.currentValuation.
+    // prevValuation and nextValuation, which is in v.renderValue for all variables v
     //
     // cases:
     //   1. no existing valuations: compute the valuation for current time and render it,
@@ -890,9 +899,13 @@ class Figure {
     //       compute the valuation for the next time and render an interpolated value, and
     //       also start a solving job for the pending valuation.
     //   3. have previous and next valuation but not pending valuation
-    //       render an interpolated valuation and start a solving job for the pending valuation
+    //       render an interpolated valuation and possilby start a solving job for the pending valuation
+    //        3a. No pending background solve. Need to start one.
+    //        3b. Pending background solve for a time in the future. Just interpolate and render.
+    //        3c. Pending background solve for a time in the past. Abort and restart solve.
     //   4. have previous, next, and pending valuation
-    //       simply render an interpolated valuation.
+    //        4a. pending valuation is good. Simply render interpolated frame.
+    //        4b. pending valuation is expired. Render but also start a new background solve.
     renderFrame(animating, frameInterval, frameLength) {
         const figure = this,
               T = figure.realTime,
@@ -905,14 +918,16 @@ class Figure {
             return Math.min(1, t + TARGET_TWEEN_FRAMES * figure.avgSolveTime/frameLength)
         }
         if (!animating) {
+            this.setupCanvas()
             this.Graphs.forEach(g => g.setupHints())
             const solved = this.updateValuation(this.solutionAccuracy(false))
-            this.currentValuation = true
             this.unnumberVariables()
+            const valuation = this.recordValuation(true)
+            this.currentValuation = true
+            this.applyValuation(valuation)
             if (!solved) { // animating solution
                 setTimeout(() => this.renderFrame(false), 10)
             }
-            this.setupCanvas()
             this.clearCanvas()
             this.renderFromValuation()
             return
@@ -931,19 +946,21 @@ class Figure {
         }
         if (this.prevTime === undefined) { // case 1
             this.prevTime = this.nextTime = this.currentTime = t
-            
-            console.log("tweening case 1: no previous value to use")
-            const valuation = this.recordUpdatedValuation(accuracy)
-            this.prevValuation = this.nextValuation = this.currentValuation = valuation
             this.setupCanvas()
+            
+            console.log("tweening case 1: no previous value to use, foreground solve")
+            const valuation = this.recordUpdatedValuation(accuracy)
+            this.prevValuation = this.nextValuation = valuation
             this.clearCanvas()
             this.renderFromValuation()
             updateSolveTime()
-            this.startBackgroundSolve(nextSolveTime(t))
+            this.startBackgroundSolve(t, nextSolveTime(t))
             return
         }
         if (this.nextTime === undefined) { // case 2
             this.currentTime = this.nextTime = nextSolveTime(t)
+            this.setupCanvas()
+            console.log("tweening case 2: no next value to use, foreground solve")
             const valuation = this.recordUpdatedValuation(accuracy)
             this.nextValuation = valuation
             this.currentTime = t
@@ -951,9 +968,7 @@ class Figure {
                 numeric.add(this.prevValuation,
                     numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
                         (t - this.prevTime)/(this.nextTime - this.prevTime)))
-            console.log("tweening case 2: no next value to use")
             this.applyValuation(this.currentValuation)
-            this.setupCanvas()
             this.clearCanvas()
             this.renderFromValuation()
             updateSolveTime()
@@ -963,22 +978,50 @@ class Figure {
                 numeric.add(this.prevValuation,
                     numeric.mul(numeric.sub(this.nextValuation, this.prevValuation),
                         (t - this.prevTime)/(this.nextTime - this.prevTime)))
-            console.log("tweening case 3/4: tweening should work")
+            if (this.pendingTime !== undefined && this.pendingValuation !== undefined) {
+                console.log("tweening case 4: tweening should work")
+            } else {
+                if (this.pendingValuation) {
+                    if (this.pendingTime >= t) {
+                        console.log("tweening case 3b: tweening should work, background solve in progress")
+                    } else {
+                        console.log("tweening case 3b: tweening should work, reset background solve")
+                    }
+                } else {
+                    console.log("tweening case 3a: tweening should work, need background solve")
+                }
+            }
             this.applyValuation(this.currentValuation)
             this.setupCanvas()
             this.clearCanvas()
             this.renderFromValuation()
         }
-        if (this.pendingTime == undefined) {
-            this.startBackgroundSolve(nextSolveTime(t))
+        if (this.pendingTime == undefined || this.pendingTime < t) {
+            this.startBackgroundSolve(t, nextSolveTime(t))
             return
         }
     }
-    startBackgroundSolve(t) {
-        this.backgroundSolveT = t
-        console.log("starting background solve for " + t)
+    abortBackgroundSolve() {
+        delete this.pendingTime
+    }
+    startBackgroundSolve(now, target) {
+        const cur = this.pendingTime
+        if (cur !== undefined) {
+            if (cur < now) {
+                console.log("aborting background solve for " + cur)
+                this.avgSolveTime *= 2
+                // XXX increase target?
+                this.abortBackgroundSolve()
+            } else {
+                console.log("already have background solve for " + cur)
+                return
+            }
+        }
+
+        this.pendingTime = target
+        console.log("starting background solve for " + target)
         function backgroundSolver() {
-            console.log("background solve...")
+            // console.log("background solve...")
         }
         setTimeout(() => {
             backgroundSolver()
@@ -1294,6 +1337,10 @@ class Figure {
         this.renderTime = this.currentTime = 0
         this.prevTime = 0
         this.prevValuation = this.recordValuation()
+        delete this.nextTime
+        delete this.nextValuation
+        delete this.pendingTime
+        delete this.pendingValuation
         const frameInterval = 1000/this.frameRate // ms
         this.avgSolveTime = frameInterval * TARGET_TWEEN_FRAMES
         this.animate(this.currentFrame.length, frameInterval,
@@ -1312,6 +1359,7 @@ class Figure {
         if (this.currentFrame === undefined) return
         this.currentTime = this.renderTime = 1
         this.stopTimer()
+        this.abortBackgroundSolve()
         this.renderFrame(false)
         if (this.nextFrame() && this.nextFrame().autoAdvance) {
             this.advance()
@@ -2380,11 +2428,12 @@ function legalExpr(e) {
     return 0;
 }
 
-function currentValue(e) {
+// Return the current solved value of e, which is either a number or an expression
+function solvedValue(e) {
     if (typeof e === NUMBER) {
         return e
     } else {
-        return e.currentValue
+        return e.solutionValue
     }
 }
 
@@ -2405,20 +2454,31 @@ class Variable extends Expression {
             this.hint = hint
         }
     }
+    // Evaluate the value of a variable. If the evaluation is being done for
+    // rendering, then no arguments will be provided and the value is
+    // determined by its renderValue property. If the evaluation is being done
+    // for solving, then 'valuation' provides the values of the variables being
+    // solved by minimization (possibly via substitution) and 'doGrad'
+    // specifies whether a gradient should be returned. If the variable is not
+    // being solved by minimization then its value is specified by the
+    // solutionValue property.
     evaluate(valuation, doGrad) {
-        // A variable may be actively being solved for, in which case
-        // its current value is in the array valuation, unless it is a
-        // substituted variable, in which case its value is determined by
-        // evaluating the substituted expression. Otherwise, the
-        // variable is treated as a constant and its currentValue property
-        // specifies its value.
-        if (valuation === undefined || this.index === undefined) {
+        if (valuation === undefined) {
+            const renderValue = this.renderValue
+            if (renderValue !== undefined) return renderValue
+            return this.hint
+                   || (console.error("undefined variable??"), 0.123)
+        }
+        if (this.index === undefined) {
             const substitution = this.substitution
             if (substitution) return evaluate(substitution, valuation, doGrad)
-            const currentValue = this.currentValue
-            if (currentValue !== undefined) return currentValue
+            const v = this.solutionValue
+            if (v !== undefined) return v
             return this.hint
-                   || (console.error("undefined variable??"), 0)
+                   || (console.error("undefined solution variable??"), 0)
+        }
+        if (DEBUG && this.figure.activeVariables[this.index] !== this) {
+            console.error("Variable index does not agree with active variables list")
         }
         if (doGrad) {
             let g = this.grad, n = valuation.length
@@ -2427,15 +2487,21 @@ class Variable extends Expression {
                 g[this.index] = 1
                 this.grad = g // save gradient for later
             }
-            if (DEBUG && this.figure.activeVariables[this.index] !== this) {
-                console.error("Variable index does not agree with active variables list")
-            }
             return [valuation[this.index], g]
         } else {
-            return valuation[this.index] || 0
+            const v = valuation[this.index]
+            if (v === undefined) {
+              console.error("undefined solution variable??")
+              return 0
+            } else {
+                return v
+            }
         }
     }
     backprop(task) {
+        if (CHECK_NAN && checkNaNResult(this.bpDiff)) {
+            console.error("NaN in variable bpDiff")
+        }
         if (this.substitution) task.propagate(this.substitution, this.bpDiff)
     }
     addDependencies(task) {
@@ -2446,6 +2512,17 @@ class Variable extends Expression {
     }
     setIndex(n) {
         this.index = n
+    }
+    // Remove this variable. Requires: no constraints mention it.
+    remove() {
+        const vars = this.figure.Variables
+        for (let i = 0; i < vars.length; i++) {
+            if (vars[i] == this) {
+                vars.splice(i, 1)
+                this.figure.numVariables--
+                break
+            }
+        }
     }
     // Reset the information about how the value of this variable is determined
     removeIndex() {
@@ -2531,11 +2608,11 @@ function evaluate(expr, valuation, doGrad) {
                         console.error("result is NaN")
                     }
                     expr.recordCache(valuation, doGrad, result2)
-                    expr.currentValue = result2
+                    if (valuation) expr.solutionValue = result2
                     return result2
                 } else {
                     const r = expr.evaluate(valuation, doGrad)
-                    expr.currentValue = r
+                    if (valuation) expr.solutionValue = r
                     return r
                 }
             }
@@ -2595,9 +2672,9 @@ class BackPropagation {
         }
         for (let i = es.length - 1; i >= 0; i--) {
             const e = es[i]
-            if (e.currentValue === undefined) {
+            if (e.solutionValue === undefined) {
                 evaluate(e, valuation)
-                if (CHECK_NAN) checkNaNResult(e.currentValue)
+                if (CHECK_NAN) checkNaNResult(e.solutionValue)
             }
             if (e.bpDiff != 0) {
                 e.backprop(this)
@@ -2608,7 +2685,7 @@ class BackPropagation {
     // back-propagate the differential value d to expr
     propagate(expr, d) {
         // console.log("propagate: " + expr + " <- " + d)
-        if (typeof expr !== NUMBER && expr.bpDiff === undefined) {
+        if (CHECK_NAN && typeof expr !== NUMBER && expr.bpDiff === undefined) {
             console.error("bpDiff not defined")
         }
         if (CHECK_NAN && !checkDiffValid(d)) {
@@ -2681,6 +2758,8 @@ class BinaryExpression extends Expression {
             return this.operation(evaluate(this.e1, valuation), evaluate(this.e2, valuation))
         const [a, da] = evaluate(this.e1, valuation, true)
         const [b, db] = evaluate(this.e2, valuation, true)
+        CHECK_NAN && checkNaNResult(a)
+        CHECK_NAN && checkNaNResult(b)
         return this.gradop(a, b, da, db)
     }
     addDependencies(task) {
@@ -2748,8 +2827,8 @@ class Times extends BinaryExpression {
         return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
     backprop(task) {
-        const a = currentValue(this.e1),
-              b = currentValue(this.e2),
+        const a = solvedValue(this.e1),
+              b = solvedValue(this.e2),
               d = this.bpDiff
         task.propagate(this.e1, numeric.dot(d,b))
         task.propagate(this.e2, numeric.dot(d,a))
@@ -2776,8 +2855,8 @@ class Divide extends BinaryExpression {
     backprop(task) {
         // d/da (a / b) = 1/b
         // d/db (a / b) = a * d/db(1/b) = a * (-1/b^2) = -a/b^2
-        const a = currentValue(this.e1),
-              b = currentValue(this.e2),
+        const a = solvedValue(this.e1),
+              b = solvedValue(this.e2),
               ib = (b == 0) ? Math.random() - 0.5 : 1/b,
               d = this.bpDiff
         if (b == 0) console.log("warning: divide by zero, using random answer")
@@ -2914,8 +2993,8 @@ class Distance extends Expression {
     // dO/a = dO/d(ab) * d(ab)/da = dO/d(ab) * b
 
     backprop(task) {
-        const p1 = currentValue(this.p1),
-              p2 = currentValue(this.p2),
+        const p1 = solvedValue(this.p1),
+              p2 = solvedValue(this.p2),
               pd = numeric.sub(p2, p1),
               sd = numeric.norm2Squared(pd),
               d = this.bpDiff
@@ -2974,7 +3053,7 @@ class Abs extends UnaryExpression {
         return [-a, -da]
     }
     backprop(task) {
-        const a = currentValue(this.expr),
+        const a = solvedValue(this.expr),
               d = this.bpDiff
         if (a < 0) task.propagate(this.expr, -d)
         else task.propagate(this.expr, d)
@@ -3025,7 +3104,7 @@ class Sq extends UnaryExpression {
         return [numeric.dot(a, a), numeric.mul(2, a, da)]
     }
     backprop(task) {
-        const a = currentValue(this.expr),
+        const a = solvedValue(this.expr),
               d = this.bpDiff
         task.propagate(this.expr, numeric.mul(2, d, a))
     }
@@ -3079,7 +3158,7 @@ class Conditional extends Expression {
                      exprVariables(this.eneg))
     }
     backprop(task) {
-        const cond = this.cond.currentValue
+        const cond = this.cond.solvedValue
         if (cond === undefined) console.error("undefined conditional guard ")
         if (cond > 0) {
             task.propagate(this.epos, this.bpDiff)
@@ -5225,13 +5304,16 @@ class Label extends Graphic {
 
         this.setStrokeStyle(undefined)
 
+
         // Have to override Graphic in the object itself
+        this.w_.remove()
+        this.h_.remove()
         this.w = function() {
             if (!this.hasOwnProperty('computedWidth')) this.computeWidth(figure.ctx)
             return this.computedWidth
         }
         this.h = function() { return this.font.getSize() }
-        this.variables = function() { return new Set([this.x(),this.y()]) }
+        this.variables = function() { return new Set([this.x_,this.y_]) }
     }
     installFont() {
         this.font.setContextFont(this.figure.ctx)
@@ -6297,6 +6379,12 @@ class Global extends Expression {
         const v0 = this.checkCache(valuation, doGrad)
         if (v0) return v0
         const v = (this.fun)(valuation)
+        CHECK_NAN && checkNaNResult(v)
+        if (valuation) {
+            this.solutionValue = v
+        } else {
+            this.renderValue = v
+        }
         return this.recordCache(valuation, doGrad, doGrad ? [v, getZeros(valuation.length)] : v)
     }
     backprop(task) {}
@@ -6500,7 +6588,7 @@ function reportPerformance(b) {
     Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
     ComputedText,
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
-    Figure_defaults, isFigure, statistics, currentValue, drawLineEndSeg,
+    Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
     setMinimizationAlgorithm, reportPerformance,
     UNCMIN_GRADIENT,
