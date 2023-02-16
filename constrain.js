@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = true
+      CHECK_NAN = true, DEBUG_TWEENING = true
 const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -77,7 +77,7 @@ function wrongSizedInvHessian(nvars, invHessian) {
 }
 
 function seconds(T) {
-    return Math.round((T / 1000) % 100 * 1000)/1000
+    return ((T / 1000) % 100).toLocaleString(undefined, {minimumFractionDigits:3, maximumFractionDigits:3})
 }
 
 // A Figure represents a possibly animated figure containing graphical objects
@@ -255,10 +255,10 @@ class Figure {
         for (let i = 0; i < this.activeVariables.length; i++) {
             const v = this.activeVariables[i]
             if (v.hasOwnProperty('solutionValue')) {
-                if (!incremental && v.hasOwnProperty('prevValue')) {
+                if (!incremental && v.prevValue !== undefined) {
                     // predict next solution based on linear motion assumption
                     const motion = numeric.sub(v.solutionValue, v.prevValue)
-                    if (isFinite(motion) && Math.abs(motion) < 5) {
+                    if (isFinite(motion) && Math.abs(motion) < 10) {
                         result[i] =  numeric.add(v.solutionValue, motion)
                     } else {
                         result[i] = v.solutionValue
@@ -542,9 +542,6 @@ class Figure {
             console.log("  Substituted variables: ", substitutable)
         }
     }
-    resetValuation(incremental) {
-        this.currentValuation = this.initialValuation(incremental)
-    }
     unnumberVariables() {
         const vars = this.Variables, n = vars.length
         for (let i = 0; i < n; i++) {
@@ -716,7 +713,7 @@ class Figure {
         for (const component of components) {
             this.activeComponent = component
             this.numberVariables(stage, component)
-            this.resetValuation(incremental)
+            this.currentValuation = this.initialValuation(incremental)
             if (DEBUG_CONSTRAINTS) {
                console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
             }
@@ -864,7 +861,7 @@ class Figure {
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
-        console.log(result)
+        // console.log(result)
         if (DEBUG && result.message != CALLBACK_RETURNED_TRUE) console.log(result.iterations + " iterations, ", result.message)
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian]
     }
@@ -950,7 +947,7 @@ class Figure {
 
         let t1 = this.nextTime
         while (t1 !== undefined && t > t1) {
-            console.log("advancing to next time segment")
+            if (DEBUG_TWEENING) console.log("advancing to next time segment")
             this.prevTime = this.nextTime
             this.prevValuation = this.nextValuation
             if (this.pendingValuation) {
@@ -961,13 +958,17 @@ class Figure {
                 break
             }
             t1 = this.nextTime
-            delete this.pendingTime
+            if (this.pendingTime) {
+                this.endBackgroundSolve()
+                delete this.pendingTime
+            }
         }
         if (this.prevTime === undefined) { // case 1
             this.prevTime = this.nextTime = this.currentTime = t
             this.setupCanvas()
             
-            console.log("tweening case 1: no previous value to use, foreground solve")
+            console.log("tweening case 1: no previous value to use, foreground solve (" +
+                seconds(rT) + " = " + this.currentTime + ")")
             this.endBackgroundSolve()
             const valuation = this.recordUpdatedValuation(accuracy)
             this.prevValuation = this.nextValuation = valuation
@@ -980,29 +981,32 @@ class Figure {
         if (this.nextTime === undefined) { // case 2
             this.currentTime = this.nextTime = nextSolveTime(t)
             this.setupCanvas()
-            console.log("tweening case 2: no next value to use, foreground solve")
+            if (DEBUG_TWEENING) console.log("tweening case 2: no next value to use, foreground solve (" +
+                seconds(rT) + " = " + this.currentTime + ")")
+
             this.endBackgroundSolve()
             const valuation = this.recordUpdatedValuation(accuracy)
-            console.log("Finished foreground solve at " + seconds(new Date().getTime()))
+            if (DEBUG_TWEENING) console.log("Finished foreground solve at " + seconds(new Date().getTime()))
             this.nextValuation = valuation
             this.currentTime = t
-            this.currentValuation = interpolate(this.prevValuation, this.nextValuation,
-                                        (t - this.prevTime)/(this.nextTime - this.prevTime))
+            const f = (t - this.prevTime)/(this.nextTime - this.prevTime)
+            this.currentValuation = interpolate(this.prevValuation, this.nextValuation, f)
             this.applyValuation(this.currentValuation)
             this.clearCanvas()
             this.renderFromValuation()
             updateSolveTime()
         } else { // case 3 or 4
             this.currentTime = t
-            this.currentValuation = interpolate(this.prevValuation, this.nextValuation,
-                                        (t - this.prevTime)/(this.nextTime - this.prevTime))
+            const f = (t - this.prevTime)/(this.nextTime - this.prevTime)
+            this.currentValuation = interpolate(this.prevValuation, this.nextValuation, f)
+            if (DEBUG_TWEENING)
             if (this.pendingTime !== undefined && this.pendingValuation !== undefined) {
-                console.log("tweening case 4: tweening")
+                console.log("tweening case 4: tweening " + f) 
             } else {
                 if (this.pendingTime) {
-                    console.log("tweening case 3b: tweening; background solve in progress")
+                    console.log("tweening case 3b: tweening " + f + "; background solve in progress")
                 } else {
-                    console.log("tweening case 3a: tweening should work, need background solve")
+                    console.log("tweening case 3a: tweening " + f + "; work, need background solve")
                 }
             }
             this.applyValuation(this.currentValuation)
@@ -1017,7 +1021,7 @@ class Figure {
     }
     endBackgroundSolve() {
         if (this.backgroundSolver) {
-            console.log("ending background solve thread")
+            // console.log("ending background solve thread")
             this.unregisterCallback("backgroundSolver")
             clearInterval(this.backgroundSolver)
             delete this.backgroundSolver
@@ -1041,8 +1045,7 @@ class Figure {
                 return
             }
         }
-
-        console.log("Starting background solve for " + target + " at time " + seconds(T))
+        if (DEBUG_TWEENING) console.log("Starting background solve for " + target + " at time " + seconds(T))
 
         this.pendingTime = target
         this.registerCallback(new SolverCallback("backgroundSolver",
@@ -1052,21 +1055,23 @@ class Figure {
                     return true
                 }
             }))
+        let incremental = false
         function backgroundSolver() {
-            // console.log("background solve...")
-            const solved = figure.updateValuation(figure.solutionAccuracy(false), true)
+            if (DEBUG_TWEENING) console.log("background solve starting again at " + seconds(new Date().getTime()))
+            const solved = figure.updateValuation(figure.solutionAccuracy(false), incremental)
+            incremental = true
 
             if (!solved) {
                 T = new Date().getTime()
-                console.log("solver ran out of time at " + seconds(T) + ", next timeout at " + seconds(T + frameInterval))
+                if (DEBUG_TWEENING) console.log("solver ran out of time at " + seconds(T) + ", next timeout at " + seconds(T + frameInterval))
             } else {
-                console.log("solver finished!")
-                figure.unregisterCallback("backgroundSolver")
+                if (DEBUG_TWEENING) console.log("solver finished!")
                 figure.unnumberVariables()
-                if (figure.pendingTime) figure.pendingValuation = recordValuation()
+                figure.endBackgroundSolve()
+                if (figure.pendingTime) figure.pendingValuation = figure.recordValuation()
             }
         }
-        this.backgroundSolver = setInterval(backgroundSolver,  0)
+        this.backgroundSolver = setInterval(backgroundSolver,  2)
     }
     // Required solution accuracy
     solutionAccuracy(animating) {
@@ -1293,7 +1298,7 @@ class Figure {
         const handleFrame = () => {
             steps_rendered++
             const T = new Date().getTime(), dT = T - T0
-            console.log("  step " + steps_rendered + ": " + seconds(T))
+            if (DEBUG_TWEENING) if (DEBUG_TWEENING) console.log("  step " + steps_rendered + ": " + seconds(T))
             const frac = dT/frameLength
             if (frac >= 1) {
                 figure.stopTimer()
@@ -1368,7 +1373,7 @@ class Figure {
 
     endCurrentFrame() {
         if (this.currentFrame === undefined) return
-        console.log("ending current frame")
+        if (DEBUG) console.log("ending current frame")
         this.currentTime = this.renderTime = 1
         this.stopTimer()
         this.endBackgroundSolve()
