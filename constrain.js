@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = true, DEBUG_TWEENING = true
+      CHECK_NAN = false, DEBUG_TWEENING = false
 const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -1020,11 +1020,11 @@ class Figure {
             this.setupCanvas()
             this.clearCanvas()
             this.renderFromValuation()
+            if (this.backgroundSolver) (this.backgroundSolver)()
         }
         if (this.pendingTime == undefined || this.pendingTime < t) {
             this.startBackgroundSolve(t, nextSolveTime(t), rT, frameInterval)
         }
-        if (this.backgroundSolver) (this.backgroundSolver)()
     }
     endBackgroundSolve() {
         if (this.backgroundSolver) {
@@ -1055,10 +1055,11 @@ class Figure {
 
         this.pendingTime = target
         this.totalIterations = 0
+        let counter = 0
         this.registerCallback(new SolverCallback("backgroundSolver",
             () => {
                 const T1 = new Date().getTime()
-                if (T1 >= T + frameInterval) {
+                if (counter++ % 10 == 0 && T1 >= T + frameInterval) {
                     return true
                 }
             }))
@@ -3186,8 +3187,10 @@ class Conditional extends Expression {
                      exprVariables(this.eneg))
     }
     backprop(task) {
-        const cond = this.cond.solvedValue
-        if (cond === undefined) console.error("undefined conditional guard ")
+        const cond = this.cond.solutionValue
+        if (cond === undefined) {
+            console.error("undefined conditional guard ")
+        }
         if (cond > 0) {
             task.propagate(this.epos, this.bpDiff)
         } else {
