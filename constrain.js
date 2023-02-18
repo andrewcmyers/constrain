@@ -722,6 +722,7 @@ class Figure {
                 if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
             }
             solution = this.minimizeConstraintLoss(this.currentValuation, tol, component.invHessian)
+            if (solution[3]) this.totalIterations += solution[3]
             if (!solution[1]) return false
             component.invHessian = solution[2]
             this.postMinActions.forEach(solver => solver(solution[0]))
@@ -758,7 +759,9 @@ class Figure {
     }
 
     recordUpdatedValuation(accuracy) {
+        this.totalIterations = 0
         const solved = this.updateValuation(accuracy)
+        if (DEBUG_TWEENING) console.log("total iterations: " + this.totalIterations)
         if (!solved) {
             console.error("not solved??")
         }
@@ -861,9 +864,8 @@ class Figure {
         } else {
             result = numeric.uncmin(this.totalCost, valuation, tol, undefined, maxit, uncmin_options)
         }
-        // console.log(result)
         if (DEBUG && result.message != CALLBACK_RETURNED_TRUE) console.log(result.iterations + " iterations, ", result.message)
-        return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian]
+        return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian, result.iterations]
     }
 
 // Rendering
@@ -915,6 +917,10 @@ class Figure {
         function updateSolveTime() {
             const dT = (new Date().getTime() - figure.startRealTime) - rT
             figure.avgSolveTime = figure.avgSolveTime * (1 - SOLVE_TIME_ALPHA) + dT * SOLVE_TIME_ALPHA
+            if (DEBUG_TWEENING) {
+                console.log("Actual solve time = " + dT/1000)
+                console.log("New avg solve time = " + figure.avgSolveTime/1000)
+            }
         }
         function nextSolveTime(t) {
             return Math.min(1, t + TARGET_TWEEN_FRAMES * figure.avgSolveTime/frameLength)
@@ -951,13 +957,13 @@ class Figure {
             this.prevTime = this.nextTime
             this.prevValuation = this.nextValuation
             if (this.pendingValuation) {
-                this.nextTime = this.pendingTime
+                t1 = this.nextTime = this.pendingTime
                 this.nextValuation = this.pendingValuation
             } else {
                 this.nextTime = undefined
+                if (DEBUG_TWEENING && this.pendingTime) console.log(" Ugh: losing next valuation")
                 break
             }
-            t1 = this.nextTime
             if (this.pendingTime) {
                 this.endBackgroundSolve()
                 delete this.pendingTime
@@ -979,12 +985,13 @@ class Figure {
             return
         }
         if (this.nextTime === undefined) { // case 2
-            this.currentTime = this.nextTime = nextSolveTime(t)
+            this.currentTime = this.nextTime = t
             this.setupCanvas()
             if (DEBUG_TWEENING) console.log("tweening case 2: no next value to use, foreground solve (" +
                 seconds(rT) + " = " + this.currentTime + ")")
 
             this.endBackgroundSolve()
+            this.totalIterations = 0
             const valuation = this.recordUpdatedValuation(accuracy)
             if (DEBUG_TWEENING) console.log("Finished foreground solve at " + seconds(new Date().getTime()))
             this.nextValuation = valuation
@@ -1016,14 +1023,13 @@ class Figure {
         }
         if (this.pendingTime == undefined || this.pendingTime < t) {
             this.startBackgroundSolve(t, nextSolveTime(t), rT, frameInterval)
-            return
         }
+        if (this.backgroundSolver) (this.backgroundSolver)()
     }
     endBackgroundSolve() {
         if (this.backgroundSolver) {
             // console.log("ending background solve thread")
             this.unregisterCallback("backgroundSolver")
-            clearInterval(this.backgroundSolver)
             delete this.backgroundSolver
         }
     }
@@ -1048,6 +1054,7 @@ class Figure {
         if (DEBUG_TWEENING) console.log("Starting background solve for " + target + " at time " + seconds(T))
 
         this.pendingTime = target
+        this.totalIterations = 0
         this.registerCallback(new SolverCallback("backgroundSolver",
             () => {
                 const T1 = new Date().getTime()
@@ -1056,22 +1063,22 @@ class Figure {
                 }
             }))
         let incremental = false
-        function backgroundSolver() {
+        this.backgroundSolver = () => {
             if (DEBUG_TWEENING) console.log("background solve starting again at " + seconds(new Date().getTime()))
+            figure.currentTime = figure.pendingTime
             const solved = figure.updateValuation(figure.solutionAccuracy(false), incremental)
             incremental = true
 
             if (!solved) {
                 T = new Date().getTime()
-                if (DEBUG_TWEENING) console.log("solver ran out of time at " + seconds(T) + ", next timeout at " + seconds(T + frameInterval))
+                if (DEBUG_TWEENING) console.log("solver ran out of time at " + seconds(T) + ", next timeout at " + seconds(T + frameInterval) + ", total iterations " + figure.totalIterations)
             } else {
-                if (DEBUG_TWEENING) console.log("solver finished!")
+                if (DEBUG_TWEENING) console.log("solver finished! total iterations: " + figure.totalIterations)
                 figure.unnumberVariables()
                 figure.endBackgroundSolve()
                 if (figure.pendingTime) figure.pendingValuation = figure.recordValuation()
             }
         }
-        this.backgroundSolver = setInterval(backgroundSolver,  2)
     }
     // Required solution accuracy
     solutionAccuracy(animating) {
@@ -1316,6 +1323,10 @@ class Figure {
                     // solver.
                     if (T1 - frameInterval > T0) {
                         figure.stopTimer()
+                        if (DEBUG_TWEENING) {
+                            console.log("First render was slow, resetting frame start time to " +
+                                seconds(T1 - frameInterval))
+                        }
                         T0 = Math.max(T0, T1 - frameInterval)
                         this.interval = setInterval(handleFrame, frameInterval)
                     }
@@ -1349,7 +1360,6 @@ class Figure {
 
     startAnimatedFrame() {
         let solvePt
-        this.currentTime = undefined
         this.renderTime = this.currentTime = 0
         this.prevTime = 0
         this.prevValuation = this.recordValuation()
@@ -2204,6 +2214,7 @@ function uncmin(fg, x0, tol, maxit, callback, options) {
         }
     }
     while (it < maxit) {
+        // console.log("  iteration " + it + ": f0 = " + f0)
         if (!all(isFinite(g0))) {
             msg = BAD_GRADIENT
             break
@@ -4649,8 +4660,8 @@ function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
     }
 
     labels.forEach(linelabel => {
-      let pos = evaluate(linelabel.position)
-          offset = evaluate(linelabel.offset)
+      let pos = evaluate(linelabel.position),
+          offset = evaluate(linelabel.offset),
           dpos = pos * total_d
       let i = 0
       for (i = 0; i < n - 1; i++) {
