@@ -914,7 +914,7 @@ class Figure {
         function updateSolveTime() {
             const dT = (new Date().getTime() - figure.startRealTime) - rT
             figure.avgSolveTime = figure.avgSolveTime * (1 - SOLVE_TIME_ALPHA) + dT * SOLVE_TIME_ALPHA
-            if (false && DEBUG_TWEENING) {
+            if (DEBUG_TWEENING) {
                 console.log("Actual solve time = " + dT/1000)
                 console.log("New avg solve time = " + figure.avgSolveTime/1000)
             }
@@ -1013,7 +1013,7 @@ class Figure {
             return
         }
         if (this.nextTime === undefined) { // case 2
-            this.currentTime = this.nextTime = t + frameInterval/frameLength
+            this.currentTime = this.nextTime = nextSolveTime(t)
             if (DEBUG_TWEENING) console.log("tweening case 2: no next value to use, foreground solve (" +
                 seconds(this.startRealTime) + "+" + seconds(rT) + ": " +
                 this.currentTime + ")")
@@ -1110,7 +1110,7 @@ class Figure {
             }))
         let incremental = false
         figure.backgroundSolver = () => {
-            if (DEBUG_TWEENING) console.log("background solve starting again at " + seconds(new Date().getTime()))
+            if (DEBUG_TWEENING) console.log("background solve running again at " + seconds(new Date().getTime()))
             figure.currentTime = figure.pendingTime
             const solved = figure.updateValuation(figure.solutionAccuracy(false), incremental)
             incremental = true
