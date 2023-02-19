@@ -4,7 +4,8 @@
 // similar to the sort of animated figure you would put into a slide
 // presentation, or for web-based course notes.
 // 
-// Author: Andrew Myers, 2019-2021
+// Author: Andrew Myers, 2019-2023
+//   github.com/andrewcmyers/constrain
 
 var Constrain = function() {
 
