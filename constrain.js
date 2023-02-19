@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = true, DEBUG_TWEENING = true
+      CHECK_NAN = false, DEBUG_TWEENING = false
 const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -923,7 +923,7 @@ class Figure {
             const result = Math.min(1, t + TARGET_TWEEN_FRAMES * figure.avgSolveTime/frameLength)
             const eof = figure.startRealTime + frameLength
             if (result > eof - frameInterval) result = 1
-            console.log("next solve time for " + t + " is " + result)
+            // console.log("next solve time for " + t + " is " + result)
             return result
         }
         function interpolate(v0, v1, f) {
@@ -971,7 +971,7 @@ class Figure {
                 {maximumFractionDigits: 3}) : 'undefined') +
             (figure.pendingValuation !== undefined ? " (ready)" : " (unsolved)")
 
-        console.log("Entering renderFrame: " + stateToString())
+        if (DEBUG_TWEENING) console.log("Entering renderFrame: " + stateToString())
 
         let t1 = this.nextTime
         while (t1 !== undefined && t > t1) {
@@ -993,7 +993,7 @@ class Figure {
                 this.pendingValuation = undefined
             }
         }
-        console.log("After stepping time: " + stateToString())
+        if (DEBUG_TWEENING) console.log("After stepping time: " + stateToString())
 
         if (this.prevTime === undefined) { // case 1
             this.prevTime = this.nextTime = this.currentTime = t
@@ -1073,7 +1073,7 @@ class Figure {
     }
     endBackgroundSolve() {
         if (this.backgroundSolver) {
-            console.log("ending background solve thread")
+            // console.log("ending background solve thread")
             this.unregisterCallback("backgroundSolver")
             delete this.backgroundSolver
         }
