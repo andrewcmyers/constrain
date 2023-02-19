@@ -912,7 +912,7 @@ class Figure {
               t = figure.renderTime,
               vars = this.Variables
         function updateSolveTime() {
-            const dT = (new Date().getTime() - figure.startRealTime) - rT
+            const dT = (new Date().getTime() - figure.startRealTime) - figure.realTime
             figure.avgSolveTime = figure.avgSolveTime * (1 - SOLVE_TIME_ALPHA) + dT * SOLVE_TIME_ALPHA
             if (DEBUG_TWEENING) {
                 console.log("Actual solve time = " + dT/1000)
@@ -947,7 +947,10 @@ class Figure {
         if (!animating) {
             this.setupCanvas()
             this.Graphs.forEach(g => g.setupHints())
+            const t0 = new Date().getTime()
+            figure.realTime = 0
             const solved = this.updateValuation(this.solutionAccuracy(false))
+            if (!figure.avgSolveTime) figure.avgSolveTime = new Date().getTime() - t0
             this.unnumberVariables()
             const valuation = this.recordValuation(true)
             this.applyValuation(valuation)
