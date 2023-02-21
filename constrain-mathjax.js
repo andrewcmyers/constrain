@@ -1,7 +1,7 @@
 (() => {
 
   function svg_length(len, figure) {
-    const s = figure.font.fontSize, v = len.valueInSpecifiedUnits
+    const s = figure.getFontSize(), v = len.valueInSpecifiedUnits
     switch (len.unitType) {
         case 0: return v
         case 1: return v
