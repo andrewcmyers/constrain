@@ -221,9 +221,6 @@ class Figure {
             if (!this.focused) return false
             const x = e.offsetX, y = e.offsetY
             return this.focused.mousemove(x, y, e)
-            e.preventDefault()
-            e.stopPropagation()
-            return false
         })
         this.canvas.addEventListener('dblclick', e => {
             e.preventDefault()
