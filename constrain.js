@@ -60,10 +60,10 @@ const SOLVE_TIME_ALPHA = 0.3
 const TARGET_TWEEN_FRAMES = 4
 
 const defaultMinimizationOptions = {
-    UNCMIN_MAXIT : 1000,
-    UNCMIN_OVERSHOOT : 0.1,
-    UNCMIN_STEPSIZE : 1,
-    UNCMIN_LBFGS_M : 10,
+    maxIterations : 1000,
+    overshoot : 0.1,
+    stepSize : 1,
+    LBFGS_M : 10,
 }
 
 const {gradient, dot, sub, add, tensor, div, sqrt, mul, transpose, all, isFinite, neg} = numeric
@@ -1116,7 +1116,8 @@ class Figure {
         figure.backgroundSolver = () => {
             if (DEBUG_TWEENING) console.log("background solve running again at " + seconds(new Date().getTime()))
             figure.currentTime = figure.pendingTime
-            const solved = figure.updateValuation(figure.solutionAccuracy(false), incremental)
+            const accuracy = figure.solutionAccuracy(figure.pendingTime < 1),
+                  solved = figure.updateValuation(accuracy, incremental)
             incremental = true
 
             if (!solved) {
@@ -1132,7 +1133,7 @@ class Figure {
     }
     // Required solution accuracy
     solutionAccuracy(animating) {
-        return animating ? 0.1 : 0.01
+        return animating ? 0.05 : 0.01
     }
 
     // Render the figure using the current renderValue property of variables
@@ -2232,7 +2233,7 @@ function partition(a, l, r) {
 function uncmin(fg, x0, callback, options) {
     if (options === undefined) options = {}
     const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
-          maxit = options.maxit || 1000
+          maxit = options.maxIterations || 1000
 
     const gradient = x => gradient(fg, x)
     x0 = numeric.clone(x0)
@@ -2382,7 +2383,7 @@ function uncmin(fg, x0, callback, options) {
                 y_hist.push(y)
                 rho.push(1/dot(y, s))
                 hist++
-                if (hist > options.UNCMIN_LBFGS_M) {
+                if (hist > options.LBFGS_M) {
                     s_hist.shift()
                     y_hist.shift()
                     rho.shift()
