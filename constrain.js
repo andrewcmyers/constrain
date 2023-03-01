@@ -24,7 +24,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = false, DEBUG_TWEENING = false
+      CHECK_NAN = true, DEBUG_TWEENING = true
 const REPORT_PERFORMANCE = true
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
