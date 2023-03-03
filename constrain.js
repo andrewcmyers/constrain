@@ -4308,9 +4308,7 @@ class Rectangle extends Graphic {
             Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
         }
         ctx.lineWidth = evaluate(this.lineWidth)
-        if (this.opacity) {
-            ctx.globalAlpha = evaluate(this.opacity)
-        }
+        if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
         this.fill()
         if (this.strokeStyle != null) {
             ctx.strokeStyle = this.strokeStyle
@@ -4549,9 +4547,7 @@ class Ellipse extends Graphic {
         ctx.translate(x - w/2, y - h/2)
         ctx.lineWidth = evaluate(this.lineWidth)
         Paths.ellipse(ctx, w/2, h/2, w/2, h/2)
-        if (this.opacity) {
-            ctx.globalAlpha = evaluate(this.opacity)
-        }
+        if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
         this.fill()
         if (this.strokeStyle != null) {
             ctx.strokeStyle = this.strokeStyle
@@ -4677,9 +4673,7 @@ class ClosedCurve extends Polygon {
         ctx.lineWidth = evaluate(this.lineWidth)
         ctx.lineDash = this.lineDash
         ctx.fillStyle = this.fillStyle
-        if (this.opacity) {
-            ctx.globalAlpha = evaluate(this.opacity)
-        }
+        if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
         const pts = []
         for (let i = 0; i < this.points.length; i++) {
             const [x, y] = evaluate(this.points[i])
