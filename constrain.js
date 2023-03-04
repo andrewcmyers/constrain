@@ -1130,7 +1130,8 @@ class Figure {
     }
     // Required solution accuracy
     solutionAccuracy(animating) {
-        return animating ? 0.05 : 0.001
+        return 1.0e-6
+        // return animating ? 0.05 : 0.001
     }
 
     // Render the figure using the current renderValue property of variables
