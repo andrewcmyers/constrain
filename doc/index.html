@@ -1122,12 +1122,13 @@ points relating to their position in the figure.
 <div id="positions_ex" style="float: right; margin: 1em">
 <canvas id=positions_ex_fig style="width: 300px; height: 300px"></canvas>
 <script>
-  with (new Constrain.Figure("positions_ex_fig")) {
+  var figure = new Constrain.Figure("positions_ex_fig")
+  with (figure) {
     function dot(p) {
-        return circle().setFillStyle("#00c").setStrokeStyle(null).setW(10).at(p)
+        return figure.circle().setFillStyle("#00c").setStrokeStyle(null).setW(10).at(p)
     }
     function lb(n, p) {
-      return label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
+      return figure.label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
     }
     let c = circle().setLineWidth(3).setFillStyle("#def"),
         s = box(),
