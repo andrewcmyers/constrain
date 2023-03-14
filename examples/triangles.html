@@ -36,7 +36,7 @@ with (figure) {
     // figure.animatedSolving = true
     // function freeze() {}
     function dot() {
-        return circle().setW(8).setFillStyle("black")
+        return figure.circle().setW(8).setFillStyle("black")
     }
     let h1 = handle().setStrokeStyle("red")
     let temp1 = equal(h1.y(), 0),
@@ -120,6 +120,7 @@ with (figure) {
         // Distance is negative if the point is on the left side of the line
         // and positive if on the right side.
         function point_to_line_dist(p0, p1, p2) {
+          with (figure) {
             const tl = times(minus(projection(p1, 0), projection(p0, 0)),
                              minus(projection(p2, 1), projection(p1, 1)))
             const tr = times(minus(projection(p1, 1), projection(p0, 1)),
@@ -127,6 +128,7 @@ with (figure) {
             const rad = plus(sq(minus(projection(p2, 0), projection(p1, 0))),
                              sq(minus(projection(p2, 1), projection(p1, 1))))
             return divide(minus(tr, tl), sqrt(rad))
+          }
         }
 
         const dj1 = point_to_line_dist(incenter, p2, p3),
