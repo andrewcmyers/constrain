@@ -5424,7 +5424,7 @@ class Label extends Graphic {
                 ctx.strokeText(this.text, x, y)
             }
         } else {
-            const tc = new Context([
+            const tc = new Context(this.style).setAll([
               [ 'verticalAlign', "center"],
               [ 'justification', "center"],
               [ 'lineSpacing', 0],
