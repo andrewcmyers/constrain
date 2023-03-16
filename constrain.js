@@ -5639,14 +5639,14 @@ class ContainedText {
     // Return [w, h] where w and h are the width and height of the smallest rectangle
     // that contains the text when formatted in the smallest possible number of lines.
     minimumSize() {
-        const tc = new Context(this.style)
-                        .set('forceLayout', false)
-                        .set('container', this)
-                        .set('layoutAlgorithm', 'greedy')
-                        .set('justification', 'left')
-                        .set('inset', 0)
-                        .set('verticalAlign', 'center')
-                        .set('baseline', 0)
+        const tc = new Context(this.style).setAll([
+                        ['forceLayout', false],
+                        ['container', this],
+                        ['layoutAlgorithm', 'greedy'],
+                        ['justification', 'left'],
+                        ['inset', 0],
+                        ['verticalAlign', 'center'],
+                        ['baseline', 0]])
         const lineSpacing = this.font.getSize() *
 -                (typeof this.lineSpacing == NUMBER ? this.lineSpacing : 1)
         const layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,
