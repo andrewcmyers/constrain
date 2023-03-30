@@ -1757,7 +1757,7 @@ class Figure {
                 }
                 break
             default:
-                console.error("Unrecognized vertical alignment: " + horizontal)
+                console.error("Unrecognized vertical alignment: " + vertical)
                 break
         }
         return result
