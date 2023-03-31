@@ -5039,6 +5039,7 @@ function argsForEach(args, i, f) {
 
 function flattenGraphics(objects) {
     return objects.flat().filter(o => {
+        if (!o) return false
         if (o && o.variables) return true
         console.error("Not a graphical object: " + o)
         return false
