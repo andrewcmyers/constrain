@@ -1776,6 +1776,36 @@ class Figure {
             this.equal(...objs.map(o => o.w())),
             this.equal(...objs.map(o => o.h())))
     }
+    // set the direction from g1 to g2, in degrees, where 0 degrees
+    // is upward, 90 is to the right, and so forth.
+    direction(g1, g2, dir) {
+        const dx = this.minus(g2.target().x(), g1.target().y()),
+              dy = this.minus(g2.target().y(), g1.target().y())
+        if (typeof dir == "string") {
+            switch (dir.toLowerCase()) {
+                case "n": dir = 0; break;
+                case "e": dir = 90; break;
+                case "s": dir = 180; break;
+                case "w": dir = 270; break;
+                case "ne": dir = 45; break;
+                case "se": dir = 135; break;
+                case "sw": dir = 225; break;
+                case "nw": dir = 315; break;
+                case "nne": dir = 22.5; break;
+                case "ene": dir = 67.5; break;
+                case "ese": dir = 112.5; break;
+                case "sse": dir = 157.5; break;
+                case "ssw": dir = 202.5; break;
+                case "wsw": dir = 247.5; break;
+                case "wnw": dir = 292.5; break;
+                case "nnw": dir = 337.5; break;
+                default:
+                    console.error("Unknown compass point: " + dir)
+                    return
+            }
+        }
+        return this.equal(new ATan2(dx, dy), this.times(dir, Math.PI/180))
+    }
 
     after(frame, ...objs) {
         if (objs.length == 1) return new After(this, frame, objs[0])
@@ -2655,9 +2685,9 @@ function statistics() {
 
 // The variables used by expression e.
 function exprVariables(e) {
-    if (e.cachedVariables) return e.cachedVariables
     if (e === undefined)
         console.error("undefined expr")
+    if (e.cachedVariables) return e.cachedVariables
     if (typeof e === NUMBER || Array.isArray(e)) return new Set()
     if (!e.variables)
         console.error("no variables method")
@@ -3037,6 +3067,9 @@ class Max extends NaryExpression {
     toString() { return "max(" + this.args + ")" }
 }
 
+const RANDOM_ANGLE_WARNING = "Warning: zero distance, generating random angle"
+const randomAngle = () => Math.random() * Math.PI * 2
+
 // The distance between two points.
 class Distance extends Expression {
     // The distance between two points.
@@ -3065,7 +3098,7 @@ class Distance extends Expression {
       if (v != 0) {
         dn = numeric.mul(1/v, pd)
       } else {
-        const ang = Math.random() * Math.PI * 2
+        const ang = randomAngle()
         dn = [ Math.cos(ang), Math.sin(ang) ]
         for (let i = 2; i < this.dim; i++) dn.push(Math.random() - 0.5)
       }
@@ -3091,9 +3124,9 @@ class Distance extends Expression {
         } else {
             // positions of points are considered arbitrary, so generate a
             // differential in a random direction.
-            console.log("Warning: zero distance between points, generating force at random angle")
+            console.log(RANDOM_ANGLE_WARNING)
 
-            const ang = Math.random() * Math.PI * 2
+            const ang = randomAngle()
             dn = [ d * Math.cos(ang) * RANDOM_GRADIENT_SCALING,
                    d * Math.sin(ang) * RANDOM_GRADIENT_SCALING ]
             for (let i = 2; i < this.dim; i++) dn.push(d * (Math.random() - 0.5))
@@ -3109,6 +3142,67 @@ class Distance extends Expression {
         return union(exprVariables(this.p1), exprVariables(this.p2))
     }
     toString() { return "distance(" + this.p1 + "," + this.p2 + ")" }
+}
+
+// The 2-argument arctangent of two numbers, in radians.  atan(dy/dx) corrected
+// for the quadrant of the direction (dx, dy). Note: the order of arguments is
+// different from JavaScript's and C's Math.atan2.
+class ATan2 extends Expression {
+    constructor(dx, dy) {
+        super()
+        this.dx = dx
+        this.dy = dy
+    }
+    evaluate(valuation, doGrad) {
+      const vx = evaluate(this.dx, valuation),
+            vy = evaluate(this.dy, valuation),
+            sd = vx * vx + vy * vy
+      const v = Math.atan2(vx, -vy)
+      console.log("dx = " + vx + ", dy = " + vy + ", atan = " + v * 180/Math.PI)
+      if (!doGrad) {
+        if (sd != 0) return v
+        else return randomAngle()
+      }
+      if (sd != 0) {
+        const id = 1/Math.sqrt(sd)
+        const grad = [vy/id, vx/id]
+        console.log("gradient = " + grad)
+        return [v, grad]
+      } else {
+        console.log(RANDOM_ANGLE_WARNING)
+        const ang = randomAngle()
+        return [v, [ Math.cos(ang), Math.sin(ang) ]]
+      }
+    }
+    backprop(task) {
+        const vx = solvedValue(this.dx),
+              vy = solvedValue(this.dy),
+              sd = vx * vx + vy * vy,
+              diff = this.bpDiff
+        console.log("backprop vx = " + vx + ", vy = " + vy + ", diff = " + diff)
+        if (sd != 0) {
+            const id = diff/Math.sqrt(sd)
+            const ddx = vy*id, ddy = -vx*id
+            console.log("propagating " + ddx + "," + ddy)
+            task.propagate(this.dx, ddx)
+            task.propagate(this.dy, ddy)
+        } else {
+            // positions of points are considered arbitrary, so generate a
+            // differential in a random direction.
+            console.log(RANDOM_ANGLE_WARNING)
+            const ang = Math.random() * Math.PI * 2
+            task.propagate(this.dx, diff * Math.cos(ang) * RANDOM_GRADIENT_SCALING)
+            task.propagate(this.dy, diff * Math.sin(ang) * RANDOM_GRADIENT_SCALING)
+        }
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.dx)
+        task.prepareBackProp(this.dy)
+    }
+    variables() {
+        return union(exprVariables(this.dx), exprVariables(this.dy))
+    }
+    toString() { return "atan2(" + this.dx + "," + this.dy + ")" }
 }
 
 // A unary expression like -x
