@@ -25,11 +25,15 @@ with (figure) {
 
     setFillStyle("blue")
     let r = circle().setW(8).at(point(50,50)),
-        s = circle().setW(8).setFillStyle("red")
+        s = circle().setW(8).setFillStyle("red").at(label("SSE").cl().toLeft(5)),
+        s2 = circle().setW(8).setFillStyle("#0c0").at(label("ESE").cl().toLeft(5))
 
-    line(r,s)
-    equal(handle().y(), s.y())
+    line(r,s); line(r, s2)
+    let h = handle()
+    equal(h.y(), s.y())
+    equal(h.x(), s2.x())
     direction(r, s, "sse")
+    direction(r, s2, "ese")
     keepInside(s, margin())
 }
 

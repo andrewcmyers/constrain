@@ -2254,8 +2254,9 @@ function partition(a, l, r) {
 // Adapted from numeric-1.2.6.js to allow f to supply the gradient directly. Uses
 // various functions from that package.
 //
-// Returns: a local minimum of a function f(x) whose gradient is g(x), using
-//   a BFGS gradient descent search.
+// Returns: a local minimum of a function f(x) whose gradient is g(x), using, by default,
+//   the BFGS minimization algorithm. (Other algorithms can be selected using
+//   setMinimizationAlgorithm.)
 // Requires: fg(x) or fg(x, false) must return just f(x),
 //   fg(x, true) must return [ f(x), (grad f)(x)] or [f(x0), undefined]. In the former case,
 //   (grad f) must return an array whose length is the same as x. In the latter
@@ -2493,6 +2494,8 @@ class Frame {
 // quantities in terms of the solved-for values of variables.
 class Expression {
     constructor() {}
+    // The value (along with, if doGrad, the gradient) of the expression
+    // given the specified valuation.
     evaluate(valuation, doGrad) {
         console.error("Don't know how to evaluate this expression")
         return 0
@@ -2510,6 +2513,7 @@ class Expression {
         if (doGrad == this.cachedDoGrad) return this.cachedResult
         return this.cachedResult[0]
     }
+    // Record a computed value (and optionally gradient) in the cache
     recordCache(valuation, doGrad, result) {
         doGrad = doGrad ? true : false
         this.cachedValuation = valuation
@@ -2520,17 +2524,22 @@ class Expression {
     // The set of variables that are needed to evaluate this expression.
     variables() { return new Set() }
     initDiff() { this.bpDiff = 0 }
-    // actually propagate differentials backward to dependencies
+    // Propagate differentials backward to dependencies
     backprop(task) {
         console.error("Don't know how to back-propagate this expression")
     }
+    // Record the dependencies of this expression for a backpropagation task
     addDependencies(task) {
         console.error("Don't know how to compute dependencies for this expression")
     }
+    // Returns this, but checks whether this expression can be used as a point.
+    // Default: no
     isLegalPoint() {
         console.error("Not a legal point: " + this)
         return this
     }
+    // Returns this, but checks whether this expression can be used as a scalar.
+    // Default: yes
     isLegalScalar() {
         return this
     }
@@ -3155,6 +3164,11 @@ class UnaryExpression extends Expression {
         super()
         this.expr = e
     }
+    // The value of the expression at a
+    operation(a) { console.error("Undefined unary operation") }
+    // The value and gradient of the expression at a, where da is the
+    // gradient of the argument.
+    gradop(a, da) { console.error("Undefined unary operation") }
     evaluate(valuation, doGrad) {
         if (!doGrad) return this.operation(evaluate(this.expr, valuation))
         const [a, da] = evaluate(this.expr, valuation, true)
