@@ -116,24 +116,9 @@ with (figure) {
         dot().at(incenter)
         align("abut", "center", incenter, hspace(7), label("incenter"))
 
-        // The signed distance from point p0 to the line p1 -> p2.
-        // Distance is negative if the point is on the left side of the line
-        // and positive if on the right side.
-        function point_to_line_dist(p0, p1, p2) {
-          with (figure) {
-            const tl = times(minus(projection(p1, 0), projection(p0, 0)),
-                             minus(projection(p2, 1), projection(p1, 1)))
-            const tr = times(minus(projection(p1, 1), projection(p0, 1)),
-                             minus(projection(p2, 0), projection(p1, 0)))
-            const rad = plus(sq(minus(projection(p2, 0), projection(p1, 0))),
-                             sq(minus(projection(p2, 1), projection(p1, 1))))
-            return divide(minus(tr, tl), sqrt(rad))
-          }
-        }
-
-        const dj1 = point_to_line_dist(incenter, p2, p3),
-              dj2 = point_to_line_dist(incenter, p3, h1),
-              dj3 = point_to_line_dist(incenter, h1, p2)
+        const dj1 = ptToLineDist(incenter, p2, p3),
+              dj2 = ptToLineDist(incenter, p3, h1),
+              dj3 = ptToLineDist(incenter, h1, p2)
         geq(dj1, 0)
         geq(dj2, 0)
         geq(dj3, 0)

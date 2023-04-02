@@ -2150,6 +2150,19 @@ class Figure {
             pos = this.plus(a, new Times(x, dx), new Times(y, dy))
         return this.point(new Projection(pos, 0, 2), new Projection(pos, 1, 2))
     }
+    // Signed distance from point p0 to the line p1 -> p2.
+    // Distance is negative if the point is on the left side of the line
+    // and positive if on the right side.
+    ptToLineDist(p0, p1, p2) {
+        const f = this
+        const tl = f.times(f.minus(f.projection(p1, 0), f.projection(p0, 0)),
+                           f.minus(f.projection(p2, 1), f.projection(p1, 1)))
+        const tr = f.times(f.minus(f.projection(p1, 1), f.projection(p0, 1)),
+                            f.minus(f.projection(p2, 0), f.projection(p1, 0)))
+        const rad = f.plus(f.sq(f.minus(f.projection(p2, 0), f.projection(p1, 0))),
+                           f.sq(f.minus(f.projection(p2, 1), f.projection(p1, 1))))
+        return f.divide(f.minus(tr, tl), f.sqrt(rad))
+    }
 }
 
 function isFigure(figure) {

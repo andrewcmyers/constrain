@@ -1098,8 +1098,9 @@ or, as in the following example, arrays.</p>
 
 <h4>variable(name)</h4>
 <p>
-Creates and returns a fresh variable that can be solved for. Its name is based on the <code>name</code>
-parameter. Normally this method does not need to be used directly.
+Creates and returns a fresh variable that can be solved for. Its name is based
+on the <code>name</code> parameter. Normally this method does not need to be
+used directly.
 </p>
 
 <h4>hint(e, v)</h4>
@@ -1110,6 +1111,17 @@ scalar computed at the time of figure construction. Usually such hints are
 not necessary; the main use is in situations where the solver needs to be
 biased toward one of multiple solutions, or away from local minima that are not
 solutions. The call returns the expression <code>e</code>.
+</p>
+
+<h4>ptToLineDist(p0, p1, p2)</h4>
+<p>
+The signed distance from point p0 to the line p1 → p2.  The distance is negative if
+the point is on the left side of the line and positive if on the right side.
+</p>
+
+<h4>relative(x, y, a, b)</h4>
+<p>
+The position (x,y) in a coordinate system in which a is the origin and b is (1,0).
 </p>
 
 <h3>Other expressions</h3>
@@ -1472,7 +1484,7 @@ Objects or constraints <code>objs_constraints</code> are only present in the fig
 before frame <code>frame1</code>.
 </p>
 
-<h4>between(frame1, frame2, ...objs_constraints)</h4>
+<h4>betweenFrames(frame1, frame2, ...objs_constraints)</h4>
 <p>
 Objects and constraints <code>objs_constraints</code> are only present in the figure
 after frame <code>frame1</code> and before frame <code>frame2</code>.
