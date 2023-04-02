@@ -2082,8 +2082,10 @@ class Figure {
     conditional(cond, epos, eneg) {
         return new Conditional(cond, epos, eneg)
     }
-    sqrt(x) { return new Sqrt(legalExpr(x)) }
+    sqrt(x) { return (typeof x == NUMBER) ? Math.sqrt(x) : new Sqrt(legalExpr(x)) }
     sq(x) { return new Sq(legalExpr(x)) }
+    sin(x) { return (typeof x == NUMBER) ? Math.sin(x) : new Sin(legalExpr(x)) }
+    cos(x) { return (typeof x == NUMBER) ? Math.cos(x) : new Cos(legalExpr(x)) }
     average(...args) {
         const n = args.length
         if (n == 0) return 0
