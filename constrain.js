@@ -1756,7 +1756,7 @@ class Figure {
                 }
                 break
             default:
-                console.error("Unrecognized vertical alignment: " + horizontal)
+                console.error("Unrecognized vertical alignment: " + vertical)
                 break
         }
         return result
@@ -5148,6 +5148,7 @@ function argsForEach(args, i, f) {
 
 function flattenGraphics(objects) {
     return objects.flat().filter(o => {
+        if (!o) return false
         if (o && o.variables) return true
         console.error("Not a graphical object: " + o)
         return false
@@ -5533,7 +5534,7 @@ class Label extends Graphic {
                 ctx.strokeText(this.text, x, y)
             }
         } else {
-            const tc = new Context([
+            const tc = new Context(this.style).setAll([
               [ 'verticalAlign', "center"],
               [ 'justification', "center"],
               [ 'lineSpacing', 0],
@@ -5748,14 +5749,14 @@ class ContainedText {
     // Return [w, h] where w and h are the width and height of the smallest rectangle
     // that contains the text when formatted in the smallest possible number of lines.
     minimumSize() {
-        const tc = new Context(this.style)
-                        .set('forceLayout', false)
-                        .set('container', this)
-                        .set('layoutAlgorithm', 'greedy')
-                        .set('justification', 'left')
-                        .set('inset', 0)
-                        .set('verticalAlign', 'center')
-                        .set('baseline', 0)
+        const tc = new Context(this.style).setAll([
+                        ['forceLayout', false],
+                        ['container', this],
+                        ['layoutAlgorithm', 'greedy'],
+                        ['justification', 'left'],
+                        ['inset', 0],
+                        ['verticalAlign', 'center'],
+                        ['baseline', 0]])
         const lineSpacing = this.font.getSize() *
 -                (typeof this.lineSpacing == NUMBER ? this.lineSpacing : 1)
         const layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,

@@ -20,8 +20,8 @@
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
-[CS 4120/lexer generation](https://www.cs.cornell.edu/courses/cs4120/2021sp/notes.html?id=leximpl),
-[CS 4120/bottom-up parsing](https://www.cs.cornell.edu/courses/cs4120/2021sp/notes.html?id=bottomup)
+[CS 4120/lexer generation](https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=leximpl),
+[CS 4120/bottom-up parsing](https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=bottomup)
 
 [Simple template page for using Constrain](https://andrewcmyers.github.io/constrain/examples/template.html)
 

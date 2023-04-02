@@ -17,20 +17,24 @@
 <h1>Label formatting test</h1>
 <canvas></canvas>
 <script>
-const canvas = document.getElementsByTagName("canvas")[0]
+function setup() {
+    const canvas = document.getElementsByTagName("canvas")[0]
 
-Constrain.fullWindowCanvas(canvas)
-var figure = new Constrain.Figure(canvas)
+    Constrain.fullWindowCanvas(canvas)
 
-with (figure) {
-    align("left", "abut",
-        label("simple", 18, "Times-Italic"),
-        label(text("a", subscript("2"), "b", superscript("3"), "c", subscript("4")))
-        // label(text("complex", superscript("2"), "b", subscript("2")))
-        // label(text("two words"))
-        // label(text("word"))
-    )
+    const figure = new Constrain.Figure(canvas)
+    with (figure) {
+        align("left", "abut",
+            label("simple", 18, "Times-Italic"),
+            label(text("a", subscript("2"), "b", superscript("3"), "c", subscript("4")))
+            // label(text("complex", superscript("2"), "b", subscript("2")))
+            // label(text("two words"))
+            // label(text("word"))
+        )
+    }
+    return figure
 }
+var figure = setup()
 
 </script>
 </body>
