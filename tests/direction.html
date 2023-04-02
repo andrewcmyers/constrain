@@ -25,16 +25,23 @@ with (figure) {
 
     setFillStyle("blue")
     let r = circle().setW(8).at(point(50,50)),
-        s = circle().setW(8).setFillStyle("red").at(label("SSE").cl().toLeft(5)),
-        s2 = circle().setW(8).setFillStyle("#0c0").at(label("ESE").cl().toLeft(5))
+        s1 = circle().setW(8).setFillStyle("red").at(label("SSE").cl().toLeft(5)),
+        s2 = circle().setW(8).setFillStyle("#0c0").at(label("ESE").cl().toLeft(5)),
+        s3 = circle().setW(8).setFillStyle("#cc0").at(label("S").cl().toLeft(5)).below(r),
+        s4 = circle().setW(8).setFillStyle("#c0f").at(label("E").cl().toLeft(5)).rightOf(r),
+        s5 = circle().setW(8).setFillStyle("#0cf").at(label("SE").cl().toLeft(5)).fromDirection(r,
+        "se")
+        ;
 
-    line(r,s); line(r, s2)
+    [s1, s2, s3, s4, s5].map(s => line(r, s))
     let h = handle()
-    equal(h.y(), s.y())
-    equal(h.x(), s2.x())
-    direction(r, s, "sse")
-    direction(r, s2, "ese")
-    keepInside(s, margin())
+    equal(h.y(), s1.y(), s3.y())
+    equal(h.x(), s2.x(), s4.x())
+    leq(s5.y(), h.y());
+    leq(s5.x(), h.x());
+    geq(0, times(minus(s5.x(), h.x()), minus(s5.y(), h.y())))
+    direction(r, s1, "sse")
+    s2.fromDirection(r, "ese")
 }
 
 

@@ -3992,26 +3992,31 @@ class LayoutObject extends Expression {
        return this
     }
     above(g) {
-        leq(this.y1(), g.y0())
-        equal(this.target().x(), g.target().x())
+        this.figure.leq(this.y1(), g.y0())
+        this.figure.equal(this.target().x(), g.target().x())
         return this
     }
     below(g) {
-        geq(this.y0(), g.y1())
-        equal(this.target().x(), g.target().x())
+        this.figure.geq(this.y0(), g.y1())
+        this.figure.equal(this.target().x(), g.target().x())
         return this
     }
     rightOf(g) {
-        geq(this.x0(), g.x1())
-        equal(this.target().y(), g.target().y())
+        this.figure.geq(this.x0(), g.x1())
+        this.figure.equal(this.target().y(), g.target().y())
         return this
     }
     leftOf(g) {
-        leq(this.x1(), g.x0())
-        equal(this.target().y(), g.target().y())
+        this.figure.leq(this.x1(), g.x0())
+        this.figure.equal(this.target().y(), g.target().y())
+        return this
+    }
+    fromDirection(g, dir) {
+        this.figure.direction(g, this, dir)
         return this
     }
 }
+
 Average.prototype.toTop = LayoutObject.prototype.toTop
 Average.prototype.toLeft = LayoutObject.prototype.toLeft
 Average.prototype.toBottom = LayoutObject.prototype.toBottom
