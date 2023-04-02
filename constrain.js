@@ -1804,7 +1804,12 @@ class Figure {
                     return
             }
         }
-        return this.equal(new ATan2(dx, dy), this.times(dir, Math.PI/180))
+        dir = this.times(dir, Math.PI/180)
+        const dist = this.distance(g1, g2)
+
+        return new ConstraintGroup(this,
+            this.equal(dx, this.times(dist, new Sin(dir))),
+            this.equal(dy, this.times(dist, new Neg(new Cos(dir)))))
     }
 
     after(frame, ...objs) {
@@ -3144,67 +3149,6 @@ class Distance extends Expression {
     toString() { return "distance(" + this.p1 + "," + this.p2 + ")" }
 }
 
-// The 2-argument arctangent of two numbers, in radians.  atan(dy/dx) corrected
-// for the quadrant of the direction (dx, dy). Note: the order of arguments is
-// different from JavaScript's and C's Math.atan2.
-class ATan2 extends Expression {
-    constructor(dx, dy) {
-        super()
-        this.dx = dx
-        this.dy = dy
-    }
-    evaluate(valuation, doGrad) {
-      const vx = evaluate(this.dx, valuation),
-            vy = evaluate(this.dy, valuation),
-            sd = vx * vx + vy * vy
-      const v = Math.atan2(vx, -vy)
-      console.log("dx = " + vx + ", dy = " + vy + ", atan = " + v * 180/Math.PI)
-      if (!doGrad) {
-        if (sd != 0) return v
-        else return randomAngle()
-      }
-      if (sd != 0) {
-        const id = 1/sd
-        const grad = [-vy*id, vx*id]
-        console.log("gradient = " + grad)
-        return [v, grad]
-      } else {
-        console.log(RANDOM_ANGLE_WARNING)
-        const ang = randomAngle()
-        return [v, [ Math.cos(ang), Math.sin(ang) ]]
-      }
-    }
-    backprop(task) {
-        const vx = solvedValue(this.dx),
-              vy = solvedValue(this.dy),
-              sd = vx * vx + vy * vy,
-              diff = this.bpDiff
-        console.log("backprop vx = " + vx + ", vy = " + vy + ", diff = " + diff)
-        if (sd != 0) {
-            const id = diff/sd
-            const ddx = -vy*id, ddy = vx*id
-            console.log("propagating " + ddx + "," + ddy)
-            task.propagate(this.dx, ddx)
-            task.propagate(this.dy, ddy)
-        } else {
-            // positions of points are considered arbitrary, so generate a
-            // differential in a random direction.
-            console.log(RANDOM_ANGLE_WARNING)
-            const ang = Math.random() * Math.PI * 2
-            task.propagate(this.dx, diff * Math.cos(ang) * RANDOM_GRADIENT_SCALING)
-            task.propagate(this.dy, diff * Math.sin(ang) * RANDOM_GRADIENT_SCALING)
-        }
-    }
-    addDependencies(task) {
-        task.prepareBackProp(this.dx)
-        task.prepareBackProp(this.dy)
-    }
-    variables() {
-        return union(exprVariables(this.dx), exprVariables(this.dy))
-    }
-    toString() { return "atan2(" + this.dx + "," + this.dy + ")" }
-}
-
 // A unary expression like -x
 class UnaryExpression extends Expression {
     constructor(e) {
@@ -3306,6 +3250,25 @@ class Relu extends UnaryExpression {
         if (a > 0) task.propagate(this.expr, this.bpDiff)
     }
     toString() { return "Relu(" + this.expr + ")" }
+}
+
+class Cos extends UnaryExpression {
+    constructor(e) { super(e) }
+    operation(a) { return Math.cos(a) }
+    gradop(a, da) { return [ this.operation(a), -Math.sin(a) * da ] }
+    backprop(task) {
+        const a = evaluate(this, task.valuation)
+        task.propagate(this.expr, -Math.sin(a) * this.bpDiff)
+    }
+}
+class Sin extends UnaryExpression {
+    constructor(e) { super(e) }
+    operation(a) { return Math.sin(a) }
+    gradop(a, da) { return [ this.operation(a), Math.cos(a) * da ] }
+    backprop(task) {
+        const a = evaluate(this, task.valuation)
+        task.propagate(this.expr, Math.cos(a) * this.bpDiff)
+    }
 }
 
 // A Conditional is an expression that evaluates to one expression if its condition is
