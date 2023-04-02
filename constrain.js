@@ -1819,7 +1819,7 @@ class Figure {
         if (objs.length == 1) return new Before(this, frame, objs[0])
         objs.flat().map(o => new Before(this, frame, o))
     }
-    between(frame1, frame2, ...objs) {
+    betweenFrames(frame1, frame2, ...objs) {
         if (objs.length == 1) return new Before(this, frame2, new After(this, frame1, objs[0]))
         objs.flat().map(o => new Before(this, frame2, new After(this, frame1, o)))
     }
