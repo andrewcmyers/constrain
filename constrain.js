@@ -2527,7 +2527,8 @@ class Expression {
     backprop(task) {
         console.error("Don't know how to back-propagate this expression")
     }
-    // Record the dependencies of this expression for a backpropagation task
+    // Add the dependencies of this expression (but not this expression itself)
+    // to a backpropagation task
     addDependencies(task) {
         console.error("Don't know how to compute dependencies for this expression")
     }
@@ -2852,6 +2853,8 @@ class BackPropagation {
         expr.bpDiff = cost
         expr.bpRoot = true
     }
+    // Add this expression to the backpropagation task, along
+    // with its dependencies.
     prepareBackProp(expr) {
         if (typeof expr === NUMBER) return
         if (expr.bpTask === this) return // already visited
@@ -3982,11 +3985,31 @@ class LayoutObject extends Expression {
         return this
     }
     atSameSize(g) {
-       equal(this.x(), g.x())
-       equal(this.y(), g.y())
-       equal(this.w(), g.w())
-       equal(this.h(), g.h())
+       this.figure.equal(this.x(), g.x())
+       this.figure.equal(this.y(), g.y())
+       this.figure.equal(this.w(), g.w())
+       this.figure.equal(this.h(), g.h())
        return this
+    }
+    above(g) {
+        leq(this.y1(), g.y0())
+        equal(this.target().x(), g.target().x())
+        return this
+    }
+    below(g) {
+        geq(this.y0(), g.y1())
+        equal(this.target().x(), g.target().x())
+        return this
+    }
+    rightOf(g) {
+        geq(this.x0(), g.x1())
+        equal(this.target().y(), g.target().y())
+        return this
+    }
+    leftOf(g) {
+        leq(this.x1(), g.x0())
+        equal(this.target().y(), g.target().y())
+        return this
     }
 }
 Average.prototype.toTop = LayoutObject.prototype.toTop
@@ -4279,10 +4302,16 @@ class Point extends LayoutObject {
 class Group extends Graphic {
     constructor(figure, ...objects) {
         super(figure)
+        this.x_.remove()
+        this.y_.remove()
+        this.w_.remove()
+        this.h_.remove()
         this.objects = flattenGraphics(objects).map(o => legalLayoutObject(o))
         this.objects.forEach(o => {
             o.parent = this
         })
+        this.x_ = this.centerX()
+        this.y_ = this.centerY()
     }
     variables() {
         const result = new Set(), g = this
@@ -4293,8 +4322,6 @@ class Group extends Graphic {
         })
         return result
     }
-    x() { return this.centerX() }
-    y() { return this.centerY() }
     x0() { return new Min(this.objects.map(o => o.x0())) }
     x1() { return new Max(this.objects.map(o => o.x1())) }
     y0() { return new Min(this.objects.map(o => o.y0())) }
@@ -4338,6 +4365,11 @@ class Group extends Graphic {
     }
     toString() {
         return "Group(" + (this.objects ? this.objects.join(",") : "") + ")"
+    }
+    addDependencies(task) {
+        task.prepareBackProp(this.x())
+        task.prepareBackProp(this.y())
+        super.addDependencies(task)
     }
 }
 

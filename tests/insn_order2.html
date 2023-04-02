@@ -1,0 +1,60 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <script src="../constrain-mathjax.js"></script>
+    </script>
+    <script async onload="createFigure()"
+	    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+    <style>
+      body, canvas {background-color: none}
+    </style>
+  </head>
+  <body>
+    <canvas id=fig style="width: 3.5in; height: 2in"></canvas>
+    <script>
+      function createFigure() {
+        with (new Constrain.Figure("fig")) {
+            function m(t) { return mathJax(t) }
+            function ar(...x) {
+                x = x.map(g => (g instanceof Constrain.Graphic) ? g.expand(5) : g)
+                return connector(...x).setEndArrow("arrow")
+                    .setStrokeStyle("orange").setFillStyle("orange")
+            }
+
+            setFontSize(18)
+            const top = group(m("i_0^{[\\,]}"), m("i_1^{[\\,]}"), m("i_2^{[\\,]}"),
+                              m("\\dots"), m("i_n^{[\\,]}")),
+                  mid = group(m("i_1^{[s0]}"), m("i_2^{[s0]}"),
+                              m("\\dots"), m("i_n^{[s0]}")),
+                  bot = group(m("i_2^{[s0,s1]}"), 
+                              m("\\dots"), m("i_n^{[s0,s1]}")),
+                  topc = top.children(), midc = mid.children(), botc = bot.children()
+
+            for (let i of [0, 1, 2, 3]) ar(topc[i], topc[i+1])
+            for (let i of [0, 1, 2]) ar(midc[i], midc[i+1])
+            for (let i of [0, 1]) ar(botc[i], botc[i+1])
+            top.align("distribute", "center")
+            mid.align("distribute", "center")
+            bot.align("distribute", "center")
+            align("right", "distribute", top, mid, bot)
+            align("center", "distribute", topc[2], midc[1], botc[0])
+            let r = rectangle().setFillStyle("#dfd").setCornerRadius(10)
+                    .placeUnder(top).atSameSize(top.expand(20))
+            align("LR", "top", r, margin())
+            align("none", "bottom", bot, margin())
+
+            ar(topc[0], point(topc[0].x(), midc[0].y()), midc[0])
+            ar(midc[0], point(midc[0].x(), botc[0].y()), botc[0])
+            setFontSize(14)
+            m("s0").at(midc[0].toLeft(50))
+            m("s1").at(botc[0].toLeft(50))
+
+            start()
+        }
+      }
+    </script>
+  </body>
+</html>
