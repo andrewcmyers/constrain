@@ -1327,7 +1327,6 @@ class Figure {
         this.numStages = this.currentStage + 1
     }
 
-
     setRepeat(f) {
         this.repeat = f
     }
@@ -3943,21 +3942,21 @@ class LayoutObject extends Expression {
         return new Point(new Plus(this.x1(), legalExpr(v)), this.y())
     }
     inset(v) {
-        v = legalExpr(v)
         const r = new Box(this.figure)
         this.figure.equal(r.x(), this.x())
         this.figure.equal(r.y(), this.y())
-        this.figure.equal(r.w(), new Minus(this.w(), new Times(2, v)))
-        this.figure.equal(r.h(), new Minus(this.h(), new Times(2, v)))
+        const v2 = this.figure.times(2, legalExpr(v))
+        this.figure.equal(r.w(), new Minus(this.w(), v2))
+        this.figure.equal(r.h(), new Minus(this.h(), v2))
         return r
     }
     expand(v) {
-        v = legalExpr(v)
         const r = new Box(this.figure)
         this.figure.equal(r.x(), this.x())
         this.figure.equal(r.y(), this.y())
-        this.figure.equal(r.w(), new Plus(this.w(), new Times(2, v)))
-        this.figure.equal(r.h(), new Plus(this.h(), new Times(2, v)))
+        const v2 = this.figure.times(2, legalExpr(v))
+        this.figure.equal(r.w(), new Plus(this.w(), v2))
+        this.figure.equal(r.h(), new Plus(this.h(), v2))
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -3981,6 +3980,13 @@ class LayoutObject extends Expression {
             }
         }
         return this
+    }
+    atSameSize(g) {
+       equal(this.x(), g.x())
+       equal(this.y(), g.y())
+       equal(this.w(), g.w())
+       equal(this.h(), g.h())
+       return this
     }
 }
 Average.prototype.toTop = LayoutObject.prototype.toTop
