@@ -3164,8 +3164,8 @@ class ATan2 extends Expression {
         else return randomAngle()
       }
       if (sd != 0) {
-        const id = 1/Math.sqrt(sd)
-        const grad = [vy/id, vx/id]
+        const id = 1/sd
+        const grad = [-vy*id, vx*id]
         console.log("gradient = " + grad)
         return [v, grad]
       } else {
@@ -3181,8 +3181,8 @@ class ATan2 extends Expression {
               diff = this.bpDiff
         console.log("backprop vx = " + vx + ", vy = " + vy + ", diff = " + diff)
         if (sd != 0) {
-            const id = diff/Math.sqrt(sd)
-            const ddx = vy*id, ddy = -vx*id
+            const id = diff/sd
+            const ddx = -vy*id, ddy = vx*id
             console.log("propagating " + ddx + "," + ddy)
             task.propagate(this.dx, ddx)
             task.propagate(this.dy, ddy)
