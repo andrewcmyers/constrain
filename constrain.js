@@ -3830,6 +3830,8 @@ class LayoutObject extends Expression {
         this.name = name
         return this
     }
+    x() { return this.x_ }
+    y() { return this.y_ }
     x0() { return new Minus(this.x(), new Times(this.w(), 0.5)) }
     x1() { return new Plus(this.x(), new Times(this.w(), 0.5)) }
     y0() { return new Minus(this.y(), new Times(this.h(), 0.5)) }
@@ -4073,13 +4075,11 @@ class Box extends LayoutObject {
         super()
         this.figure = figure
         const prefix = this.toString() + "_"
-        this.x_= new Variable(figure, prefix + "x", x_hint)
+        this.x_ = new Variable(figure, prefix + "x", x_hint)
         this.y_ = new Variable(figure, prefix + "y", y_hint)
         this.w_ = new Variable(figure, prefix + "w", w_hint)
         this.h_ = new Variable(figure, prefix + "h", h_hint)
     }
-    x() { return this.x_ }
-    y() { return this.y_ }
     w() { return this.w_ }
     h() { return this.h_ }
     variables() {
@@ -4303,8 +4303,6 @@ class Point extends LayoutObject {
         this.x_ = vx
         this.y_ = vy
     }
-    x() { return this.x_ }
-    y() { return this.y_ }
     variables() {
         return union(exprVariables(this.x()), exprVariables(this.y()))
     }
@@ -5034,6 +5032,8 @@ class Line extends Graphic {
         this.startArrowStyle = undefined
         this.endArrowStyle = undefined
         this.arrowSize = Figure_defaults.ARROW_SIZE
+        this.x_ = new Average(this.p1.x(), this.p2.x())
+        this.y_ = new Average(this.p1.y(), this.p2.y())
     }
     // The starting point of the line
     start() {
@@ -5094,12 +5094,6 @@ class Line extends Graphic {
     }
     y1() {
         return new Max(this.p1.y(), this.p2.y())
-    }
-    x() {
-        return new Average(this.p1.x(), this.p2.x())
-    }
-    y() {
-        return new Average(this.p1.y(), this.p2.y())
     }
     w() {
         return new Abs(new Minus(this.p2.x(), this.p1.x()))
@@ -6402,8 +6396,8 @@ class Handle extends InteractiveObject {
         this.strokeStyle = strokeStyle || figure.getStyle('strokeStyle')
         this.isActive = true
         this.isVisible = true
-        figure.positive(vx, 0)
-        figure.positive(vy, 0)
+        figure.positive(vx)
+        figure.positive(vy)
         figure.leq(vx, figure.canvasRect().x1())
         figure.leq(vy, figure.canvasRect().y1())
     }
