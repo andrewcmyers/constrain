@@ -6401,8 +6401,6 @@ class Handle extends InteractiveObject {
         figure.leq(vx, figure.canvasRect().x1())
         figure.leq(vy, figure.canvasRect().y1())
     }
-    x() { return this.x_ }
-    y() { return this.y_ }
     w() { return 0 }
     h() { return 0 }
     renderIfVisible() {
@@ -6492,8 +6490,6 @@ class Button extends InteractiveObject {
         this.strokeStyle = "#444"
         this.pressed = false
     }
-    x() { return this.x_ }
-    y() { return this.y_ }
     w() { return this.size }
     h() { return this.size }
     
@@ -6668,8 +6664,6 @@ class DOMElementBox extends LayoutObject {
     boundingRect() {
         return this.obj.getBoundingClientRect()
     }
-    x() { return this.x_ }
-    y() { return this.y_ }
     x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left, "DOM element " + this.id + ".x0") }
     y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top, "DOM element " + this.id + ".y0") }
     w() { return new Global(() => this.boundingRect().width, "DOM element " + this.id + ".w") }
@@ -6708,6 +6702,8 @@ class CanvasRect extends LayoutObject {
     constructor(figure) {
         super()
         this.figure = figure
+        this.x_ = this.centerX()
+        this.y_ = this.centerY()
     }
     x0() { return 0 }
     x1() { return new Global(() => {
@@ -6721,8 +6717,6 @@ class CanvasRect extends LayoutObject {
                              "Width of figure " + this.figure.name)}
     h() { return new Global(() => this.figure.height,
                              "Height of figure " + this.figure.name) }
-    x() { return this.centerX() }
-    y() { return this.centerY() }
     backprop(task) {}
     addDependencies(task) {}
 }
