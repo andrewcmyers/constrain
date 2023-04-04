@@ -441,33 +441,6 @@ support adding text with similar formatting capability.
     show_example("textFrame_ex_code", "textFrame_ex")
 </script>
 
-<h4>lineLabel(text, position, [offset], [fontSize], [fontName], [fillStyle])</h4>
-<p>
-Creates a label containing the given text, positioned somewhere along a connector. The
-position is a number from 0 to 1, representing how far along the connector the label is placed.
-The optional <code>offset</code> parameter specifies how far to the port
-side of the connector the label is placed.  A line label is added to a
-connector using the connector's <code>addLabel</code> method. (Line labels are not
-currently supported for simple lines, although they ought to be.)
-</p>
-<pre id="linelabel_ex_code" class=code></pre>
-<div id="linelabel_ex">
-<canvas id=linelabel_ex_fig></canvas>
-<script>
-  with (new Constrain.Figure("linelabel_ex_fig")) {
-    let s1 = square().setW(30).setLineDash([4,4])
-                     .at(point(30, 100))
-        s2 = square().setW(30).at(s1.toRight(100))
-    connector(s1, s2)
-        .setStartArrow("bullet")
-        .setEndArrow("bullet")
-        .addLabel(lineLabel("label", 0.5, 10))
-  }
-</script>
-</div>
-<script>
-    show_example("linelabel_ex_code", "linelabel_ex")
-</script>
 
 <h4>text(...)</h4>
 <p>
@@ -1385,10 +1358,37 @@ This method sets the scale of the arrowhead if there is any.
 <h4>setFontSize(s)</h4>
 <p>Set the size of the font used by the label.</p>
 
-<h4>addLabel(linelabel)</h4>
-<p>Add a label to the connector. The text, position, and offset of the label are specified by
-the <code>LineLabel</code> object itself.</p>
+<h4>addLabel(ltext, position, [offset], [fontSize], [fontName], [fillStyle])</h4>
 
+<p>Add a label to the connector,
+containing the given text, positioned somewhere along the connector. The
+position is a number from 0 to 1, representing how far along the connector the label is placed.
+By default, it is set fo 0.5.
+The optional <code>offset</code> parameter specifies how far to the port
+side of the connector the label is placed.  A line label is added to a
+connector using the connector's <code>addLabel</code> method. (Line labels are not
+currently supported for simple lines, although they ought to be.)
+</p>
+<pre id="linelabel_ex_code" class=code></pre>
+<div id="linelabel_ex">
+<canvas id=linelabel_ex_fig></canvas>
+<script>
+  with (new Constrain.Figure("linelabel_ex_fig")) {
+    let s1 = square().setW(30).setLineDash([4,4])
+                     .at(point(30, 100))
+        s2 = square().setW(30).at(s1.toRight(100))
+    connector(s1, s2)
+        .setStartArrow("bullet")
+        .setEndArrow("bullet")
+        .addLabel("label")
+        .addLabel("1", 0.8, -10)
+        .addLabel("2", 0.2, -10)
+  }
+</script>
+</div>
+<script>
+    show_example("linelabel_ex_code", "linelabel_ex")
+</script>
 <h3>Text objects</h3>
 <p>
 A text object can be created by the method 

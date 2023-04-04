@@ -1505,6 +1505,10 @@ class Figure {
     setTextStyle(style) {
         return this.setStyle('textStyle', style)
     }
+    // Get the default text color/style
+    getTextStyle(style) {
+        return this.getStyle('textStyle')
+    }
 
     // Set the default line width
     setLineWidth(w) {
@@ -4828,7 +4832,7 @@ function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
     if (startAdj === undefined) startAdj = 0
     if (endAdj === undefined) endAdj = 0
     if (!labels || labels.length == 0) return
-    let total_d = -startAdj, cdists = [total_d], dists = []
+    let total_d = 0, cdists = [total_d], dists = []
     for (let i = 0; i < n - 1; i++) {
       let d = norm2d(pts[i+1][0] - pts[i][0],
                      pts[i+1][1] - pts[i][1])
@@ -5180,10 +5184,10 @@ class Connector extends Graphic {
         this.arrowSize = figure.getArrowSize()
         this.connectionStyle = figure.getConnectionStyle()
         this.lineLabelInset = figure.getLineLabelInset() // may be null
-        // figure.equal(this.x0(), figure.min(...objects.map(o => o.x0())))
-        // figure.equal(this.x1(), figure.max(...objects.map(o => o.x1())))
-        // figure.equal(this.y0(), figure.min(...objects.map(o => o.y0())))
-        // figure.equal(this.y1(), figure.max(...objects.map(o => o.y1())))
+        this.x_.remove()
+        this.y_.remove()
+        this.w_.remove()
+        this.h_.remove()
     }
     setConnectionStyle(s) {
         switch(s) {
@@ -5211,8 +5215,9 @@ class Connector extends Graphic {
                 break
         }
         const labelPosns = (this.labels && this.labels.length > 0)
-            ? positionLineLabels(figure, pts, this.labels, this.startArrowStyle ? this.arrowSize : 0,
-                              this.endArrowStyle ? this.arrowSize : 0)
+            ? positionLineLabels(figure, pts, this.labels,
+                    this.startArrowStyle ? this.arrowSize : 0,
+                    this.endArrowStyle ? this.arrowSize : 0)
             : null
 
         ctx.save()
@@ -5249,9 +5254,10 @@ class Connector extends Graphic {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
     }
     addLabel(obj, pos, offset, margin) {
-        if (arguments.length == 1)
+        if (arguments.length == 1 && obj instanceof LineLabel) // backward compat
             this.labels.push(obj)
         else
+            if (pos == undefined) pos = 0.5
             this.labels.push(this.figure.lineLabel(obj, pos, offset, margin))
         return this
     }
@@ -5636,7 +5642,7 @@ class LineLabel {
         this.position = position
         this.offset = offset || figure.getFontSize()
         this.strokeStyle = null
-        this.textStyle = figure.textStyle || "#000000"
+        this.textStyle = figure.getTextStyle() || "#000000"
         this.font = new Font(figure.currentStyle())
     }
     computeSize() {
