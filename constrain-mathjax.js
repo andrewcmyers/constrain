@@ -23,6 +23,7 @@
         MathJax.texReset()
         const svg = MathJax.tex2svg(input, displayMath).childNodes[0],
               data = new XMLSerializer().serializeToString(svg)
+
         this.img = document.createElement('img')
         this.img.src = "data:image/svg+xml;base64, " + window.btoa(unescape(encodeURIComponent(data)))
         const w = svg_length(svg.width.baseVal, figure),

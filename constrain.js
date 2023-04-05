@@ -1972,9 +1972,12 @@ class Figure {
     label(text, fontSize, fontName, fillStyle) {
         return new Label(this, text, fontSize, fontName, fillStyle)
     }
+    // deprecated for client use
     lineLabel(string, position, offset) {
-        if (string && string.constructor != String && string.constructor != ContainedText)
+        if (string && typeof string != STRING_STR && !(string instanceof Graphic)
+            && string.constructor != ContainedText) {
             string = new ContainedText(this, string)
+        }
         return new LineLabel(this, string, position, offset)
     }
     handle(style) {
@@ -3511,7 +3514,6 @@ class Temporal {
         if (this.parent) return this.parent.visible(f)
         return true
     }
-
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame)) this.render()
     }
@@ -3914,6 +3916,9 @@ class LayoutObject extends Expression {
         return evaluate([this.x0(), this.x1()])
     }
     render() {
+        console.log("Attempted to render an object that has no rendering defined.")
+    }
+    renderIn(x, y, w, h) {
         console.log("Attempted to render an object that has no rendering defined.")
     }
     renderIfVisible() { }
@@ -4825,6 +4830,13 @@ class ClosedCurve extends Polygon {
     }
 }
 
+// Return an array of [x, y, w, h] tuples describing the positions of
+// the labels.
+//   pts: array of [x, y] pairs describing the connected vertices
+//   labels: the label objects
+//   startAdj, endEdj: how much to shorten the start/end of the connector to compensate for
+//     arrowheads on either end
+// 
 function positionLineLabels(figure, pts, labels, startAdj, endAdj) {
     let ctx = figure.ctx,
         n = pts.length,
@@ -5254,11 +5266,15 @@ class Connector extends Graphic {
         objects = object.slice(0, pos).concat([object]).concat(object.slice(pos))
     }
     addLabel(obj, pos, offset, margin) {
-        if (arguments.length == 1 && obj instanceof LineLabel) // backward compat
+        if (arguments.length == 1 && obj instanceof LineLabel) { // backward compat
             this.labels.push(obj)
-        else
+        } else {
             if (pos == undefined) pos = 0.5
             this.labels.push(this.figure.lineLabel(obj, pos, offset, margin))
+            if (obj instanceof Graphic) {
+                obj.installHolder(this.figure, this, obj)
+            }
+        }
         return this
     }
     setLabelInset(inset) {
@@ -5279,7 +5295,11 @@ class Connector extends Graphic {
     variables() {
         let r = new Set()
         this.objects.forEach(o =>
-            r = union(r, exprVariables(o)))
+            r = union(r, o.variables()))
+        this.labels.forEach(lb => {
+            if (lb.text instanceof Graphic)
+                r = union(r, lb.text.variables())
+        })
         return r
     }
     className() {
@@ -5638,16 +5658,19 @@ class Label extends Graphic {
 class LineLabel {
     constructor(figure, text, position, offset) {
         this.figure = figure
-        this.text = text
+        this.text = text // may be a Graphic or a string
         this.position = position
         this.offset = offset || figure.getFontSize()
         this.strokeStyle = null
-        this.textStyle = figure.getTextStyle() || "#000000"
-        this.font = new Font(figure.currentStyle())
+        this.textStyle = figure.getTextStyle() || "black"
+        this.font = figure.getFont()
     }
     computeSize() {
         const ctx = this.figure.ctx
-        if (this.text.constructor == String) {
+        if (this.text instanceof Graphic) {
+            this.computedHeight = evaluate(this.text.h())
+            this.computedWidth = evaluate(this.text.w())
+        } else if (typeof this.text == STRING_STR) {
             this.font.setContextFont(ctx)
             this.computedHeight = this.font.getSize()
             this.computedWidth = ctx.measureText(this.text).width
@@ -5671,8 +5694,15 @@ class LineLabel {
             ctx.stroke()
         }
 
-        if (this.text.constructor == String) {
+        if (typeof this.text == STRING_STR) {
             ctx.fillText(this.text, x - w/2, y + h/2)
+        } else if (this.text instanceof Graphic) {
+            const g = this.text
+            const gx = evaluate(g.x()), gy = evaluate(g.y())
+            ctx.save()
+            ctx.translate(x - gx, y - gy)
+            g.render()
+            ctx.restore()
         } else {
             const box = new LayoutObject()
             box.x = () => x
