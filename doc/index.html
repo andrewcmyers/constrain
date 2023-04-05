@@ -1358,15 +1358,14 @@ This method sets the scale of the arrowhead if there is any.
 <h4>setFontSize(s)</h4>
 <p>Set the size of the font used by the label.</p>
 
-<h4>addLabel(ltext, position, [offset], [fontSize], [fontName], [fillStyle])</h4>
+<h4>addLabel(label, position, [offset], [fontSize], [fontName], [fillStyle])</h4>
 
-<p>Add a label to the connector,
-containing the given text, positioned somewhere along the connector. The
-position is a number from 0 to 1, representing how far along the connector the label is placed.
-By default, it is set fo 0.5.
-The optional <code>offset</code> parameter specifies how far to the port
-side of the connector the label is placed.  A line label is added to a
-connector using the connector's <code>addLabel</code> method. (Line labels are not
+<p>Add a label to the connector, positioned somewhere along the connector
+The label may be either text, a text object, or a graphical object.
+The position is a number from 0 to 1, representing how far along the connector
+the label is placed; by default, it is set fo 0.5.
+The optional parameter <code>offset</code> specifies how far to the port
+side of the connector the label is placed.  (Labels are not
 currently supported for simple lines, although they ought to be.)
 </p>
 <pre id="linelabel_ex_code" class=code></pre>
