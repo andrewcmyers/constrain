@@ -4,9 +4,11 @@
     <script src="../numeric-1.2.6.js"></script>
     <script src="../constrain.js"></script>
     <script src="../constrain-mathjax.js"></script>
+    <script src="../constrain-pdf.js"></script>
     <script async onload="createFigure()"
 	    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"></script>
     <script type=module src='https://cdn.skypack.dev/canvg@^4.0.0'></script>
     <style>
       body, canvas {background-color: none}
@@ -20,7 +22,8 @@
     </script>
     <script>
       function createFigure() {
-        with (new Constrain.Figure("fig")) {
+        const figure = new Constrain.Figure("fig")
+        with (figure) {
             function m(t) { return mathJax(t) }
             function ar(...x) {
                 x = x.map(g => (g instanceof Constrain.Graphic) ? g.expand(5) : g)
@@ -53,6 +56,9 @@
             setFontSize(14)
             ar(top[0], point(top[0].x(), mid[0].y()), mid[0]).addLabel(m("s0"))
             ar(mid[0], point(mid[0].x(), bot[0].y()), bot[0]).addLabel(m("s1"))
+
+            // let pb = new Constrain.PDF.PrintButton(figure)
+            // align("right", "bottom", pb, margin())
 
             start()
         }

@@ -343,11 +343,11 @@ class PrintJob {
         override_jsPDF(output, save_ctx, figure)
         figure.ctx = pc
 
-        figure.render(false)
+        figure.renderFrame(false)
         output.save("constrain-figure.pdf")
 
         figure.ctx = save_ctx;
-        figure.render(false)
+        figure.renderFrame(false)
     }
 }
 
