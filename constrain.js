@@ -4271,8 +4271,6 @@ class Graphic extends Box {
     renderIfVisible() {
         if (this.visible(this.figure.currentFrame))
             this.render()
-        else
-            console.log("Skipping render of invisible object: " + this)
     }
     installHolder(figure, holder, child) {
         const oldParent = child.parent
