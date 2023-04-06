@@ -306,6 +306,21 @@ function override_jsPDF(jspdf, ctx, figure) {
     prototype.clip = function(rule) {
         jspdf.clip(rule)
     }
+    const oldDrawImage = prototype.drawImage
+    prototype.drawImage = function(img, sx, sy, swidth, sheight, x, y, width, height) {
+        if (img.hasAttribute('src') &&
+            img.getAttribute('src').substr(0,25) == 'data:image/svg+xml;base64') {
+            if (!window.Canvg) {
+                console.error('Cannot render SVG images without Canvg')
+            } else {
+                console.log('Trying to render SVG image')
+                const data = atob(img.getAttribute('src').substr(27))
+                Canvg.fromString(this, data).render({ignoreClear: true})
+            }
+        } else {
+            oldDrawImage(img, sx, sy, swidth, sheight, x, y, width, height)
+        }
+    }
 }
 
 class PrintJob {

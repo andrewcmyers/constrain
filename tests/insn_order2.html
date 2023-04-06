@@ -8,8 +8,7 @@
     <script async onload="createFigure()"
 	    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"></script>
-    <script type=module src='https://cdn.skypack.dev/canvg@^4.0.0'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.js"></script>
     <style>
       body, canvas {background-color: none}
     </style>
@@ -32,6 +31,7 @@
             }
 
             setFontSize(18)
+            let r = rectangle().setFillStyle("#dfd").setCornerRadius(10)
             const top = [ m("i_0^{[\\,]}"), m("i_1^{[\\,]}"), m("i_2^{[\\,]}"),
                               m("\\dots"), m("i_n^{[\\,]}") ],
                   mid = [ m("i_1^{[s0]}"), m("i_2^{[s0]}"),
@@ -48,8 +48,7 @@
             align("right", "distribute", top[3], mid[2], bot[1])
             align("center", "distribute", top[2], mid[1], bot[0])
             const topg = group(top)
-            let r = rectangle().setFillStyle("#dfd").setCornerRadius(10)
-                    .placeUnder(topg).atSameSize(topg.expand(20))
+            r.atSameSize(topg.expand(20))
             align("LR", "top", r, margin())
             align("none", "bottom", bot[0], margin())
 
@@ -57,8 +56,8 @@
             ar(top[0], point(top[0].x(), mid[0].y()), mid[0]).addLabel(m("s0"))
             ar(mid[0], point(mid[0].x(), bot[0].y()), bot[0]).addLabel(m("s1"))
 
-            // let pb = new Constrain.PDF.PrintButton(figure)
-            // align("right", "bottom", pb, margin())
+            let pb = new Constrain.PDF.PrintButton(figure)
+            align("right", "bottom", pb, margin())
 
             start()
         }
