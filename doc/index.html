@@ -825,6 +825,7 @@ by methods on the figure object, on graphical objects, and on other figure eleme
 <h3>Figure constraint methods</h3>
 
 <h4>align(horizontal, vertical, ...objs)</h4>
+
 <p>
 Aligns the objects in the list <code>objs</code> according to the alignment specification
 given by the strings <code>horizontal</code> and <code>vertical</code>, and returns the
@@ -844,6 +845,7 @@ The horizontal alignment specification can be any of the following:
             between the objects using the method <code>hspace()</code>.
 <li><code>"distribute"</code>: Equalize the horizontal separation between the objects in the list.
 </ul>
+
 <p>
 The vertical alignment specification is the same as the horizontal specification, except
 that <code>top</code> and <code>bottom</code> replace <code>left</code> and <code>right</code>.
@@ -854,6 +856,31 @@ may be used as shorthands for <code>"left"</code>, <code>"right"</code>, etc. Fu
 <code>"LR"</code> and <code>"RL"</code> are shorthands for <code>"left right"</code> and similarly with
 <code>"TB"</code> and <code>"BT"</code>.
 </p>
+<pre id="align_ex_code" class=code></pre>
+<div id="align_ex">
+<canvas id=align_ex_fig></canvas>
+<script>
+with (new Constrain.Figure("align_ex_fig")) {
+ function domino() {
+  setFillStyle("#fff")
+  const rect = rectangle().setW(20).setH(40)
+  setFillStyle("#000")
+  return group(rect, 
+      circle().at(rect.toTop(-10)).setW(5),
+      circle().at(rect.toBottom(-10)).setW(5))
+ }
+ const tiles = [0,1,2,3,4].map(i => domino(i))
+ align("distribute", "center", ...tiles)
+ align("LR", "top", group(tiles), margin())
+ align("center", "distribute", tiles[1],
+     domino(), domino())
+}
+</script>
+</div>
+<script>
+    show_example("align_ex_code", "align_ex")
+</script>
+
 
 <h4>direction(g1, g2, dir)</h4>
 <p>
