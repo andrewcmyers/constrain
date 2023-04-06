@@ -899,9 +899,10 @@ may be used as shorthands for <code>"left"</code>, <code>"right"</code>, etc. Fu
 <canvas id=align_ex_fig></canvas>
 <script>
 with (new Constrain.Figure("align_ex_fig")) {
- function domino() {
+ function domino(i) {
   setFillStyle("#fff")
   const rect = rectangle().setW(20).setH(40)
+    .setOpacity(1-i/5)
   setFillStyle("#000")
   return group(rect, 
       circle().at(rect.toTop(-10)).setW(5),
@@ -911,7 +912,7 @@ with (new Constrain.Figure("align_ex_fig")) {
  align("distribute", "center", ...tiles)
  align("LR", "top", group(tiles), margin())
  align("center", "distribute", tiles[1],
-     domino(), domino())
+     domino(2), domino(3))
 }
 </script>
 </div>
