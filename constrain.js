@@ -2886,10 +2886,11 @@ class BackPropagation {
     }
 }
 
-function union(s1, s2) {
+function union(...s) {
     const result = new Set()
-    for (const e of s1) result.add(e)
-    for (const e of s2) result.add(e)
+    for (let i = 0; i < s.length; i++) {
+        for (const e of s[i]) result.add(e)
+    }
     return result
 }
 
@@ -4091,9 +4092,6 @@ class Box extends LayoutObject {
     }
     w() { return this.w_ }
     h() { return this.h_ }
-    variables() {
-        return new Set([this.x_, this.y_, this.w_, this.h_])
-    }
 // convenience methods for positioning (by adding constraints)
 
     // Constrain the x coordinate of the object.
@@ -4294,6 +4292,9 @@ class Graphic extends Box {
     }
     toString() {
         return this.constructor.name
+    }
+    variables() {
+        return new Set([this.x_, this.y_, this.w_, this.h_])
     }
 }
 
@@ -4788,7 +4789,7 @@ class Polygon extends Graphic {
         return this
     }
     variables() {
-        let result = Graphic.prototype.variables.call(this)
+        let result = new Set(); // Graphic.prototype.variables.call(this)
         this.points.forEach(p => {
             result = union(result, exprVariables(p))
         })
@@ -4825,6 +4826,14 @@ class ClosedCurve extends Polygon {
         if (this.text) {
             this.text.renderIn(this.figure, this)
         }
+    }
+    variables() {
+        let r = union(exprVariables(this.x0()), exprVariables(this.y0()), exprVariables(this.lineWidth || 0),
+            exprVariables(this.opacity || 0))
+        for (let i = 0; i < this.points.length; i++) {
+            r = union(r, exprVariables(this.points[i]))
+        }
+        return r
     }
 }
 
