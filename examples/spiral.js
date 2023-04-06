@@ -67,8 +67,7 @@ for (let i = 0; i < steps; i++) {
 let c = nearZero(minus(border.w(), canvasRect().x()))
 let success = updateValuation()
 
-let mw = Constrain.evaluate(border.w()),
-    mh = Constrain.evaluate(border.h())
+let mw = border.w().solutionValue, mh = border.h().solutionValue
 let phi = mw/mh
     t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow")
 align("center", "none", t, border)
