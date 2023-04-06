@@ -5141,7 +5141,7 @@ class Line extends Graphic {
     }
     variables() {
         let r = union(exprVariables(this.p1), exprVariables(this.p2))
-        this.labels.forEach(lb => {
+        if (this.labels) this.labels.forEach(lb => {
             if (lb.text instanceof Graphic)
                 r = union(r, lb.text.variables())
         })
