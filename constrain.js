@@ -5831,9 +5831,9 @@ class ContainedText {
                         ['inset', 0],
                         ['verticalAlign', 'center'],
                         ['baseline', 0]])
-        const lineSpacing = this.font.getSize() *
--                (typeof this.lineSpacing == NUMBER ? this.lineSpacing : 1)
-        const layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,
+        const ls = this.style.get('lineSpacing'),
+              lineSpacing = this.font.getSize() * (ls == NUMBER ? ls : 1),
+              layout = findLayout(this.figure, [{item: this.text, context: tc}], 1,
                     0, 0, 0, Figure_defaults.LARGE_SPAN, Figure_defaults.LARGE_SPAN)
 
         if (!layout.success) {
