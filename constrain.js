@@ -5048,6 +5048,7 @@ class Line extends Graphic {
         this.startArrowStyle = undefined
         this.endArrowStyle = undefined
         this.arrowSize = Figure_defaults.ARROW_SIZE
+        this.labels = null
         this.x_ = new Average(this.p1.x(), this.p2.x())
         this.y_ = new Average(this.p1.y(), this.p2.y())
     }
@@ -5078,6 +5079,17 @@ class Line extends Graphic {
         ctx.moveTo(x1a, y1a)
         ctx.lineTo(x2a, y2a)
         ctx.stroke()
+
+        if (this.labels && this.labels.length > 0) {
+            const pts =  [[x1, y1], [x2, y2]],
+                  labelPosns = positionLineLabels(figure, pts, this.labels,
+                    this.startArrowStyle ? this.arrowSize : 0,
+                    this.endArrowStyle ? this.arrowSize : 0)
+            for (let i = 0; i < this.labels.length; i++) {
+                const box = labelPosns[i]
+                this.labels[i].drawAt(ctx, ...box)
+            }
+        }
     }
     setStartArrow(style) {
         this.startArrowStyle = style
@@ -5097,6 +5109,15 @@ class Line extends Graphic {
     }
     setEnd(p) {
         this.figure.pin(this.end(), p)
+        return this
+    }
+    addLabel(obj, pos, offset, margin) {
+        this.labels = this.labels || []
+        if (pos == undefined) pos = 0.5
+        this.labels.push(this.figure.lineLabel(obj, pos, offset, margin))
+        if (obj instanceof Graphic) {
+            obj.installHolder(this.figure, this, obj)
+        }
         return this
     }
     x0() {
@@ -5121,7 +5142,12 @@ class Line extends Graphic {
         return new Average(this.p1, this.p2)
     }
     variables() {
-        return union(exprVariables(this.p1), exprVariables(this.p2))
+        let r = union(exprVariables(this.p1), exprVariables(this.p2))
+        this.labels.forEach(lb => {
+            if (lb.text instanceof Graphic)
+                r = union(r, lb.text.variables())
+        })
+        return r
     }
 }
 

@@ -25,10 +25,9 @@ with (figure) {
     let cr = margin()
     figure.lineLabelInset = 2
 
-    label("hello").at(50,50)
-    label(text("x", superscript("2"))).at(100,50)
     connector(cr.uc(), cr.lr()).addLabel(lineLabel("label1", 0.5, 0, 1).setStrokeStyle("black"))
-    connector(cr.lr(), cr.cl()).addLabel(text("label", subscript("2")), 0.5, 0, 1)
+    connector(cr.lr(), cr.cl()).addLabel(text("label", subscript("2")), 0.5, 0, 0)
+    line(cr.ul(), cr.lc()).addLabel(label(text("x", superscript("2"))), 0.4)
 }
 
 </script>
