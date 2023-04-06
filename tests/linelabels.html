@@ -27,6 +27,8 @@ with (figure) {
 
     connector(cr.uc(), cr.lr()).addLabel(lineLabel("label1", 0.5, 0, 1).setStrokeStyle("black"))
     connector(cr.lr(), cr.cl()).addLabel(text("label", subscript("2")), 0.5, 0, 0)
+    setStyle('startArrow', 'bullet')
+    setStyle('endArrow', 'curved')
     line(cr.ul(), cr.lc()).addLabel(label(text("x", superscript("2"))), 0.4)
 }
 
