@@ -4103,6 +4103,9 @@ class Box extends LayoutObject {
     setW(w) { this.figure.equal(this.w(), w); return this }
     // Constrain the height of this object.
     setH(h) { this.figure.equal(this.h(), h); return this }
+    variables() {
+        return new Set([this.x_, this.y_, this.w_, this.h_])
+    }
 }
 
 // A Graphic is centered at (x,y) and has a width w and height h.
@@ -4292,9 +4295,6 @@ class Graphic extends Box {
     }
     toString() {
         return this.constructor.name
-    }
-    variables() {
-        return new Set([this.x_, this.y_, this.w_, this.h_])
     }
 }
 
@@ -5052,12 +5052,18 @@ class Line extends Graphic {
         super(figure, undefined, strokeStyle, lineWidth)
         this.p1 = p1 || new Point(figure.variable("p1x"), figure.variable("p1y"))
         this.p2 = p2 || new Point(figure.variable("p2x"), figure.variable("p2y"))
-        this.startArrowStyle = undefined
-        this.endArrowStyle = undefined
-        this.arrowSize = Figure_defaults.ARROW_SIZE
+        this.startArrowStyle = figure.getStyle('startArrow')
+        this.endArrowStyle = figure.getStyle('endArrow')
+        this.arrowSize = figure.getStyle('arrowSize')
         this.labels = null
+        this.x_.remove()
+        this.y_.remove()
+        this.w_.remove()
+        this.h_.remove()
         this.x_ = new Average(this.p1.x(), this.p2.x())
         this.y_ = new Average(this.p1.y(), this.p2.y())
+        this.w_ = new Abs(new Minus(this.p2.x(), this.p1.x()))
+        this.h_ = new Abs(new Minus(this.p2.y(), this.p1.y()))
     }
     // The starting point of the line
     start() {
@@ -5138,12 +5144,6 @@ class Line extends Graphic {
     }
     y1() {
         return new Max(this.p1.y(), this.p2.y())
-    }
-    w() {
-        return new Abs(new Minus(this.p2.x(), this.p1.x()))
-    }
-    h() {
-        return new Abs(new Minus(this.p2.y(), this.p1.y()))
     }
     center() {
         return new Average(this.p1, this.p2)
