@@ -65,9 +65,7 @@ for (let i = 0; i < steps; i++) {
 }
 
 let c = nearZero(minus(border.w(), canvasRect().x()))
-let success;
-
-[figure.currentValuation, success] = updateValuation()
+let success = updateValuation()
 
 let mw = Constrain.evaluate(border.w()),
     mh = Constrain.evaluate(border.h())
