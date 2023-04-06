@@ -39,7 +39,10 @@
         h4 { font-size: 10pt }
     }
     .author { font-size: 35% }
-
+    table { border: 1px solid black }
+    table td:first-child { font-family: Menlo, fixed }
+    table td { padding: 0 1ex}
+    table th { font-size: large }
 </style>
   
 </head>
@@ -813,6 +816,41 @@ See also the <code>setStyle()</code> method, which can also be used to set
 these styles under corresponding names: <code>fillStyle</code>,
 <code>strokeStyle</code>, etc.
 </p>
+
+<h3>Style parameters</h3>
+
+<p>
+The following table is a mostly exhaustive list of style parameters built into Constrain. More
+may be added by user code.
+</p>
+<table>
+<thead>
+<tr><th>Name</th><th>Effect</th>
+</thead>
+<tbody>
+<tr><td>arrowSize</td><td>The size of the arrow, if any, at the start of a line or connector.
+<tr><td>baseline</td><td>Vertical offset of text on a line, in points
+<tr><td>connectionStyle</td><td>The style of connecting objects, either “intersection” or ”magnet”.
+<tr><td>endArrow</td><td>The style of arrow at the end of a line or connector.
+<tr><td>fillStyle</td><td>The color or gradient used to fill shape interiors
+<tr><td>fontName</td><td>The name of the font family, e.g., “Times”
+<tr><td>fontSize</td><td>The size of the font, in pixels
+<tr><td>fontStyle</td><td>The style of the font, e.g., “italic”, “bold”
+<tr><td>inset</td><td>Inset of text within a containing object
+<tr><td>justification</td><td>The style of contained text justification (left, right, justify)
+<tr><td>layoutAlgorithm</td><td>Text layout algorithm (TeX or greedy)
+<tr><td>lineDash</td><td>The pattern of dashes for lines. An empty array [] signifies no dashes.
+<tr><td>lineSpacing</td><td>The spacing between lines in multiline text, as a multiple of font size.
+<tr><td>lineWidth</td><td>The width of lines or connectors, in pixels
+<tr><td>scriptSize</td><td>Scaling of superscript or subscript text
+<tr><td>startArrow</td><td>The style of arrow at the start of a line or connector.
+<tr><td>strokeStyle</td><td>The color used to stroke shape borders
+<tr><td>subscriptOffset</td><td>Offset of subscript text (as fraction of point size)
+<tr><td>superscriptOffset</td><td>Offset of superscript text (as fraction of point size)
+<tr><td>textStyle</td><td>The color used for text
+<tr><td>verticalAlign</td><td>Vertical alignment of contained text
+</tbody>
+</table>
 
 <h2>Constraints</h2>
 
