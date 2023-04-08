@@ -12,7 +12,7 @@ function circularArcConstant(degrees) {
 const bezier_k = circularArcConstant(90)
 
 with (figure) {
-var border = rectangle("gray", "white", 1, 500, 500, 1000, 1000),
+var border = rectangle("gray", "white")
     h = handle("yellow", 300, 300),
     m = margin()
     equal(border, m)
