@@ -379,22 +379,22 @@ class Figure {
                 const [e1, e2] = [e.e1, e.e2]
                 const solve1 = solveFor(v, e1)
                 if (solve1 && !exprVariables(e2).has(v)) { // e1 + e2 = sum <=> e1 = sum - e2
-                    return (sum, valuation) => solve1(sum - evaluate(e2, valuation))
+                    return (sum, valuation) => solve1(sum - evaluate(e2, valuation), valuation)
                 }
                 const solve2 = solveFor(v, e2)
                 if (solve2 && !exprVariables(e1).has(v)) { // e1 + e2 = sum <=> e2 = sum - e1
-                    return (sum, valuation) => solve2(sum - evaluate(e1, valuation))
+                    return (sum, valuation) => solve2(sum - evaluate(e1, valuation), valuation)
                 }
                 return null
             } else if (e instanceof Minus) {
                 const [e1, e2] = [e.e1, e.e2]
                 const solve1 = solveFor(v, e1)
                 if (solve1 && !exprVariables(e2).has(v)) { // e1 - e2 = diff <=> e1 = diff + e2
-                    return (diff, valuation) => solve1(diff + evaluate(e2, valuation))
+                    return (diff, valuation) => solve1(diff + evaluate(e2, valuation), valuation)
                 }
                 const solve2 = solveFor(v, e2)
                 if (solve2 && !exprVariables(e1).has(v)) { // e1 - e2 = diff <=> e2 = e1 - diff
-                    return (diff, valuation) => solve2(evaluate(e1, valuation) - diff)
+                    return (diff, valuation) => solve2(evaluate(e1, valuation) - diff, valuation)
                 }
                 return null
             } else {
