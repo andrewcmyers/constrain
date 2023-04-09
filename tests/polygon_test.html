@@ -16,10 +16,10 @@
   var fig = new Constrain.Figure("polygon")
   with (fig) {
     let p1 = point(), p2 = point(), p3 = point()
-    equal(100, distance(p1, p2),
-          distance(p2, p3), distance(p1, p3))
+    equal(100, distance(p2, p3), distance(p1, p3), distance(p1, p2))
     equal(p2.y(), p3.y())
-    polygon([p1, p2, p3]).setFillStyle("#bfd")
+    geq(p1.y(), p2.y()).changeCost(10)
+    polygon([p1, p2, p3]).setFillStyle("#bfd").setCornerRadius(5)
     start()
   }
 </script>
