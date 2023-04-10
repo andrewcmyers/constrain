@@ -1,0 +1,85 @@
+<html>
+<head>
+<script type="text/javascript" src="../numeric-1.2.6.js"></script>
+<script type="text/javascript" src="../constrain.js"></script>
+<script type="text/javascript" src="../constrain-graph.js"></script>
+<style>
+    canvas { border: 1px solid black }
+</style>
+</head>
+<body>
+<h1>Graph test 3</h1>
+<canvas id="ast1" style="width:600px; height:250px"></canvas>
+<script>
+let fig
+var g, g2
+with (fig = new Constrain.Figure("ast1")) {
+     // fig.animatedSolving = true
+    g = makeGraph()
+    g.setExtraDims(2)
+    let h = handle(), vl = vertLine().at(100, 110).setH(200)
+    equal(h.x(), vl.x())
+    let times = label("*"), plus = label("+"), one = label("1"), two = label("2"),
+        three = label("3")
+    g.dedge(times, plus)
+    g.dedge(times, three)
+    g.dedge(plus, one)
+    g.dedge(plus, two)
+
+    align("distribute", "center", plus, three)
+    align("distribute", "center", one, two)
+    geq(three.x(), plus.x())
+    geq(plus.x(), one.x())
+    let ast = group(times, plus, one, two, three)
+    align("abut", "center", canvasRect().cl(), label("(1 + 2) * 3"), hspace(100), ast)
+    let l_ast = label("AST"), pt = label("Parse tree")
+    align("center", "none", ast, vspace(20), l_ast)
+    align("none", "bottom", l_ast, canvasRect(), pt)
+
+    g2 = makeGraph()
+    g2.setExtraDims(1)
+    const es = []
+    for (let i = 0; i < 6; i++) es.push(label("E"))
+    const plus2 = label("+"), times2 = label("*"), lp = label("("), rp = label(")")
+    g2.dedge(es[0], es[1])
+    g2.dedge(es[0], times2)
+    g2.dedge(es[0], es[2])
+    g2.dedge(es[1], lp)
+    g2.dedge(es[1], es[3])
+    g2.dedge(es[1], rp)
+    g2.dedge(es[2], label("3"))
+    align("none", "top", es[0], canvasRect())
+    align("distribute", "center", es[1], times2, es[2])
+    align("right", "none", es[2], canvasRect())
+    align("distribute", "center", lp, es[3], rp)
+    align("center", "none", es[1], es[3])
+    g2.dedge(es[3], es[4])
+    g2.dedge(es[3], plus2) // ; align("center", "none", es[3], plus2)
+    connector(es[3], es[5])
+    g2.dedge(es[3], es[5])
+            align("distribute", "center", es[4], plus2, es[5])
+            align("center", "distribute", es[1], es[3], plus2)
+    let one2 = label("1"), two2 = label("2")
+    g2.dedge(es[4], one2)
+    g2.dedge(es[5], two2)
+
+
+    g.hintsComputed = g2.hintsComputed = true
+
+    function graphDim(valuation) {
+        const hy = Constrain.evaluate(h.y(), valuation),
+              uy = Constrain.evaluate(vl.y0(), valuation),
+              ly = Constrain.evaluate(vl.y1(), valuation)
+        const d = 2 + 2 * (hy - uy)/(ly - uy)
+        // console.log("dimension: " + d)
+        return d
+    }
+
+    align("center", "none", pt, es[0])
+    setAnimatedSolving(true)
+    start()
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Constrain/Reveal Integration Demo</title>
+
+    <link rel="stylesheet" href="../reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="andru.css">
+
+    <!-- Theme used for syntax highlighting of code 
+    <link rel="stylesheet" href="reveal.js/lib/css/zenburn.css"> -->
+    <style>
+        span.footer { font-family: Copperplate; position: fixed; bottom: 0ex; left: 1ex; font-size: 18px; z-index: 2 }
+        em { color: #889ee5 }
+        canvas { position: fixed; left: 0; top: 0;
+                 width: 100%; height: 100%; z-index: -1 }
+        /* #fig1 { background-color: #eef;  } */
+        section {width: 1024px; height:768px}
+        kbd {font-size: 90%; color: #468}
+        pre {background-color: #efd; color: #236}
+        .slides {background-color: white}
+    </style>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <script src="../constrain-graph.js"></script>
+</head>
+<body>
+    <div class="reveal">
+    <span class="footer">Constrain/Reveal integration</span>
+    <div class="slides">
+          <section><h2>Automatic Graph Layout</h2>
+          <canvas id="graphs"></canvas>
+          <script>
+            with (new Constrain.Figure("graphs")) {
+                with (g = makeGraph()) {
+                    setEffectiveDimension(() => 2.0)
+                    const a = [], n = 25
+                    g.sparsity = 1.5
+                    for (let i = 1; i <= n; i++) {
+                        let row = 0, j = i
+                        while (j <= n) { row++; j *= 2 }
+                        a[i] = ellipse().setW(times(canvasRect().h(), 0.05))
+                                        .setH(times(canvasRect().h(), 0.04))
+                                        .setFillStyle("red").setName("C" + i)
+                        label(i.toString()).at(a[i])
+                        if (i > 1) dedge(a[Math.floor(i/2)], a[i]).setEndArrow("arrow")
+                    }
+                    equal(a[1].x(), canvasRect().x()).changeCost(0.001)
+                    equal(a[1].y(), times(canvasRect().h(), 0.3)).changeCost(0.001)
+                    a[1].x().setHint(g.figure.canvas.width/2)
+                    a[1].y().setHint(g.figure.canvas.height/3)
+                    g.figure.setAnimatedSolving(true)
+                }
+            }
+            </script>
+          </section>
+        </div> <!-- end of slides -->
+
+        <!-- <script src="reveal.js/lib/js/head.min.js"></script> -->
+        <script src="../reveal.js/js/reveal.js"></script>
+        <script src="../constrain-reveal.js"></script>
+        <script>
+            // Set up figures
+            ConstrainReveal.initialize()
+        </script>
+</body>
+</html>
