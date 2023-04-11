@@ -25,7 +25,7 @@ const USE_BACKPROPAGATION = true,
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
       CHECK_NAN = false, DEBUG_TWEENING = false
-const REPORT_PERFORMANCE = true
+const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -731,7 +731,11 @@ class Figure {
                     if (c instanceof Loss) {
                         const loss = evaluate(c.expr, solution[0])
                         if (Math.abs(loss > 0.01)) {
+                          if (c.cost >= 1) {
                             console.log("** Badly solved constraint " + c + ": loss = " + loss)
+                          } else {
+                            console.log("   Weak constraint " + c + ": loss = " + loss)
+                          }
                         }
                     } else {
                         //      console.error("huh?" + c)
@@ -2894,6 +2898,8 @@ function union(...s) {
     return result
 }
 
+const precedence = { " avg ": 0, " binop ": 0, "+" : 1, "-": 1, "*": 2, "/": 2 }
+
 // A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
@@ -2902,10 +2908,13 @@ class BinaryExpression extends Expression {
         if (e2 === undefined) console.error("undefined e2")
         this.e1 = legalExpr(e1)
         this.e2 = legalExpr(e2)
+        this.precedence = precedence[this.opName()]
         return this
     }
     toString() {
-        return this.e1 + this.opName() + this.e2
+        const s1 = (this.e1.precedence && this.e1.precedence < this.precedence) ? "(" + this.e1 + ")" : this.e1
+        const s2 = (this.e2.precedence && this.e2.precedence < this.precedence) ? "(" + this.e2 + ")" : this.e2
+        return s1 + this.opName() + s2
     }
     opName() { return " binop " }
     evaluate(valuation, doGrad) {

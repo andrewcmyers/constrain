@@ -37,7 +37,7 @@ with (fig = new Constrain.Figure("ast1")) {
     align("none", "bottom", l_ast, canvasRect(), pt)
 
     g2 = makeGraph()
-    g2.setExtraDims(1)
+    g2.setExtraDims(2)
     const es = []
     for (let i = 0; i < 6; i++) es.push(label("E"))
     const plus2 = label("+"), times2 = label("*"), lp = label("("), rp = label(")")
@@ -76,7 +76,7 @@ with (fig = new Constrain.Figure("ast1")) {
     }
 
     align("center", "none", pt, es[0])
-    setAnimatedSolving(true)
+    setAnimatedSolving(false)
     start()
 }
 
