@@ -4441,7 +4441,7 @@ class Rectangle extends Graphic {
             ctx.lineTo(0, h)
             ctx.closePath()
         } else {
-            Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
+            Paths.roundedRect(ctx, 0, w, 0, h, evaluate(this.cornerRadius))
         }
         ctx.lineWidth = evaluate(this.lineWidth)
         if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
@@ -4460,7 +4460,7 @@ class Rectangle extends Graphic {
       if (this.cornerRadius == 0) {
         return [ this.ll(), this.lr(), this.ul(), this.ur(), this.cl(), this.cr(), this.uc(), this.lc() ]
       } else {
-        const a = new Times(0.2929, this.cornerRadius)
+        const a = new Times(0.2929, evaluate(this.cornerRadius))
         return [ this.cl(), this.cr(), this.uc(), this.lc(),
                     new Point(new Plus(this.x0(), a), new Plus(this.y0(), a)),
                     new Point(new Minus(this.x1(), a), new Plus(this.y0(), a)),
@@ -4474,7 +4474,7 @@ class Rectangle extends Graphic {
     }
     intersectionPt(px, py, valuation) {
         let result = super.intersectionPt(px, py, valuation)
-        const r = this.cornerRadius
+        const r = evaluate(this.cornerRadius)
         if (r == 0) return result
         const [x, y] = result
         const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
@@ -4737,7 +4737,6 @@ class Circle extends Ellipse {
 
 // A filled polygon. The vertices must be specified explicitly.
 // polygon.points is an array of the points.
-// Doesn't support cornerRadius yet.
 //
 class Polygon extends Graphic {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
@@ -4760,7 +4759,8 @@ class Polygon extends Graphic {
         ctx.lineDash = this.lineDash
         ctx.fillStyle = this.fillStyle
         if (this.cornerRadius) {
-            Paths.roundedPolygon(ctx, this.cornerRadius, pts)
+            const r = evaluate(this.cornerRadius)
+            Paths.roundedPolygon(ctx, r, pts)
         } else {
             ctx.beginPath()
             for (let i = 0; i < this.points.length; i++) {
