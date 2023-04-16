@@ -2104,7 +2104,7 @@ class Figure {
         if (n == 2) {
             return new Average(legalExpr(args[0]), legalExpr(args[1]))
         }
-        return plus(times(1/n, args[0]), times((n-1)/n, average(...args.slice(1))))
+        return this.plus(this.times(1/n, args[0]), this.times((n-1)/n, this.average(...args.slice(1))))
     }
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
