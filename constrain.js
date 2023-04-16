@@ -3234,7 +3234,8 @@ class Abs extends UnaryExpression {
     operation(a) { return Math.abs(a) }
     gradop(a, da) {
         if (a > 0) return [a, da]
-        return [-a, -da]
+        if (a < 0 || Math.random() < 0.5) return [-a, -da]
+        return [a, da]
     }
     backprop(task) {
         const a = solvedValue(this.expr),
