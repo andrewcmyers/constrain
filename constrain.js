@@ -3059,14 +3059,20 @@ class NaryExpression extends Expression {
 class Min extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
-        let best = vals[0], n = vals.length, besti = 0
+        let best = vals[0], n = vals.length, besti = [0]
         for (let i = 1; i < n; i++) {
             if (best > vals[i]) {
                 best = vals[i]
-                besti = i
+                besti = [i]
+            } else if (best == vals[i]) {
+                besti.push(i)
             }
         }
-        this.which = besti
+        if (besti.length == 1) {
+            this.which = besti[0]
+        } else {
+            this.which = besti[Math.floor(Math.random() * besti.length)]
+        }
         return best
     }
     gradop(vals) {
@@ -3089,14 +3095,20 @@ class Min extends NaryExpression {
 class Max extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
-        let best = vals[0], n = vals.length, besti = 0
+        let best = vals[0], n = vals.length, besti = [0]
         for (let i = 1; i < n; i++) {
             if (best < vals[i]) {
                 best = vals[i]
-                besti = i
+                besti = [i]
+            } else if (best == vals[i]) {
+                besti.push(i)
             }
         }
-        this.which = besti
+        if (besti.length == 1) {
+            this.which = besti[0]
+        } else {
+            this.which = besti[Math.floor(Math.random() * besti.length)]
+        }
         return best
     }
     gradop(vals) {
@@ -4752,10 +4764,16 @@ class Polygon extends Graphic {
         super(figure, fillStyle, strokeStyle, lineWidth)
         points = flattenGraphics(points)
         this.points = points
-        figure.equal(this.x1(), figure.max(points.map(p => p.x())))
-        figure.equal(this.y1(), figure.max(points.map(p => p.y())))
-        figure.equal(this.x0(), figure.min(points.map(p => p.x())))
-        figure.equal(this.y0(), figure.min(points.map(p => p.y())))
+        const xpts = points.map(p => p.x()), ypts = points.map(p => p.y())
+        const maxx = figure.max(xpts), minx = figure.min(xpts), maxy = figure.max(ypts), miny = figure.min(ypts)
+        this.x_.remove()
+        this.x_ = figure.average(minx, maxx)
+        this.y_.remove()
+        this.y_ = figure.average(miny, maxy)
+        this.w_.remove()
+        this.w_ = figure.minus(maxx, minx)
+        this.h_.remove()
+        this.h_ = figure.minus(maxy, miny)
     }
     render() {
         const figure = this.figure, ctx = figure.ctx
@@ -6787,10 +6805,10 @@ class CanvasRect extends LayoutObject {
     x1() { return new Global(() => {
         if (!this.figure.width) this.figure.setupCanvas()
         return this.figure.width
-    }, "Width of figure " + this.figure.name)}
+    }, "Max x coordinate of figure " + this.figure.name)}
     y0() { return 0 }
     y1() { return new Global(() => this.figure.height,
-                             "Height of figure " + this.figure.name) }
+                             "Max y coordinate of figure " + this.figure.name) }
     w() { return new Global(() => this.figure.width,
                              "Width of figure " + this.figure.name)}
     h() { return new Global(() => this.figure.height,

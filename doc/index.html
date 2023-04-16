@@ -27,10 +27,19 @@
     div.inset { border: 1px solid #ccc; padding: 1ex 4ex }
     body  {background-color: #fed }
     p, ul li { font-size: 12pt; font-family: Georgia, serif }       
-    pre.code, textarea { padding: 1ex; font-size: 10pt; width: 60ex; float:right; border: 1px solid black; background-color: #ddd; font-family: Menlo, fixed }
+    pre.code, textarea {
+        padding: 1ex;
+        font-size: 10pt;
+        width: 60ex;
+        float:right;
+        border: 1px solid black;
+        background-color: #ddd;
+        font-family: Menlo, fixed
+    }
     textarea { border-width: 3px }
     code { font-family: Menlo, fixed; font-size: 90% }
     @media print {
+        body { font-size: 11pt; margin: 1in }
         pre.code {
             page-break-inside: avoid;
         }
