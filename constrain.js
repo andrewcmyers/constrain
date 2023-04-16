@@ -3241,7 +3241,8 @@ class Abs extends UnaryExpression {
         const a = solvedValue(this.expr),
               d = this.bpDiff
         if (a < 0) task.propagate(this.expr, -d)
-        else task.propagate(this.expr, d)
+        else if (a < 0 || Math.random() < 0.5) task.propagate(this.expr, d)
+        else task.propagate(this.expr, -d)
     }
     toString() {
         return "Abs(" + this.expr + ")"
