@@ -576,14 +576,18 @@ rendering. In other respects it acts like a graphical object; for example, it
 has a width and height.
 </p>
 
-<h4>hspace(w)</h4>
+<h4>hspace(w, [unit])</h4>
 <p>
-Horizontal space. It has width <code>w</code> but no height constraint.
+Horizontal space. It has width <code>w</code> but no height constraint. An
+optional unit parameter can be provided. It can be any graphical object, in which
+case it stands for the width of that object. Other options are "canvas", which
+signifies the width of the canvas, and "em", which stands for the current font size.
 </p>
 
-<h4>vspace(h)</h4>
+<h4>vspace(h, [unit])</h4>
 <p>
-Vertical space. It has height <code>h</code> but no width constraint
+Vertical space. It has height <code>h</code> but no width constraint. Units
+work as for <code>hspace()</code> but signify heights rather than widths.
 </p>
 
 <h4>DOMElement(id)</h4>

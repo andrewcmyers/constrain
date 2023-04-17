@@ -1895,13 +1895,41 @@ class Figure {
         }
         return new VertLine(this, start, end, strokeStyle, lineWidth)
     }
-    hspace(w) {
-        const r = new HSpace(this, w)
-        return r
+    hspace(w, unit) {
+        if (unit === undefined || unit == "px") return new HSpace(this, w)
+        let multiplier = 1
+        if (typeof unit == STRING_STR) {
+            switch (unit) {
+                case "canvas": multiplier = this.canvasRect().w(); break;
+                case "em": multiplier = this.getFontSize(); break;
+                default:
+                    console.error("Unrecognized unit: " + unit);
+                    break;
+            }
+        } else if (unit instanceof LayoutObject) {
+            multiplier = unit.w()
+        } else {
+            console.error("Unrecognized unit: " + unit);
+        }
+        return new HSpace(this, this.times(multiplier, w))
     }
-    vspace(h) {
-        const r = new VSpace(this, h)
-        return r
+    vspace(h, unit) {
+        if (unit === undefined || unit == "px") return new VSpace(this, h)
+        let multiplier = 1
+        if (typeof unit == STRING_STR) {
+            switch (unit) {
+                case "canvas": multiplier = this.canvasRect().h(); break;
+                case "em": multiplier = this.getFontSize(); break;
+                default:
+                    console.error("Unrecognized unit: " + unit);
+                    break;
+            }
+        } else if (unit instanceof LayoutObject) {
+            multiplier = unit.h()
+        } else {
+            console.error("Unrecognized unit: " + unit);
+        }
+        return new VSpace(this, this.times(multiplier, h))
     }
     box() { return new Box(this) }
     text(...t) { return createText(...t) }
