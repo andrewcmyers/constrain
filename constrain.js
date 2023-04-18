@@ -5233,6 +5233,14 @@ class Connector extends Graphic {
         this.y_.remove()
         this.w_.remove()
         this.h_.remove()
+        const x1 = new Max(this.objects.map(o => o.x())),
+              y1 = new Max(this.objects.map(o => o.y())),
+              x0 = new Min(this.objects.map(o => o.x())),
+              y0 = new Min(this.objects.map(o => o.y()))
+        this.x_ = figure.average(x0, x1)
+        this.y_ = figure.average(y0, y1)
+        this.w_ = figure.minus(x1, x0)
+        this.h_ = figure.minus(y1, y0)
     }
     setConnectionStyle(s) {
         switch(s) {

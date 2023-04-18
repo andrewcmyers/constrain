@@ -21,7 +21,7 @@ const fig3 = new Constrain.Figure("treefig3")
 with (fig3) {
     class BSTTree extends Constrain.Trees.TreeStyle {
       decorateRoot(figure, n) {
-        return figure.line(n.graphic().toTop(5), n.graphic().toTop(20))
+        return figure.connector(n.graphic().toTop(5), n.graphic().toTop(20))
       }
       drawNode(figure, v) {
         if (v.match("^[<>]")) {
