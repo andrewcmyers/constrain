@@ -20,7 +20,7 @@ const GRAPH_GRAVITY = 40
 const GRAPH_REPULSION = 1000
 
 // Torsional force spreading edges apart
-const GRAPH_BRANCH_SPREAD = 400
+const GRAPH_BRANCH_SPREAD = 1
 
 // How much it costs to use fully squeezed dimensions
 const LARGE_DIM_COST = 1000000

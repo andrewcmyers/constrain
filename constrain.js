@@ -25,7 +25,7 @@ const USE_BACKPROPAGATION = true,
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
       CHECK_NAN = false, DEBUG_TWEENING = false
-const REPORT_PERFORMANCE = true
+const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
 
@@ -731,7 +731,11 @@ class Figure {
                     if (c instanceof Loss) {
                         const loss = evaluate(c.expr, solution[0])
                         if (Math.abs(loss > 0.01)) {
+                          if (c.cost >= 1) {
                             console.log("** Badly solved constraint " + c + ": loss = " + loss)
+                          } else {
+                            console.log("   Weak constraint " + c + ": loss = " + loss)
+                          }
                         }
                     } else {
                         //      console.error("huh?" + c)
@@ -1891,13 +1895,41 @@ class Figure {
         }
         return new VertLine(this, start, end, strokeStyle, lineWidth)
     }
-    hspace(w) {
-        const r = new HSpace(this, w)
-        return r
+    hspace(w, unit) {
+        if (unit === undefined || unit == "px") return new HSpace(this, w)
+        let multiplier = 1
+        if (typeof unit == STRING_STR) {
+            switch (unit) {
+                case "canvas": multiplier = this.canvasRect().w(); break;
+                case "em": multiplier = this.getFontSize(); break;
+                default:
+                    console.error("Unrecognized unit: " + unit);
+                    break;
+            }
+        } else if (unit instanceof LayoutObject) {
+            multiplier = unit.w()
+        } else {
+            console.error("Unrecognized unit: " + unit);
+        }
+        return new HSpace(this, this.times(multiplier, w))
     }
-    vspace(h) {
-        const r = new VSpace(this, h)
-        return r
+    vspace(h, unit) {
+        if (unit === undefined || unit == "px") return new VSpace(this, h)
+        let multiplier = 1
+        if (typeof unit == STRING_STR) {
+            switch (unit) {
+                case "canvas": multiplier = this.canvasRect().h(); break;
+                case "em": multiplier = this.getFontSize(); break;
+                default:
+                    console.error("Unrecognized unit: " + unit);
+                    break;
+            }
+        } else if (unit instanceof LayoutObject) {
+            multiplier = unit.h()
+        } else {
+            console.error("Unrecognized unit: " + unit);
+        }
+        return new VSpace(this, this.times(multiplier, h))
     }
     box() { return new Box(this) }
     text(...t) { return createText(...t) }
@@ -2100,7 +2132,7 @@ class Figure {
         if (n == 2) {
             return new Average(legalExpr(args[0]), legalExpr(args[1]))
         }
-        return plus(times(1/n, args[0]), times((n-1)/n, average(...args.slice(1))))
+        return this.plus(this.times(1/n, args[0]), this.times((n-1)/n, this.average(...args.slice(1))))
     }
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
@@ -2894,6 +2926,8 @@ function union(...s) {
     return result
 }
 
+const precedence = { " avg ": 0, " binop ": 0, "+" : 1, "-": 1, "*": 2, "/": 2 }
+
 // A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
     constructor(e1, e2) {
@@ -2902,10 +2936,13 @@ class BinaryExpression extends Expression {
         if (e2 === undefined) console.error("undefined e2")
         this.e1 = legalExpr(e1)
         this.e2 = legalExpr(e2)
+        this.precedence = precedence[this.opName()]
         return this
     }
     toString() {
-        return this.e1 + this.opName() + this.e2
+        const s1 = (this.e1.precedence && this.e1.precedence < this.precedence) ? "(" + this.e1 + ")" : this.e1
+        const s2 = (this.e2.precedence && this.e2.precedence < this.precedence) ? "(" + this.e2 + ")" : this.e2
+        return s1 + this.opName() + s2
     }
     opName() { return " binop " }
     evaluate(valuation, doGrad) {
@@ -3050,14 +3087,20 @@ class NaryExpression extends Expression {
 class Min extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
-        let best = vals[0], n = vals.length, besti = 0
+        let best = vals[0], n = vals.length, besti = [0]
         for (let i = 1; i < n; i++) {
             if (best > vals[i]) {
                 best = vals[i]
-                besti = i
+                besti = [i]
+            } else if (best == vals[i]) {
+                besti.push(i)
             }
         }
-        this.which = besti
+        if (besti.length == 1) {
+            this.which = besti[0]
+        } else {
+            this.which = besti[Math.floor(Math.random() * besti.length)]
+        }
         return best
     }
     gradop(vals) {
@@ -3080,14 +3123,20 @@ class Min extends NaryExpression {
 class Max extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
-        let best = vals[0], n = vals.length, besti = 0
+        let best = vals[0], n = vals.length, besti = [0]
         for (let i = 1; i < n; i++) {
             if (best < vals[i]) {
                 best = vals[i]
-                besti = i
+                besti = [i]
+            } else if (best == vals[i]) {
+                besti.push(i)
             }
         }
-        this.which = besti
+        if (besti.length == 1) {
+            this.which = besti[0]
+        } else {
+            this.which = besti[Math.floor(Math.random() * besti.length)]
+        }
         return best
     }
     gradop(vals) {
@@ -3213,13 +3262,15 @@ class Abs extends UnaryExpression {
     operation(a) { return Math.abs(a) }
     gradop(a, da) {
         if (a > 0) return [a, da]
-        return [-a, -da]
+        if (a < 0 || Math.random() < 0.5) return [-a, -da]
+        return [a, da]
     }
     backprop(task) {
         const a = solvedValue(this.expr),
               d = this.bpDiff
         if (a < 0) task.propagate(this.expr, -d)
-        else task.propagate(this.expr, d)
+        else if (a < 0 || Math.random() < 0.5) task.propagate(this.expr, d)
+        else task.propagate(this.expr, -d)
     }
     toString() {
         return "Abs(" + this.expr + ")"
@@ -4441,7 +4492,7 @@ class Rectangle extends Graphic {
             ctx.lineTo(0, h)
             ctx.closePath()
         } else {
-            Paths.roundedRect(ctx, 0, w, 0, h, this.cornerRadius)
+            Paths.roundedRect(ctx, 0, w, 0, h, evaluate(this.cornerRadius))
         }
         ctx.lineWidth = evaluate(this.lineWidth)
         if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
@@ -4460,7 +4511,7 @@ class Rectangle extends Graphic {
       if (this.cornerRadius == 0) {
         return [ this.ll(), this.lr(), this.ul(), this.ur(), this.cl(), this.cr(), this.uc(), this.lc() ]
       } else {
-        const a = new Times(0.2929, this.cornerRadius)
+        const a = new Times(0.2929, evaluate(this.cornerRadius))
         return [ this.cl(), this.cr(), this.uc(), this.lc(),
                     new Point(new Plus(this.x0(), a), new Plus(this.y0(), a)),
                     new Point(new Minus(this.x1(), a), new Plus(this.y0(), a)),
@@ -4474,7 +4525,7 @@ class Rectangle extends Graphic {
     }
     intersectionPt(px, py, valuation) {
         let result = super.intersectionPt(px, py, valuation)
-        const r = this.cornerRadius
+        const r = evaluate(this.cornerRadius)
         if (r == 0) return result
         const [x, y] = result
         const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
@@ -4737,17 +4788,22 @@ class Circle extends Ellipse {
 
 // A filled polygon. The vertices must be specified explicitly.
 // polygon.points is an array of the points.
-// Doesn't support cornerRadius yet.
 //
 class Polygon extends Graphic {
     constructor(figure, points, fillStyle, strokeStyle, lineWidth) {
         super(figure, fillStyle, strokeStyle, lineWidth)
         points = flattenGraphics(points)
         this.points = points
-        figure.equal(this.x1(), figure.max(points.map(p => p.x())))
-        figure.equal(this.y1(), figure.max(points.map(p => p.y())))
-        figure.equal(this.x0(), figure.min(points.map(p => p.x())))
-        figure.equal(this.y0(), figure.min(points.map(p => p.y())))
+        const xpts = points.map(p => p.x()), ypts = points.map(p => p.y())
+        const maxx = figure.max(xpts), minx = figure.min(xpts), maxy = figure.max(ypts), miny = figure.min(ypts)
+        this.x_.remove()
+        this.x_ = figure.average(minx, maxx)
+        this.y_.remove()
+        this.y_ = figure.average(miny, maxy)
+        this.w_.remove()
+        this.w_ = figure.minus(maxx, minx)
+        this.h_.remove()
+        this.h_ = figure.minus(maxy, miny)
     }
     render() {
         const figure = this.figure, ctx = figure.ctx
@@ -4760,7 +4816,8 @@ class Polygon extends Graphic {
         ctx.lineDash = this.lineDash
         ctx.fillStyle = this.fillStyle
         if (this.cornerRadius) {
-            Paths.roundedPolygon(ctx, this.cornerRadius, pts)
+            const r = evaluate(this.cornerRadius)
+            Paths.roundedPolygon(ctx, r, pts)
         } else {
             ctx.beginPath()
             for (let i = 0; i < this.points.length; i++) {
@@ -6786,10 +6843,10 @@ class CanvasRect extends LayoutObject {
     x1() { return new Global(() => {
         if (!this.figure.width) this.figure.setupCanvas()
         return this.figure.width
-    }, "Width of figure " + this.figure.name)}
+    }, "Max x coordinate of figure " + this.figure.name)}
     y0() { return 0 }
     y1() { return new Global(() => this.figure.height,
-                             "Height of figure " + this.figure.name) }
+                             "Max y coordinate of figure " + this.figure.name) }
     w() { return new Global(() => this.figure.width,
                              "Width of figure " + this.figure.name)}
     h() { return new Global(() => this.figure.height,

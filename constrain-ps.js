@@ -332,7 +332,7 @@ function print(figure) {
     const pc = new PrintContext(figure, figure.ctx)
     figure.ctx = pc
 
-    figure.render(false)
+    figure.renderFrame(false)
     exportData(pc.getOutput(), "constrain-figure.ps", "application/postscript")
 
     figure.ctx = save_ctx;
@@ -369,7 +369,7 @@ class PrintContext {
         this.strokeStyle = "black"
         this.lineWidth = 1
         this.printMedia = true
-        figure.font.setContextFont(this)
+        // figure.font.setContextFont(this)
     }
 
     append(s) {
