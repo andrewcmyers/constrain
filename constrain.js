@@ -4130,7 +4130,9 @@ function legalScalar(e) {
 
 // A Box is a layout object with a width and height. It does not necessarily
 // render but is useful for positioning other objects, because it can be used
-// with functions that expect graphical objects, such as align().
+// with functions that expect graphical objects, such as align(). By default
+// it introduces four variables to specify its position. Some subclasses choose
+// to remove those variables (cf. Group).
 class Box extends LayoutObject {
     constructor(figure, x_hint, y_hint, w_hint, h_hint) {
         super()
@@ -4154,6 +4156,9 @@ class Box extends LayoutObject {
     setW(w) { this.figure.equal(this.w(), w); return this }
     // Constrain the height of this object.
     setH(h) { this.figure.equal(this.h(), h); return this }
+
+    // The set of variables that are needed to be able to render
+    // this object, if it is rendered.
     variables() {
         return new Set([this.x_, this.y_, this.w_, this.h_])
     }
