@@ -1445,8 +1445,8 @@ The label may be either text, a text object, or a graphical object.
 The position is a number from 0 to 1, representing how far along the connector
 the label is placed; by default, it is set fo 0.5.
 The optional parameter <code>offset</code> specifies how far to the port
-side of the connector the label is placed.  (Labels are not
-currently supported for simple lines, although they ought to be.)
+side of the connector the label is placed; by default, it is the currrent
+font size.
 </p>
 <pre id="linelabel_ex_code" class=code></pre>
 <div id="linelabel_ex">
@@ -1460,8 +1460,8 @@ currently supported for simple lines, although they ought to be.)
         .setStartArrow("bullet")
         .setEndArrow("bullet")
         .addLabel(circle().setW(7).setFillStyle("#fc4"))
-        .addLabel("1", 0.8, -10)
-        .addLabel("2", 0.2, -10)
+        .addLabel("1", 0.2, -10)
+        .addLabel("2", 0.8, 10)
   }
 </script>
 </div>
