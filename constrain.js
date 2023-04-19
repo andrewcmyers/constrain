@@ -5763,7 +5763,7 @@ class LineLabel {
         this.figure = figure
         this.text = text // may be a Graphic or a string
         this.position = position
-        this.offset = offset || figure.getFontSize()
+        this.offset = offset == undefined ? figure.getFontSize() : offset
         this.strokeStyle = null
         this.textStyle = figure.getTextStyle() || "black"
         this.font = figure.getFont()
