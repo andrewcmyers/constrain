@@ -6516,7 +6516,26 @@ class InteractiveObject extends LayoutObject {
         this.figure = figure
     }
     render() {}
+    active() { return true }
+    visible() { return true }
+    // Whether (mx, my) is inside the perimeter of this object. By default
+    // this is a bounding box check
+    inBounds(mx, my) {
+        const x0 = evaluate(this.x0()),
+              x1 = evaluate(this.x1()),
+              y0 = evaluate(this.y0()),
+              y1 = evaluate(this.y1())
+        return (mx >= x0 && mx <= x1 && my >= y0 && my <= y1)
+    }
+    // Check whether this object responds to the given (x,y) mouseup event,
+    // and perform the appropriate action if so.
+    mouseup(e) {}
+    // Check whether this object responds to the given (x,y) mousedown event,
+    // and perform the appropriate action if so.
+    mousedown(x, y, e) {}
+    mousemove(x, y, e) {}
 }
+
 InteractiveObject.prototype.renderIfVisible = Graphic.prototype.renderIfVisible
 InteractiveObject.prototype.visible = Graphic.prototype.visible
 InteractiveObject.prototype.placeOver = Graphic.prototype.placeOver
@@ -6603,8 +6622,6 @@ class Handle extends InteractiveObject {
             setTimeout(() => this.figure.renderIfDirty(false), 0) // collapse multiple renders
         }
     }
-    active() { return true }
-    visible() { return true }
     toString() { return "Handle" }
     variables() { return new Set().add(this.x_).add(this.y_) }
 }
@@ -6632,7 +6649,8 @@ class Button extends InteractiveObject {
     w() { return this.size }
     h() { return this.size }
     
-    inbounds(mx, my, x, y) {
+    inBounds(mx, my) {
+        const [x, y] = evaluate([this.x(), this.y()])
         if (mx < x - this.size * 0.5) return false
         if (mx > x + this.size * 0.5) return false
         if (my > y + this.size * 0.3) return false
@@ -6640,8 +6658,7 @@ class Button extends InteractiveObject {
         return true
     }
     mousedown(mx, my, e) {
-        const [x, y] = evaluate([this.x(), this.y()])
-        if (!this.inbounds(mx, my, x, y)) return true
+        if (!this.inBounds(mx, my)) return true
         this.pressed = true
         this.figure.focused = this
         this.render(this.figure)
@@ -6708,6 +6725,19 @@ class AdvanceButton extends Button {
     }
 }
 AdvanceButton.prototype.installHolder = Graphic.prototype.installHolder
+
+// A Control is a non-rendered object that receives input directed
+// to a particular graphical object.
+class Control extends InteractiveObject {
+    constructor(figure, graphic) {
+        super(figure)
+        this.graphic = graphic
+    }
+    x() { return this.graphic.x() }
+    y() { return this.graphic.y() }
+    w() { return this.graphic.w() }
+    h() { return this.graphic.h() }
+}
 
 // A global is an expression whose value may change but is not affected by 
 // the values of variables that are being solved for. Its value is provided
@@ -6927,7 +6957,7 @@ function reportPerformance(b) {
     CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,
     Expression, Minus, Plus, Times, Divide, Sqrt, Distance, Average, Min, Max,
     Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
-    ComputedText,
+    ComputedText, Control,
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
