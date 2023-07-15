@@ -1,0 +1,119 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <style>
+      body, canvas {background-color: black}
+    </style>
+</head>
+<body>
+<div style="text-align: center; padding-top: 4em">
+<canvas id=lloyd_puzzle style="width: 250px; height: 250px">
+</canvas>
+<audio id=ssh>
+  <source src="audio/ssh.m4a" type="audio/mp4">
+</audio>
+<audio id=win>
+  <source src="audio/mixkit-ethereal-fairy-win-sound-2019.wav"
+          type="audio/wav">
+</audio>
+<script class=graphics>
+    with (new Constrain.Figure("lloyd_puzzle")) {
+        let border = square().setLineWidth(8).setStrokeStyle("#666")
+            .setFillStyle("#aaa")
+        let gridSpace = times(border.w(), 0.25)
+        align("LR", "TB", border, margin(6))
+        const ssh = document.getElementById("ssh"),
+              win = document.getElementById("win")
+        const positions = []
+        let emptyPos = 15
+        for (let i = 0; i < 16; i++) {
+            positions[i] = point(plus(border.x0(), times(0.5, gridSpace),
+                                      times(i % 4, gridSpace)),
+                                 plus(border.y0(), times(0.5, gridSpace),
+                                      times(Math.floor(i / 4), gridSpace)))
+        }
+        freeze()
+        const grd = ctx.createLinearGradient(0, 0, 15, 40)
+        grd.addColorStop(0, "#fff"); grd.addColorStop(1, "#db9")
+        function tile(n) {
+            const result = square().addText("" + n)
+                .setLineWidth(3)
+                .setFontSize(20)
+                .setFillStyle(grd)
+                .setStrokeStyle("#975")
+                .setCornerRadius(5)
+            result.index = n
+            result.control = new TileControl(result)
+            return result
+        }
+        function winningConfig() {
+            for (let i = 0; i < 15; i++) {
+                if (!tiles[i] || tiles[i].index != i+1) return false
+            }
+            return true
+        }
+        class TileControl extends Constrain.Control {
+            constructor(tile) {
+                super(thisFigure(), tile)
+            }
+            mousedown(x, y, e) {
+                if (this.inBounds(x, y)) {
+                    let pos
+                    const tile = this.graphic
+                    for (let i = 0; i < 16; i++) {
+                        if (tiles[i] && tiles[i].index == this.graphic.index)
+                            pos = i
+                    }
+                    function doMove() {
+                        const nf = addFrame().setLength(300)
+                        tile.constraint.endBefore(nf)
+                        const constraints = constraintGroup(
+                            equal(tile.x(), smooth(nf, positions[pos].x(),
+                                                   positions[emptyPos].x())),
+                            equal(tile.y(), smooth(nf, positions[pos].y(),
+                                                   positions[emptyPos].y())))
+                        tile.constraint = after(nf, constraints)
+                        tiles[pos] = undefined
+                        tiles[emptyPos] = tile
+                        emptyPos = pos
+                        advance()
+                        if (winningConfig()) win.play()
+                        else ssh.play()
+                    }
+                    const diff = Math.abs(pos - emptyPos)
+                    if (diff == 4 ||
+                        diff == 1 && 
+                          Math.floor(pos/4) == Math.floor(emptyPos/4))
+                      doMove(this)
+                }
+            }
+        }
+        const tiles = new Array(15)
+        for (let i = 0; i < 15; i++) {
+            tiles[i] = tile(i+1)
+            equal(tiles[i].w(), minus(times(0.25, border.w()), 5))
+        }
+        for (let swaps = 0; swaps < 2; ) {
+            // Note: only even numbers of swaps are solvable
+            const i = Math.floor(Math.random() * 15),
+                  j = Math.floor(Math.random() * 15)
+            if (i != j) {
+                const tile = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tile
+                swaps++
+            }
+        }
+        let initial = addFrame()
+        for (let i = 0; i < 15; i++) {
+            const constraints = constraintGroup(
+                equal(tiles[i].x(), positions[i].x()),
+                equal(tiles[i].y(), (positions[i].y())))
+
+            tiles[i].constraint = after(initial, constraints)
+        }
+        start()
+    }
+</script>
+</body>
+</html>

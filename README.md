@@ -15,6 +15,8 @@
 
 [Animated trees](https://andrewcmyers.github.io/constrain/examples/ll_lr.html)
 
+[The LLoyd 15-puzzle](https://andrewcmyers.github.io/constrain/examples/lloyd.html)
+
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
