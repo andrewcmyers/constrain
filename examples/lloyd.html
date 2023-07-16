@@ -108,7 +108,7 @@
         for (let i = 0; i < 15; i++) {
             const constraints = constraintGroup(
                 equal(tiles[i].x(), positions[i].x()),
-                equal(tiles[i].y(), (positions[i].y())))
+                equal(tiles[i].y(), positions[i].y()))
 
             tiles[i].constraint = after(initial, constraints)
         }
