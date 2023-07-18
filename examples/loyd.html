@@ -30,14 +30,14 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     let gridSpace = times(border.w(), 0.25)
     align("LR", "TB", border, margin(6))
     const ssh = document.getElementById("ssh"),
-            win = document.getElementById("win")
+          win = document.getElementById("win")
     const positions = []
     let emptyPos = 15
     for (let i = 0; i < 16; i++) {
         positions[i] = point(plus(border.x0(), times(0.5, gridSpace),
-                                    times(i % 4, gridSpace)),
-                                plus(border.y0(), times(0.5, gridSpace),
-                                    times(Math.floor(i / 4), gridSpace)))
+                                times(i % 4, gridSpace)),
+                             plus(border.y0(), times(0.5, gridSpace),
+                                times(Math.floor(i / 4), gridSpace)))
     }
     freeze()
     const grd = ctx.createLinearGradient(0, 0, 15, 40)
@@ -64,35 +64,35 @@ with (new Constrain.Figure("lloyd_puzzle")) {
             super(thisFigure(), tile)
         }
         mousedown(x, y, e) {
-            if (this.inBounds(x, y)) {
-                let pos
-                const tile = this.graphic
-                for (let i = 0; i < 16; i++) {
-                    if (tiles[i] && tiles[i].index == this.graphic.index)
-                        pos = i
-                }
-                const diff = Math.abs(pos - emptyPos)
-                if (diff == 4 ||
-                    diff == 1 && 
-                        Math.floor(pos/4) == Math.floor(emptyPos/4))
-                {
-                    const nf = addFrame().setLength(300)
-                    tile.constraint.endBefore(nf)
-                    const constraints = constraintGroup(
-                        equal(tile.x(), smooth(nf, positions[pos].x(),
-                                                positions[emptyPos].x())),
-                        equal(tile.y(), smooth(nf, positions[pos].y(),
-                                                positions[emptyPos].y())))
-                    tile.constraint = after(nf, constraints)
-                    tiles[pos] = undefined
-                    tiles[emptyPos] = tile
-                    emptyPos = pos
-                    advance()
-                    if (winningConfig()) win.play()
-                    else ssh.play()
-                }
+          if (this.inBounds(x, y)) {
+            let pos
+            const tile = this.graphic
+            for (let i = 0; i < 16; i++) {
+                if (tiles[i] && tiles[i].index == this.graphic.index)
+                    pos = i
+            }
+            const diff = Math.abs(pos - emptyPos)
+            if (diff == 4 ||
+                diff == 1 && 
+                    Math.floor(pos/4) == Math.floor(emptyPos/4))
+            {
+              const nf = addFrame().setLength(300)
+              tile.constraint.endBefore(nf)
+              const constraints = constraintGroup(
+                  equal(tile.x(), smooth(nf, positions[pos].x(),
+                                          positions[emptyPos].x())),
+                  equal(tile.y(), smooth(nf, positions[pos].y(),
+                                          positions[emptyPos].y())))
+              tile.constraint = after(nf, constraints)
+              tiles[pos] = undefined
+              tiles[emptyPos] = tile
+              emptyPos = pos
+              advance()
+              if (winningConfig()) win.play()
+              else ssh.play()
             }
         }
+      }
     }
     const tiles = new Array(15)
     for (let i = 0; i < 15; i++) {
@@ -101,7 +101,7 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     }
     for (let swaps = 0; swaps < 2; ) {
         const i = Math.floor(Math.random() * 15),
-                j = Math.floor(Math.random() * 15)
+              j = Math.floor(Math.random() * 15)
         if (i != j) {
             const tile = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tile
             swaps++
