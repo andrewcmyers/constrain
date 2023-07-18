@@ -35,7 +35,7 @@ In the LL case, a single tree rotation is used; in the LR case, there are two tr
 </p>
 
 <canvas id=case_LL_LR style="width: 500px; height: 180px"></canvas>
-<script>
+<script id=constrain_code>
 function measure(p1, p2) {
     return this.line(p1, p2)
         .setEndArrow("curved").setStartArrow("curved")
@@ -43,17 +43,17 @@ function measure(p1, p2) {
 }
 Constrain.Figure.prototype.measure = measure
 
-let fig1
-with (fig1 = new Constrain.Figure("case_LL_LR")) {
+with (new Constrain.Figure("case_LL_LR")) {
     setFontSize(14)
     setConnectionStyle("intersection")
     setStyle('drawNode', function(f, v) {
         if (v === undefined) return f.point()
         if (v.match("^[A-Z]")) {
             const top = f.point()
-            const result = f.polygon(top, f.point(f.plus(top.x(), 20), f.plus(top.y(), 35)),
-                              f.point(f.minus(top.x(), 20), f.plus(top.y(), 35)))
-                .addText(v).setVerticalAlign("bottom")
+            const result = f.polygon(top,
+                    f.point(f.plus(top.x(), 20), f.plus(top.y(), 35)),
+                    f.point(f.minus(top.x(), 20), f.plus(top.y(), 35)))
+                  .addText(v).setVerticalAlign("bottom")
             result.target = () => top
             return result
         } else {
@@ -103,19 +103,12 @@ with (fig1 = new Constrain.Figure("case_LL_LR")) {
     const l5 = measure(pd2, point(pd2.x(), lr1.findGraphic("D").y0()))
     align("abut", "center", l5, hspace(3), label("h"))
 
-    setStrokeStyle("black")
-
     equal(lr.x1(), minus(margin().x1(), 20))
-
     equal(p1.x(), 10)
-    let f1, f2, f3
-    ll.view(f1 = addFrame().setLength(1500)).rotateNodeWithParent("y")
-    lr.view(f2 = addFrame().setLength(1500)).rotateNodeWithParent("y")
-    lr.view(f3 = addFrame().setLength(1500)).rotateNodeWithParent("y")
-
-    // setLineDash([4,4]); setStrokeStyle("orange")
-    // align("LR", "TB", ll, rectangle().setFillStyle(null))
-    // align("LR", "TB", lr, rectangle().setFillStyle(null))
+    setStrokeStyle("black")
+    ll.view(addFrame().setLength(1500)).rotateNodeWithParent("y")
+    lr.view(addFrame().setLength(1500)).rotateNodeWithParent("y")
+    lr.view(addFrame().setLength(1500)).rotateNodeWithParent("y")
 
     align("right", "bottom", advanceButton(), margin())
     setRepeat(true)
@@ -129,3 +122,10 @@ This diagram is computed in real time in JavaScript, using
 a constraint-based framework for creating animated diagrams.
 </p>
 </div>
+<hr>
+<pre id=code style="columns: 2">
+</pre>
+<script>
+  document.getElementById("code").innerText =
+    document.getElementById("constrain_code").innerText
+</script>
