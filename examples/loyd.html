@@ -31,6 +31,7 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     align("LR", "TB", border, margin(6))
     const ssh = document.getElementById("ssh"),
           win = document.getElementById("win")
+    ssh.volume = 0.4
     const positions = []
     let emptyPos = 15
     for (let i = 0; i < 16; i++) {
@@ -45,7 +46,7 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     function tile(n) {
         const result = square().addText("" + n)
             .setLineWidth(3)
-            .setFontSize(20)
+            .setFontSize(24)
             .setFillStyle(grd)
             .setStrokeStyle("#975")
             .setCornerRadius(5)
