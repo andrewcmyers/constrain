@@ -36,12 +36,6 @@ In the LL case, a single tree rotation is used; in the LR case, there are two tr
 
 <canvas id=case_LL_LR style="width: 500px; height: 180px"></canvas>
 <script id=constrain_code>
-function measure(p1, p2) {
-    return this.line(p1, p2)
-        .setEndArrow("curved").setStartArrow("curved")
-        .setArrowSize(8).setStrokeStyle("#06c")
-}
-Constrain.Figure.prototype.measure = measure
 
 with (new Constrain.Figure("case_LL_LR")) {
     setFontSize(14)
@@ -83,25 +77,23 @@ with (new Constrain.Figure("case_LL_LR")) {
     setTextStyle("#06c")
     setFontSize(10)
 
-    const p1 = ll1.findGraphic("A").ll().toLeft(10)
-    const l1 = measure(p1, point(p1.x(), ll1.findGraphic("x").y0()))
-    align("abut", "center", l1, hspace(3), label("h + 1"))
+    function drawMeasure(tree, node1, node2, side, label_) {
+        let p = tree.findGraphic(node1)
+        if (side == 'L') p = p.ll().toLeft(10)
+        else p = p.lr().toRight(5)
 
-    const pc1 = ll1.findGraphic("C").lr().toRight(5)
-    const l2 = measure(pc1, point(pc1.x(), ll1.findGraphic("C").y0()))
-    align("abut", "center", l2, hspace(3), label("h"))
+        const l = line(p, point(p.x(), tree.findGraphic(node2).y0()))
+            .setEndArrow("curved").setStartArrow("curved")
+            .setArrowSize(8).setStrokeStyle("#06c")
+        align("abut", "center", l, hspace(3), label(label_))
+        return p
+    }
 
-    const pd1 = ll1.findGraphic("D").lr().toRight(5)
-    const l3 = measure(pd1, point(pd1.x(), ll1.findGraphic("D").y0()))
-    align("abut", "center", l3, hspace(3), label("h"))
-
-    const pa2 = lr1.findGraphic("A").ll().toLeft(5)
-    const l4 = measure(pa2, point(pa2.x(), lr1.findGraphic("A").y0()))
-    align("abut", "center", l4, hspace(3), label("h"))
-
-    const pd2 = lr1.findGraphic("D").lr().toRight(5)
-    const l5 = measure(pd2, point(pd2.x(), lr1.findGraphic("D").y0()))
-    align("abut", "center", l5, hspace(3), label("h"))
+    const p1 = drawMeasure(ll1, "A", "x", "L", "h + 1")
+    drawMeasure(ll1, "C", "C", "R", "h")
+    drawMeasure(ll1, "D", "D", "R", "h")
+    drawMeasure(lr1, "A", "A", "L", "h")
+    drawMeasure(lr1, "D", "D", "R", "h")
 
     equal(lr.x1(), minus(margin().x1(), 20))
     equal(p1.x(), 10)
