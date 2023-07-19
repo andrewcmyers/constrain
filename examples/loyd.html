@@ -69,8 +69,7 @@ with (new Constrain.Figure("lloyd_puzzle")) {
             let pos
             const tile = this.graphic
             for (let i = 0; i < 16; i++) {
-                if (tiles[i] && tiles[i].index == this.graphic.index)
-                    pos = i
+                if (tiles[i] && tiles[i].index == this.graphic.index) pos = i
             }
             const diff = Math.abs(pos - emptyPos)
             if (diff == 4 ||
@@ -79,12 +78,9 @@ with (new Constrain.Figure("lloyd_puzzle")) {
             {
               const nf = addFrame().setLength(300)
               tile.constraint.endBefore(nf)
-              const constraints = constraintGroup(
-                  equal(tile.x(), smooth(nf, positions[pos].x(),
-                                          positions[emptyPos].x())),
-                  equal(tile.y(), smooth(nf, positions[pos].y(),
-                                          positions[emptyPos].y())))
-              tile.constraint = after(nf, constraints)
+              tile.constraint = after(nf,
+                  equal(tile, smooth(nf, positions[pos],
+                                         positions[emptyPos])))
               tiles[pos] = undefined
               tiles[emptyPos] = tile
               emptyPos = pos
@@ -110,11 +106,7 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     }
     let initial = addFrame()
     for (let i = 0; i < 15; i++) {
-        const constraints = constraintGroup(
-            equal(tiles[i].x(), positions[i].x()),
-            equal(tiles[i].y(), positions[i].y()))
-
-        tiles[i].constraint = after(initial, constraints)
+        tiles[i].constraint = after(initial, equal(tiles[i], positions[i]))
     }
     start()
 }
