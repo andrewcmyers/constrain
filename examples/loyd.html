@@ -73,14 +73,11 @@ with (new Constrain.Figure("lloyd_puzzle")) {
             }
             const diff = Math.abs(pos - emptyPos)
             if (diff == 4 ||
-                diff == 1 && 
-                    Math.floor(pos/4) == Math.floor(emptyPos/4))
-            {
+                diff == 1 && Math.floor(pos/4) == Math.floor(emptyPos/4)) {
               const nf = addFrame().setLength(300)
               tile.constraint.endBefore(nf)
               tile.constraint = after(nf,
-                  equal(tile, smooth(nf, positions[pos],
-                                         positions[emptyPos])))
+                  equal(tile, smooth(nf, positions[pos], positions[emptyPos])))
               tiles[pos] = undefined
               tiles[emptyPos] = tile
               emptyPos = pos
