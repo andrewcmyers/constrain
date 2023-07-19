@@ -31,14 +31,14 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     align("LR", "TB", border, margin(6))
     const ssh = document.getElementById("ssh"),
           win = document.getElementById("win")
-    ssh.volume = 0.3
+    ssh.volume = 0.2
     const positions = []
     let emptyPos = 15
     for (let i = 0; i < 16; i++) {
-        positions[i] = point(plus(border.x0(), times(0.5, gridSpace),
-                                times(i % 4, gridSpace)),
-                             plus(border.y0(), times(0.5, gridSpace),
-                                times(Math.floor(i / 4), gridSpace)))
+        positions[i] = plus(border.ul(),
+                            times(gridSpace, point(0.5, 0.5)),
+                            times(gridSpace,
+                                point(i % 4, Math.floor(i / 4))))
     }
     freeze()
     const grd = ctx.createLinearGradient(0, 0, 15, 40)
@@ -91,7 +91,7 @@ with (new Constrain.Figure("lloyd_puzzle")) {
     const tiles = new Array(15)
     for (let i = 0; i < 15; i++) {
         tiles[i] = tile(i+1)
-        equal(tiles[i].w(), minus(times(0.25, border.w()), 5))
+        equal(tiles[i].w(), minus(gridSpace, 5))
     }
     for (let swaps = 0; swaps < 2; ) {
         const i = Math.floor(Math.random() * 15),
