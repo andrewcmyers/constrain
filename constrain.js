@@ -1203,7 +1203,7 @@ class Figure {
         this.ensureFrame()
         this.currentFrame = this.Frames[0]
         if (document.readyState == "complete") {
-            console.log("Document is ready, starting first frame")
+            // console.log("Document is ready, starting first frame")
             this.startCurrentFrame()
         } else {
             // console.log("Document is not ready, starting listener")
@@ -1994,6 +1994,15 @@ class Figure {
             console.error("Cannot pop last context from the context stack")
         }
     }
+    withStyle(styles, cmd) {
+        this.saveStyle()
+        for (let key in styles) {
+            this.setStyle(key, styles[key])
+        }
+        cmd()
+        this.restoreStyle()
+    }
+
     textContext(f, ...t) {
         return new ContextTransformer(tc => f(new Context(tc)), createText(...t))
     }
