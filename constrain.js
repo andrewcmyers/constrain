@@ -177,6 +177,7 @@ class Figure {
             scale = 1
         }
         scale = this.browserZoom * (window.devicePixelRatio || 1) // canvas pixels per HTML "pixel"
+        this.scale = scale
         this.width = _width
         this.height = _height
         this.canvas.width = _width * scale
