@@ -135,6 +135,7 @@ class Figure {
         this.initObjects()
         this.time = 0
         this.zoom = 1 // figure units per HTML pixel
+        this.zoomCheckInterval = 200 // how many ms between testing browser zoom
         this.currentFrame = undefined // current frame object
         this.frameRate = Figure_defaults.FRAMERATE
         this.Frames = []
@@ -169,16 +170,29 @@ class Figure {
     setupCanvas() {
         const canvas = this.canvas, br = canvas.getBoundingClientRect(),
               _width = br.width, _height = br.height
-        const scale =
-            (window.innerWidth && window.visualViewport && window.devicePixelRatio)
-            ? (window.innerWidth/window.visualViewport.width) *
-              window.devicePixelRatio // canvas pixels per HTML "pixel"
-            : 1
+        let scale
+        if (window.innerWidth && window.visualViewport) {
+            this.browserZoom = (window.innerWidth/window.visualViewport.width)
+        } else {
+            scale = 1
+        }
+        scale = this.browserZoom * (window.devicePixelRatio || 1) // canvas pixels per HTML "pixel"
         this.width = _width
         this.height = _height
         this.canvas.width = _width * scale
         this.canvas.height = _height * scale
         this.ctx.setTransform(scale * this.zoom, 0, 0, scale * this.zoom, 0, 0)
+
+        if (this.browserZoom) {
+            setInterval(() => {
+                const newZoom = (window.innerWidth/window.visualViewport.width)
+                if (newZoom != this.browserZoom) {
+                    this.browserZoom = newZoom
+                    this.renderNeeded = true
+                    this.delayedRender()
+                }
+            }, this.zoomCheckInterval)
+        }
     }
     findFadeColor(canvas) {
         let elt = canvas, c
@@ -883,6 +897,13 @@ class Figure {
         }
     }
 
+    // Cause a render to happen (but not right away, so multiple render requests are
+    // collapsed into one.)
+    delayedRender() {
+        this.figure.renderNeeded = true
+        setTimeout(() => this.figure.renderIfDirty(false), 0)
+    }
+
     // Render this figure for time this.renderTime (whic is a fraction in [0,1]
     // measuring completion of current frame) Parameter animating is whether
     // this is just an intermediate animation frame.
@@ -907,7 +928,7 @@ class Figure {
     //       solve in foreground for the valuation for the next time and render an interpolated value, and
     //       also start a solving job for the pending valuation, aborting any existing solving job.
     //   3. have previous and next valuation but not pending valuation
-    //       render an interpolated valuation and possilby start a solving job for the pending valuation
+    //       render an interpolated valuation and possibly start a solving job for the pending valuation
     //        3a. No useful pending background solve, so start one, aborting any existing background solve.
     //        3b. Pending background solve for a time in the future. Just interpolate and render.
     //   4. have previous, next, and (good) pending valuation.
@@ -6631,8 +6652,7 @@ class Handle extends InteractiveObject {
         this.xcon.stage = 0
         this.ycon.stage = 0
         if (!this.figure.renderNeeded) {
-            this.figure.renderNeeded = true
-            setTimeout(() => this.figure.renderIfDirty(false), 0) // collapse multiple renders
+            this.figure.delayedRender()
         }
     }
     toString() { return "Handle" }
