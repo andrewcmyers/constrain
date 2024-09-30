@@ -133,7 +133,6 @@ class Figure {
         this.is_started = false // whether a request for rendering has occurred
         this.setupListeners()
         this.initObjects()
-        this.scale = window.devicePixelRatio || 1; // canvas units per HTML "pixel"
         this.time = 0
         this.zoom = 1 // figure units per HTML pixel
         this.currentFrame = undefined // current frame object
@@ -170,11 +169,16 @@ class Figure {
     setupCanvas() {
         const canvas = this.canvas, br = canvas.getBoundingClientRect(),
               _width = br.width, _height = br.height
+        const scale =
+            (window.innerWidth && window.visualViewport && window.devicePixelRatio)
+            ? (window.innerWidth/window.visualViewport.width) *
+              window.devicePixelRatio // canvas pixels per HTML "pixel"
+            : 1
         this.width = _width
         this.height = _height
-        this.canvas.width = _width * this.scale
-        this.canvas.height = _height * this.scale
-        this.ctx.setTransform(this.scale * this.zoom, 0, 0, this.scale * this.zoom, 0, 0)
+        this.canvas.width = _width * scale
+        this.canvas.height = _height * scale
+        this.ctx.setTransform(scale * this.zoom, 0, 0, scale * this.zoom, 0, 0)
     }
     findFadeColor(canvas) {
         let elt = canvas, c
