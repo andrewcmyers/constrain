@@ -1646,7 +1646,7 @@ into independendent components that are solved independently.
 <p>
 Loss terms have an associated cost multiplier; when the cost multiplier is less
 than one, the solver treats the constraint as a soft constraint whose loss may
-not be reducible to zero. Hard constraints, with loss greater than one, allow
+not be reducible to zero. Hard constraints, with loss at least one, allow
 the solver to optimize by performing equational manipulations before trying to
 minimize loss.
 <p>
@@ -1654,8 +1654,8 @@ Once a solution is found, any new instance of the minimization problem is
 passed the previous solution values, along with the approximate inverse
 Hessians computed during the BFGS algorithm, as an initial condition for the
 new solver run. This reuse of the previous solution is critical for allowing
-new solutions to be found quickly during the animated sequences that Constrain
-supports, reducing the number of loss-function evaluations by orders of magnitude
+new solutions to be found quickly during animated sequences,
+reducing the number of loss-function evaluations by orders of magnitude
 in practice.
 </p>
 
@@ -1688,30 +1688,36 @@ horizontal or vertical distance constraints, it's better to write constraints di
 the coordinates rather than using <code>distance()</code>. If you use <code>equal()</code>
 to set several things equal to each other, make sure the simplest expression comes first
 in the list, since it is the one that will be set equal to the rest.
+
 <li><b>Bounding constraints.</b> Constraints that keep the solution reasonable are often
 handy. Methods like <code>keepInside</code> and <code>between</code> are useful for this
 task, as are the humble <code>leq()</code> and <code>geq</code>.
 </li>
+
 <li><b>Hints.</b> The solver works by changing the values of variables to minimize
   loss, which is the difference between a perfect solution and the current solution.
   A perfectly solved constraint has zero cost and causes zero loss.
   The initial values of variables can make a big difference in which solution is found
-  or how fast. Variables can be given a hinted value that defines the initial conditions
-                  of the constraint solver, using the <code>setHint()</code> method.
+  and how fast. Variables can be given a hinted value that defines the initial conditions
+  of the constraint solver, using the <code>setHint()</code> method.
 </li>
+
 <li><b>Staging.</b> The figure's <code>freeze()</code> can be used to break solving into
-      multiple stages, simplifying the solver's task in each stage.
+      multiple stages, simplifying the solver's task in each stage. However, constraints
+      appearing in later stages have no effect on how earlier stages are solved.
 </li>
+
 <li><b>Changing constraint costs.</b> If some constraints are being violated — especially
 bounding constraints — try increasing the cost of violating them using the <code>changeCost</code>
 method. Increasing cost will cause the solver to prioritize solving those constraints.
 An order-of-magnitude increase in cost in a constraint is usually
 sufficient to prevent other constraints from overriding it.
 </li>
+
 <li>
-<b>User-defined objects</b>. For complex diagrams, it will be easier for the constraint solver
-and sometimes just as convenient for the user to describe some of the diagram as a user-defined
-rendering task, rather than encoding it into constraints. You can subclass <code>Constrain.UserDefined</code>
+<b>User-defined objects</b>. For complex diagrams, it will be easier for the constraint solver,
+and sometimes just as convenient for the user, to describe some of the diagram as a user-defined
+rendering task rather than encoding it into constraints. You can subclass <code>Constrain.UserDefined</code>
 to specify how to render a complex graphical object, <a href="#UserDefined">as described above</a>.
 </li>
 </ul>
@@ -1767,7 +1773,8 @@ with (fig) {
 In the rendering, dimensions are expanded by 33% so that all pixel
 dimensions become point dimensions. The figure therefore becomes
 correspondingly larger, although since PostScript and PDF are resolution-independent
-page descriptions, the generated figures are easily rescaled.
+page descriptions, the generated figures are easily rescaled. Figure method <code>setZoom</code>
+can also be used to make the coordinates agree.
 </p>
 <p>Support for PDF depends on
 <a href="https://github.com/parallax/jsPDF">the jsPDF package</a>, so HTML documents using PDF
