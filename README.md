@@ -9,18 +9,25 @@
 
 ## Demos
 
+![Pythagoras thumbnail](images/pythagoras-thumbnail.png)
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
+![Triangles thumbnail](images/triangles-thumbnail.png)
 [Interactively computing centers of a triangle](https://andrewcmyers.github.io/constrain/examples/triangles.html)
 
+![Trees thumbnail](images/trees-thumbnail.png)
 [Animated trees](https://andrewcmyers.github.io/constrain/examples/ll_lr.html)
 
+![Loyd thumbnail](images/loyd-thumbnail.png)
 [Loyd 15-puzzle](https://andrewcmyers.github.io/constrain/examples/loyd.html)
 
+![Spiral thumbnail](images/spiral-thumbnail.png)
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
+![Dragon thumbnail](images/dragon-thumbnail.png)
 [Dragon curve](https://andrewcmyers.github.io/constrain/examples/dragon.html)
 
+![TeX thumbnail](images/tex-thumbnail.png)
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
