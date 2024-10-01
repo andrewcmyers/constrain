@@ -12,7 +12,7 @@
 <img src="images/pythagoras-thumbnail.png" alt="Pythagoras thumbnail" width="100" height="100">
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
-<img src="images/triangles-thumbnail.png" alt="Triangles thumbnail" width="100" height="100">
+<img src="images/triangles-thumbnail.png" alt="Triangles thumbnail" width="100" height="00">
 [Interactively computing centers of a triangle](https://andrewcmyers.github.io/constrain/examples/triangles.html)
 
 <img src="images/trees-thumbnail.png" alt="Trees thumbnail" width="100" height="100">
