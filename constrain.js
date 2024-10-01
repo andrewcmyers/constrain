@@ -730,7 +730,7 @@ class Figure {
         for (const component of components) {
             this.activeComponent = component
             this.numberVariables(stage, component)
-            this.invalidateCachedExprs(this.Variables) // why doesn't activeVariables work?
+            this.invalidateCachedExprs(this.stageVariables)
             this.currentValuation = this.initialValuation(incremental)
             if (DEBUG_CONSTRAINTS) {
                console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
