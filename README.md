@@ -9,7 +9,7 @@
 
 ## Demos
 
-![Pythagoras thumbnail](images/pythagoras-thumbnail.png)
+<img src="images/pythagoras-thumbnail.png" alt="Pythagoras thumbnail" width="100" height="100">
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
 ![Triangles thumbnail](images/triangles-thumbnail.png)
