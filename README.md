@@ -12,22 +12,22 @@
 <img src="images/pythagoras-thumbnail.png" alt="Pythagoras thumbnail" width="100" height="100">
 [Interactive Pythagorean Theorem](https://andrewcmyers.github.io/constrain/examples/pythagoras.html)
 
-![Triangles thumbnail](images/triangles-thumbnail.png)
+<img src="images/triangles-thumbnail.png" alt="Triangles thumbnail" width="100" height="100">
 [Interactively computing centers of a triangle](https://andrewcmyers.github.io/constrain/examples/triangles.html)
 
-![Trees thumbnail](images/trees-thumbnail.png)
+<img src="images/trees-thumbnail.png" alt="Trees thumbnail" width="100" height="100">
 [Animated trees](https://andrewcmyers.github.io/constrain/examples/ll_lr.html)
 
-![Loyd thumbnail](images/loyd-thumbnail.png)
+<img src="images/loyd-thumbnail.png" alt="Loyd thumbnail" width="100" height="100">
 [Loyd 15-puzzle](https://andrewcmyers.github.io/constrain/examples/loyd.html)
 
-![Spiral thumbnail](images/spiral-thumbnail.png)
+<img src="images/spiral-thumbnail.png" alt="Spiral thumbnail" width="100" height="100">
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
-![Dragon thumbnail](images/dragon-thumbnail.png)
+<img src="images/dragon-thumbnail.png" alt="Dragon thumbnail" width="100" height="100">
 [Dragon curve](https://andrewcmyers.github.io/constrain/examples/dragon.html)
 
-![TeX thumbnail](images/tex-thumbnail.png)
+<img src="images/tex-thumbnail.png" alt="TeX thumbnail" width="100" height="100">
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
