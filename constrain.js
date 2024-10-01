@@ -17,7 +17,7 @@ const Figures = []
 // Various switches and constants control the default appearance of figures.
 
 const USE_BACKPROPAGATION = true,
-      CACHE_ALL_EVALUATIONS = false,
+      CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
       COMPARE_GRADIENTS = false,
@@ -730,6 +730,7 @@ class Figure {
         for (const component of components) {
             this.activeComponent = component
             this.numberVariables(stage, component)
+            this.invalidateCachedExprs(this.Variables) // why doesn't activeVariables work?
             this.currentValuation = this.initialValuation(incremental)
             if (DEBUG_CONSTRAINTS) {
                console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
@@ -822,6 +823,14 @@ class Figure {
                 variable.renderValue = v
             } else {
                 delete variable.renderValue
+            }
+        }
+    }
+
+    invalidateCachedExprs(vars) {
+        for (const v of vars) {
+            for (const expr of v.dependents) {
+                expr.clearCache()
             }
         }
     }
@@ -1166,6 +1175,7 @@ class Figure {
 
     // Render the figure using the current renderValue property of variables
     renderFromValues() {
+        // console.log("rendering...")
         for (const g of this.Graphics) {
             if (g.parent === undefined && g.renderIfVisible && g.active())
               g.renderIfVisible()
@@ -1181,6 +1191,7 @@ class Figure {
             this.ctx.lineTo(this.width * this.renderTime, 10)
             this.ctx.stroke()
         }
+        // console.log("done rendering.")
     }
 
 // Frame management. A figure can have multiple frames, each possibly with a
@@ -2115,7 +2126,7 @@ class Figure {
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
-        args = args.flat().map(a => legalExpr(a)).filter(x => x != 0)
+        args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
         if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x+y, 1)
         switch (args.length) {
             case 0: return 0
@@ -2125,13 +2136,13 @@ class Figure {
         }
     }
     minus(x, y) {
-        if (y == 0) return x
+        if (y === 0) return x
         if (typeof x == NUMBER && typeof y == NUMBER) return x - y
         return new Minus(legalExpr(x), legalExpr(y))
     }
     times(...args) {
-        args = args.flat().map(a => legalExpr(a)).filter(x => x != 1)
-        if (args.some(x => x == 0)) return 0
+        args = args.flat().map(a => legalExpr(a)).filter(x => x !== 1)
+        if (args.some(x => x === 0)) return 0
         if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x*y, 1)
         switch (args.length) {
             case 0: return 1
@@ -2220,7 +2231,7 @@ class Figure {
     relative(x, y, a, b) {
         x = legalExpr(x); y = legalExpr(y); a = legalExpr(a); b = legalExpr(b)
         let dx = this.minus(b, a),
-            dy = new Point(new Neg(new Projection(dx, 1, 2)), new Projection(dx, 0, 2)),
+            dy = new Point(new Projection(dx, 1, 2), new Neg(new Projection(dx, 0, 2))),
             pos = this.plus(a, new Times(x, dx), new Times(y, dy))
         return this.point(new Projection(pos, 0, 2), new Projection(pos, 1, 2))
     }
@@ -2592,14 +2603,14 @@ class Expression {
     // reused expressions.
     checkCache(valuation, doGrad) {
         doGrad = doGrad ? true : false
-        if (valuation === undefined) return undefined
+        if (!this.hasOwnProperty('cachedValuation')) return undefined
         if (this.cachedValuation !== valuation || doGrad > this.cachedDoGrad) {
             cacheMisses++
             return undefined
         }
         cacheHits++
         if (doGrad == this.cachedDoGrad) return this.cachedResult
-        return this.cachedResult[0]
+        else return this.cachedResult[0]
     }
     // Record a computed value (and optionally gradient) in the cache
     recordCache(valuation, doGrad, result) {
@@ -2607,7 +2618,13 @@ class Expression {
         this.cachedValuation = valuation
         this.cachedDoGrad = doGrad
         this.cachedResult = result
+        for (let v of exprVariables(this)) v.addDependent(this)
         return result
+    }
+    clearCache() {
+        delete this.cachedValuation
+        delete this.cachedDoGrad
+        delete this.cachedResult
     }
     // The set of variables that are needed to evaluate this expression.
     variables() { return new Set() }
@@ -2667,6 +2684,7 @@ class Variable extends Expression {
         this.index = figure.numVariables // overridden later by numberVariables()
         this.figure = figure             // a variable is associated with one figure
         this.stage = figure.currentStage
+        this.dependents = new Set()
         figure.Variables.push(this)
         figure.numVariables++
         if (hint !== undefined) {
@@ -2765,6 +2783,10 @@ class Variable extends Expression {
     isLegalPoint() {
         return null
     }
+    // record that this expressions value depends on this variable
+    addDependent(expr) {
+        this.dependents.add(expr)
+    }
 }
 
 // This variable caches an array of zeros of the appropriate length
@@ -2780,10 +2802,15 @@ function getZeros(n) {
 var cacheHits = 0, cacheMisses = 0
 
 function statistics() {
-    return {
+    const result = {
         cacheHits: cacheHits,
         cacheMisses: cacheMisses,
     }
+    if (PROFILE_EVALUATIONS) {
+        result.evaluations = evaluations
+        result.evaluationCounts = evaluationCounts
+    }
+    return result
 }
 
 // The variables used by expression e.
@@ -2796,6 +2823,16 @@ function exprVariables(e) {
         console.error("no variables method")
     e.cachedVariables = e.variables()
     return e.cachedVariables
+}
+
+function similarResults(x, y) {
+    if (typeof x === "number" && typeof y === "number")
+        return Math.abs(x - y) < 1.0e-4
+    if (typeof x != typeof y) return false
+    for (let i = 0; i < x.length; i++) {
+        if (!similarResults(x[i], y[i])) return false
+    }
+    return true
 }
 
 let evaluations = 0,
@@ -2820,8 +2857,18 @@ function evaluate(expr, valuation, doGrad) {
                 return expr.map(e => evaluate(e, valuation, doGrad))
             } else {
                 if (CACHE_ALL_EVALUATIONS) {
+                    if (valuation === undefined) valuation = false
                     const result1 = expr.checkCache(valuation, doGrad)
-                    if (result1 != undefined) return result1
+                    if (result1 !== undefined) {
+                        /*
+                        const result2 = expr.evaluate(valuation, doGrad)
+                        if (!similarResults(result1, result2)) {
+                            console.log(`Oops, results disagree: ${result1} != ${result2}`)
+                            console.log(`dependencies are: ${Array.from(exprVariables(expr))}`)
+                        }
+                        */
+                        return result1
+                    }
                     const result2 = expr.evaluate(valuation, doGrad)
                     if (CHECK_NAN && checkNaNResult(result2)) {
                         console.error("result is NaN")
@@ -2895,7 +2942,7 @@ class BackPropagation {
                 evaluate(e, valuation)
                 if (CHECK_NAN) checkNaNResult(e.solutionValue)
             }
-            if (e.bpDiff != 0) {
+            if (e.bpDiff !== 0) {
                 e.backprop(this)
             }
         }
@@ -3074,8 +3121,8 @@ class Times extends BinaryExpression {
 class Divide extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) {
-        if (b == 0) console.log("warning: divide by zero, using random answer")
-        return b == 0 ? Math.random() - 0.5 : a / b }
+        if (b === 0) console.log("warning: divide by zero, using random answer")
+        return b === 0 ? Math.random() - 0.5 : a / b }
     gradop(a, b, da, db) {
         return [a / b, numeric.add(numeric.mul(-a/(b*b), db),  numeric.mul(da, 1/b))]
     }
@@ -3084,9 +3131,9 @@ class Divide extends BinaryExpression {
         // d/db (a / b) = a * d/db(1/b) = a * (-1/b^2) = -a/b^2
         const a = solvedValue(this.e1),
               b = solvedValue(this.e2),
-              ib = (b == 0) ? Math.random() - 0.5 : 1/b,
+              ib = (b === 0) ? Math.random() - 0.5 : 1/b,
               d = this.bpDiff
-        if (b == 0) console.log("warning: divide by zero, using random answer")
+        if (b === 0) console.log("warning: divide by zero, using random answer")
         task.propagate(this.e1, ib*d)
         task.propagate(this.e2, numeric.mul(a, -ib*ib*d))
     }
@@ -3218,7 +3265,7 @@ class Distance extends Expression {
             v = Math.sqrt(rad)
       // let xdn, ydn
       let dn
-      if (v != 0) {
+      if (v !== 0) {
         dn = numeric.mul(1/v, pd)
       } else {
         const ang = randomAngle()
@@ -3478,8 +3525,6 @@ class LinearInterpolation extends Expression {
         if (currentFrame.isAfter(this.frame) && currentFrame != this.frame) {
             return evaluate(this.e2, valuation, doGrad)
         }
-    // const v = this.checkCache(valuation, doGrad)
-    // if (v) return v
         const v1 = evaluate(this.e1, valuation, doGrad),
               v2 = evaluate(this.e2, valuation, doGrad),
               b = this.interp(this.figure.currentTime),
@@ -4524,7 +4569,7 @@ class Rectangle extends Graphic {
         const [x0, x1, y0, y1] = evaluate([this.x0(), this.x1(), this.y0(), this.y1()])
         ctx.translate(x0, y0)
         const w = x1-x0, h = y1-y0
-        if (this.cornerRadius == 0) {
+        if (this.cornerRadius === 0) {
             ctx.beginPath()
             ctx.moveTo(0, 0)
             ctx.lineTo(w, 0)
@@ -4548,7 +4593,7 @@ class Rectangle extends Graphic {
         }
     }
     connectionPts() {
-      if (this.cornerRadius == 0) {
+      if (this.cornerRadius === 0) {
         return [ this.ll(), this.lr(), this.ul(), this.ur(), this.cl(), this.cr(), this.uc(), this.lc() ]
       } else {
         const a = new Times(0.2929, evaluate(this.cornerRadius))
@@ -4566,7 +4611,7 @@ class Rectangle extends Graphic {
     intersectionPt(px, py, valuation) {
         let result = super.intersectionPt(px, py, valuation)
         const r = evaluate(this.cornerRadius)
-        if (r == 0) return result
+        if (r === 0) return result
         const [x, y] = result
         const [x0, y0, x1, y1] = evaluate([this.x0(), this.y0(),
                                          this.x1(), this.y1()], valuation)
@@ -5185,6 +5230,7 @@ class Line extends Graphic {
         let [x1a, y1a] = drawLineEndDir(ctx, this.startArrowStyle, this.arrowSize, x1, y1, -cosa, -sina),
             [x2a, y2a] = drawLineEndDir(ctx, this.endArrowStyle, this.arrowSize, x2, y2, cosa, sina)
 
+        if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
         ctx.beginPath()
         ctx.moveTo(x1a, y1a)
         ctx.lineTo(x2a, y2a)
@@ -5376,6 +5422,7 @@ class Connector extends Graphic {
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth)
         ctx.setLineDash(this.lineDash || [])
+        if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
         if (this.fillStyle) ctx.fillStyle = this.fillStyle
         if (this.startArrowStyle) {
             [pts[0][0], pts[0][1]] = 
@@ -6650,6 +6697,10 @@ class Handle extends InteractiveObject {
         }
         this.xcon = new NearZero(this.figure, new Minus(this.x(), x), 10)
         this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 10)
+        for (let expr of this.x_.dependents) {
+            if (expr.hasOwnProperty('cachedResult')) expr.clearCache()
+            // console.log("clearing cached value for "+ expr)
+        }
         this.xcon.stage = 0
         this.ycon.stage = 0
         if (!this.figure.renderNeeded) {

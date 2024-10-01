@@ -15,9 +15,9 @@ with (figure) {
 var border = rectangle("gray", "white")
     h = handle("yellow", 300, 300),
     m = margin()
-    equal(border, m)
 
-    align("left", "top", h, border)
+equal(border, m)
+align("left", "top", h, border)
 
 class SpiralPiece extends Constrain.Square {
     constructor(figure, style, side) {

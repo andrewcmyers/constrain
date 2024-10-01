@@ -19,6 +19,8 @@
 
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
+[Dragon curve](https://andrewcmyers.github.io/constrain/examples/dragon.html)
+
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
