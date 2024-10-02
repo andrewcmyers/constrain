@@ -17,14 +17,14 @@ const Figures = []
 // Various switches and constants control the default appearance of figures.
 
 const USE_BACKPROPAGATION = true,
-      CACHE_ALL_EVALUATIONS = false,
+      CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = false, DEBUG_TWEENING = false
+      CHECK_NAN = false, DEBUG_TWEENING = true
 const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -163,6 +163,7 @@ class Figure {
         this.solverCallbacks = []
         this.minimizationOptions = {...defaultMinimizationOptions}
         this.fadeColor = this.findFadeColor(canvas)
+        this.timeVar = new Variable(this, "time") // variable representing the current frame time
         Figures.push(this)
         if (canvas.style.padding && canvas.style.padding != "0px")
             console.error("Canvas input will not work correctly with padding")
@@ -316,7 +317,6 @@ class Figure {
         this.substitutionEnabled = b
     }
 
-
     // Variables are solved either by minimization or by direct solution after
     // minimization is complete.  This function identifies which variables need
     // to be solved to support the currently visible graphical objects in this
@@ -334,7 +334,6 @@ class Figure {
     // to be the variables that need to be solved across all components in the
     // stage.
     numberVariables(stage, component) {
-
         let i = 0
         const frame = this.currentFrame
         if (DEBUG && DEBUG_CONSTRAINTS) {
@@ -367,6 +366,7 @@ class Figure {
         function checkIfNeeded(v) {
             if (v.stage != stage) return
             if (v.index !== undefined) return
+            if (v === v.figure.timeVar) return
             if (component && v.component != component) return
             if (solvedVariables.has(v)) return
             solvedVariables.add(v)
@@ -715,6 +715,8 @@ class Figure {
       let solution, figure = this
       if (PROFILE_EVALUATIONS) evaluations = 0
       if (!this.components) this.components = []
+      figure.timeVar.currentValue = figure.currentTime
+      this.invalidateCachedExprs([this.timeVar])
       for (let stage = 0; stage < this.numStages; stage++) {
         this.activeStage = stage
         this.numberVariables(stage)
@@ -820,9 +822,16 @@ class Figure {
             const v = valuation[i], variable = vars[i]
             variable.removeIndex()
             if (v !== undefined) {
-                variable.renderValue = v
+                console.log("updating " + variable + " = " + v)
+                if (variable.renderValue !== v) {
+                    variable.renderValue = v
+                    console.log("invalidating cached exprs from renderValue " + variable)
+                    this.invalidateCachedExprs([variable])
+                }
             } else {
                 delete variable.renderValue
+                console.log("invalidating cached exprs from undefined " + variable)
+                this.invalidateCachedExprs([variable])
             }
         }
     }
@@ -830,7 +839,10 @@ class Figure {
     invalidateCachedExprs(vars) {
         for (const v of vars) {
             for (const expr of v.dependents) {
-                expr.clearCache()
+                if (expr.cachedResult) {
+                    // console.log("  forgetting cached value of " + expr + " because of " + v)
+                    expr.clearCache()
+                }
             }
         }
     }
@@ -2126,14 +2138,7 @@ class Figure {
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
-        args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
-        if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x+y, 1)
-        switch (args.length) {
-            case 0: return 0
-            case 1: return args[0]
-            case 2: return new Plus(...args)
-            default: return new Plus(args[0], this.plus(...args.slice(1)))
-        }
+        return plus(...args)
     }
     minus(x, y) {
         if (y === 0) return x
@@ -2141,15 +2146,7 @@ class Figure {
         return new Minus(legalExpr(x), legalExpr(y))
     }
     times(...args) {
-        args = args.flat().map(a => legalExpr(a)).filter(x => x !== 1)
-        if (args.some(x => x === 0)) return 0
-        if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x*y, 1)
-        switch (args.length) {
-            case 0: return 1
-            case 1: return args[0]
-            case 2: return new Times(...args)
-            default: return new Times(args[0], this.times(...args.slice(1)))
-        }
+        return times(...args)
     }
     divide(x, y) {
         if (typeof x == NUMBER && typeof y == NUMBER) return x / y
@@ -2247,6 +2244,41 @@ class Figure {
         const rad = f.plus(f.sq(f.minus(f.projection(p2, 0), f.projection(p1, 0))),
                            f.sq(f.minus(f.projection(p2, 1), f.projection(p1, 1))))
         return f.divide(f.minus(tr, tl), f.sqrt(rad))
+    }
+}
+
+function terms(expr) {
+    if (expr instanceof Plus) {
+        return terms(expr.e1).concat(terms(expr.e2))
+    } else {
+        return [expr]
+    }
+}
+
+function plus(...args) {
+    args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
+    args = args.flatMap(x => terms(x))
+    const nums = args.filter(x => NUMBER == typeof x)
+    const nonnums = args.filter(x => NUMBER != typeof x)
+    const sum = nums.reduce((x,y) => x+y, 0)
+    switch (nonnums.length) {
+        case 0: return sum
+        case 1: return sum == 0 ? nonnums[0] : new Plus(nonnums[0], sum)
+        case 2: return new Plus(...args)
+        default: return new Plus(args[0], plus(...args.slice(1)))
+    }
+}
+
+function times(...args) {
+    args = args.flat().map(a => legalExpr(a)).filter(x => x !== 1)
+    const nums = args.filter(x => NUMBER == typeof x)
+    const nonnums = args.filter(x => NUMBER != typeof x)
+    const product = nums.reduce((x,y) => x*y, 1)
+    switch (nonnums.length) {
+        case 0: return product
+        case 1: return product == 1 ? nonnums[0] : new Times(product, nonnums[0])
+        case 2: return new Times(...args)
+        default: return new Times(args[0], times(...args.slice(1)))
     }
 }
 
@@ -2618,7 +2650,11 @@ class Expression {
         this.cachedValuation = valuation
         this.cachedDoGrad = doGrad
         this.cachedResult = result
-        for (let v of exprVariables(this)) v.addDependent(this)
+        console.log("caching " + this + " = " + result + " : valuation " + valuation)
+        for (let v of exprVariables(this)) {
+            // console.log("  depends on " + v)
+            v.addDependent(this)
+        }
         return result
     }
     clearCache() {
@@ -2860,19 +2896,19 @@ function evaluate(expr, valuation, doGrad) {
                     if (valuation === undefined) valuation = false
                     const result1 = expr.checkCache(valuation, doGrad)
                     if (result1 !== undefined) {
-                        /*
                         const result2 = expr.evaluate(valuation, doGrad)
                         if (!similarResults(result1, result2)) {
                             console.log(`Oops, results disagree: ${result1} != ${result2}`)
                             console.log(`dependencies are: ${Array.from(exprVariables(expr))}`)
                         }
-                        */
+                        console.log("reusing value of " + expr + " = " + result1)
                         return result1
                     }
                     const result2 = expr.evaluate(valuation, doGrad)
                     if (CHECK_NAN && checkNaNResult(result2)) {
                         console.error("result is NaN")
                     }
+                    console.log("standard caching for " + expr + " : valuation " + valuation)
                     expr.recordCache(valuation, doGrad, result2)
                     if (valuation) expr.solutionValue = result2
                     return result2
@@ -3008,7 +3044,7 @@ function union(...s) {
     return result
 }
 
-const precedence = { " avg ": 0, " binop ": 0, "+" : 1, "-": 1, "*": 2, "/": 2 }
+const precedence = { "avg": 0, "binop": 0, "+" : 1, "-": 1, "*": 2, "/": 2 }
 
 // A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
@@ -3024,9 +3060,9 @@ class BinaryExpression extends Expression {
     toString() {
         const s1 = (this.e1.precedence && this.e1.precedence < this.precedence) ? "(" + this.e1 + ")" : this.e1
         const s2 = (this.e2.precedence && this.e2.precedence < this.precedence) ? "(" + this.e2 + ")" : this.e2
-        return s1 + this.opName() + s2
+        return s1 + " " + this.opName() + " " + s2
     }
-    opName() { return " binop " }
+    opName() { return "binop" }
     evaluate(valuation, doGrad) {
         if (!doGrad || !this.gradop)
             return this.operation(evaluate(this.e1, valuation), evaluate(this.e2, valuation))
@@ -3086,7 +3122,7 @@ class Average extends BinaryExpression {
         task.propagate(this.e1, numeric.mul(0.5, this.bpDiff))
         task.propagate(this.e2, numeric.mul(0.5, this.bpDiff))
     }
-    opName() { return " avg " }
+    opName() { return "avg" }
     x() { return new Projection(this, 0, 2) }
     y() { return new Projection(this, 1, 2) }
     h() { return 0 }
@@ -3107,7 +3143,7 @@ class Times extends BinaryExpression {
         task.propagate(this.e1, numeric.dot(d,b))
         task.propagate(this.e2, numeric.dot(d,a))
     }
-    opName() { return " * " }
+    opName() { return "*" }
     isLegalPoint() {
         if (legalPoint(this.e1) && legalScalar(this.e2)
          || legalPoint(this.e2) && legalScalar(this.e1)) {
@@ -3550,7 +3586,7 @@ class LinearInterpolation extends Expression {
     y() { return new Projection(this, 1, 2) }
 
     variables() {
-        return union(exprVariables(this.e1), exprVariables(this.e2))
+        return union(exprVariables(this.e1), exprVariables(this.e2), [this.figure.timeVar])
     }
     backprop(task) {
       const figure = this.figure, currentFrame = figure.currentFrame
@@ -3573,7 +3609,7 @@ class LinearInterpolation extends Expression {
             task.prepareBackProp(this.e2)
     }
     toString() {
-        return "LinearInterpolation(" + this.e1 + "," + this.e2 + ")"
+        return "LinearInterpolation(" + this.e1 + ", " + this.e2 + ")"
     }
 }
 
@@ -3585,7 +3621,7 @@ class SmoothInterpolation extends LinearInterpolation {
     }
     interp(t) { return cubicInterpWeight(t) }
     toString() {
-        return "SmoothInterpolation(" + this.e1 + "," + this.e2 + ")"
+        return "SmoothInterpolation(" + this.e1 + ", " + this.e2 + ")"
     }
 }
 
@@ -3956,6 +3992,11 @@ class ConstraintGroup extends Constraint {
     }
 }
 
+function half(x) {
+    if (typeof x == NUMBER) return x * 0.5
+    return new Times(x, 0.5)
+}
+
 // A LayoutObject does not support rendering and does not necessarily
 // know what figure it is part of. It does not introduce any variables by
 // default. Its size is 0 by default.
@@ -3970,10 +4011,10 @@ class LayoutObject extends Expression {
     }
     x() { return this.x_ }
     y() { return this.y_ }
-    x0() { return new Minus(this.x(), new Times(this.w(), 0.5)) }
-    x1() { return new Plus(this.x(), new Times(this.w(), 0.5)) }
-    y0() { return new Minus(this.y(), new Times(this.h(), 0.5)) }
-    y1() { return new Plus(this.y(), new Times(this.h(), 0.5)) }
+    x0() { return new Minus(this.x(), half(this.w())) }
+    x1() { return plus(this.x(), half(this.w())) }
+    y0() { return new Minus(this.y(), half(this.h())) }
+    y1() { return plus(this.y(), half(this.h())) }
     ul() { return new Point(this.x0(), this.y0()) }
     ur() { return new Point(this.x1(), this.y0()) }
     ll() { return new Point(this.x0(), this.y1()) }
@@ -4064,9 +4105,9 @@ class LayoutObject extends Expression {
       const v = this.checkCache(valuation, doGrad)
       if (v) return v
       if (!doGrad) {
-            const x = evaluate(this.x(), valuation),
-                  y = evaluate(this.y(), valuation)
-            return this.recordCache(valuation, doGrad, [x, y])
+        const x = evaluate(this.x(), valuation),
+              y = evaluate(this.y(), valuation)
+        return this.recordCache(valuation, doGrad, [x, y])
       } else {
         const [x, dx] = evaluate(this.x(), valuation, true),
               [y, dy] = evaluate(this.y(), valuation, true)
@@ -4116,8 +4157,8 @@ class LayoutObject extends Expression {
         this.figure.equal(r.x(), this.x())
         this.figure.equal(r.y(), this.y())
         const v2 = this.figure.times(2, legalExpr(v))
-        this.figure.equal(r.w(), new Plus(this.w(), v2))
-        this.figure.equal(r.h(), new Plus(this.h(), v2))
+        this.figure.equal(r.w(), plus(this.w(), v2))
+        this.figure.equal(r.h(), plus(this.h(), v2))
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -4451,7 +4492,7 @@ class Point extends LayoutObject {
         return union(exprVariables(this.x()), exprVariables(this.y()))
     }
     toString() {
-        return "Point(" + this.x_ + "," + this.y_ + ")"
+        return `Point(${this.x_}, ${this.y_})`
     }
     at() {
         console.error("Sorry, Point.at() cannot be used because a Point does not know its Figure.")
@@ -4596,12 +4637,13 @@ class Rectangle extends Graphic {
       if (this.cornerRadius === 0) {
         return [ this.ll(), this.lr(), this.ul(), this.ur(), this.cl(), this.cr(), this.uc(), this.lc() ]
       } else {
-        const a = new Times(0.2929, evaluate(this.cornerRadius))
+        const r = this.cornerRadius
+        const a = (typeof r == NUMBER) ? r * 0.2929 : new Times(0.2929, r)
         return [ this.cl(), this.cr(), this.uc(), this.lc(),
-                    new Point(new Plus(this.x0(), a), new Plus(this.y0(), a)),
-                    new Point(new Minus(this.x1(), a), new Plus(this.y0(), a)),
+                    new Point(plus(this.x0(), a), plus(this.y0(), a)),
+                    new Point(new Minus(this.x1(), a), plus(this.y0(), a)),
                     new Point(new Minus(this.x1(), a), new Minus(this.y1(), a)),
-                    new Point(new Plus(this.x0(), a), new Minus(this.y1(), a)) ]
+                    new Point(plus(this.x0(), a), new Minus(this.y1(), a)) ]
       }
     }
     setCornerRadius(r) {
@@ -7046,7 +7088,7 @@ function reportPerformance(b) {
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
-    setMinimizationAlgorithm, reportPerformance,
+    setMinimizationAlgorithm, reportPerformance, plus, terms, similarResults,
     UNCMIN_GRADIENT,
     UNCMIN_BFGS,
     UNCMIN_LBFGS,
