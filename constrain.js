@@ -2148,7 +2148,7 @@ class Figure {
             case 0: return 1
             case 1: return args[0]
             case 2: return new Times(...args)
-            default: return new Times(args[0], ...args.slice(1))
+            default: return new Times(args[0], this.times(...args.slice(1)))
         }
     }
     divide(x, y) {
