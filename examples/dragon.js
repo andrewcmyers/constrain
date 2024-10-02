@@ -6,7 +6,7 @@ const figure = new Constrain.Figure(canvas)
 
 with (figure) {
     const m = margin()
-    const max_levels = 15
+    const max_levels = 14
 
 
     function dragon(p0, p1, levels) {
@@ -34,7 +34,7 @@ with (figure) {
     equal(p0.x(), plus(times(w, ll.x()), times(1 - w, lr.x())))
     equal(p1.x(), plus(times(1 - w, ll.x()), times(w, lr.x())))
     setStrokeStyle('white')
-    dragon(p1, p0, 12)
+    dragon(p1, p0, max_levels)
 }
 
 Constrain.autoResize()
