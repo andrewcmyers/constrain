@@ -316,7 +316,6 @@ class Figure {
         this.substitutionEnabled = b
     }
 
-
     // Variables are solved either by minimization or by direct solution after
     // minimization is complete.  This function identifies which variables need
     // to be solved to support the currently visible graphical objects in this
@@ -334,7 +333,6 @@ class Figure {
     // to be the variables that need to be solved across all components in the
     // stage.
     numberVariables(stage, component) {
-
         let i = 0
         const frame = this.currentFrame
         if (DEBUG && DEBUG_CONSTRAINTS) {
@@ -2115,14 +2113,7 @@ class Figure {
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
-        args = args.flat().map(a => legalExpr(a)).filter(x => x != 0)
-        if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x+y, 1)
-        switch (args.length) {
-            case 0: return 0
-            case 1: return args[0]
-            case 2: return new Plus(...args)
-            default: return new Plus(args[0], this.plus(...args.slice(1)))
-        }
+        return plus(...args)
     }
     minus(x, y) {
         if (y == 0) return x
@@ -2130,15 +2121,7 @@ class Figure {
         return new Minus(legalExpr(x), legalExpr(y))
     }
     times(...args) {
-        args = args.flat().map(a => legalExpr(a)).filter(x => x != 1)
-        if (args.some(x => x == 0)) return 0
-        if (args.every(x => NUMBER == typeof x)) return args.reduce((x,y) => x*y, 1)
-        switch (args.length) {
-            case 0: return 1
-            case 1: return args[0]
-            case 2: return new Times(...args)
-            default: return new Times(args[0], ...args.slice(1))
-        }
+        return times(...args)
     }
     divide(x, y) {
         if (typeof x == NUMBER && typeof y == NUMBER) return x / y
@@ -2167,7 +2150,7 @@ class Figure {
         if (n == 2) {
             return new Average(legalExpr(args[0]), legalExpr(args[1]))
         }
-        return this.plus(this.times(1/n, args[0]), this.times((n-1)/n, this.average(...args.slice(1))))
+        return plus(times(1/n, args[0]), times((n-1)/n, this.average(...args.slice(1))))
     }
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
@@ -2176,8 +2159,8 @@ class Figure {
     perpendicular(p1, p2, p3, p4) {
         let v1 = new Minus(legalExpr(p2), legalExpr(p1)), v2 = new Minus(legalExpr(p4), legalExpr(p3))
         return new NearZero(this,
-            this.plus(this.times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
-                     this.times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
+            plus(times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
+                 times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
     }
 
 // dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
@@ -2187,8 +2170,8 @@ class Figure {
         case 3:
             let p0 = arguments[0], p1 = arguments[1], p2 = arguments[2]
             return this.equal(
-                this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
-                this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+                times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
+                times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
         default:
           let result = []
           for (let i = 2; i < arguments.length; i++) {
@@ -2236,6 +2219,45 @@ class Figure {
         const rad = f.plus(f.sq(f.minus(f.projection(p2, 0), f.projection(p1, 0))),
                            f.sq(f.minus(f.projection(p2, 1), f.projection(p1, 1))))
         return f.divide(f.minus(tr, tl), f.sqrt(rad))
+    }
+}
+
+function terms(expr) {
+    if (expr instanceof Plus) {
+        return terms(expr.e1).concat(terms(expr.e2))
+    } else {
+        return [expr]
+    }
+}
+
+function plus(...args) {
+    const inargs = args
+    args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
+    args = args.flatMap(x => terms(x))
+    if (args.length != inargs.length) {
+        console.log("flattened:  " + inargs + " -> " + args)
+    }
+    const nums = args.filter(x => NUMBER == typeof x)
+    const nonnums = args.filter(x => NUMBER != typeof x)
+    const sum = nums.reduce((x,y) => x+y, 0)
+    switch (nonnums.length) {
+        case 0: return sum
+        case 1: return sum == 0 ? nonnums[0] : new Plus(nonnums[0], sum)
+        case 2: return new Plus(...args)
+        default: return new Plus(args[0], plus(...args.slice(1)))
+    }
+}
+
+function times(...args) {
+    args = args.flat().map(a => legalExpr(a)).filter(x => x !== 1)
+    const nums = args.filter(x => NUMBER == typeof x)
+    const nonnums = args.filter(x => NUMBER != typeof x)
+    const product = nums.reduce((x,y) => x*y, 1)
+    switch (nonnums.length) {
+        case 0: return product
+        case 1: return product == 1 ? nonnums[0] : new Times(product, nonnums[0])
+        case 2: return new Times(...args)
+        default: return new Times(args[0], times(...args.slice(1)))
     }
 }
 
@@ -2961,7 +2983,7 @@ function union(...s) {
     return result
 }
 
-const precedence = { " avg ": 0, " binop ": 0, "+" : 1, "-": 1, "*": 2, "/": 2 }
+const precedence = { "avg": 0, "binop": 0, "+" : 1, "-": 1, "*": 2, "/": 2 }
 
 // A binary expression like +, *, -, /
 class BinaryExpression extends Expression {
@@ -2977,9 +2999,9 @@ class BinaryExpression extends Expression {
     toString() {
         const s1 = (this.e1.precedence && this.e1.precedence < this.precedence) ? "(" + this.e1 + ")" : this.e1
         const s2 = (this.e2.precedence && this.e2.precedence < this.precedence) ? "(" + this.e2 + ")" : this.e2
-        return s1 + this.opName() + s2
+        return s1 + " " + this.opName() + " " + s2
     }
-    opName() { return " binop " }
+    opName() { return "binop" }
     evaluate(valuation, doGrad) {
         if (!doGrad || !this.gradop)
             return this.operation(evaluate(this.e1, valuation), evaluate(this.e2, valuation))
@@ -3039,7 +3061,7 @@ class Average extends BinaryExpression {
         task.propagate(this.e1, numeric.mul(0.5, this.bpDiff))
         task.propagate(this.e2, numeric.mul(0.5, this.bpDiff))
     }
-    opName() { return " avg " }
+    opName() { return "avg" }
     x() { return new Projection(this, 0, 2) }
     y() { return new Projection(this, 1, 2) }
     h() { return 0 }
@@ -3060,7 +3082,7 @@ class Times extends BinaryExpression {
         task.propagate(this.e1, numeric.dot(d,b))
         task.propagate(this.e2, numeric.dot(d,a))
     }
-    opName() { return " * " }
+    opName() { return "*" }
     isLegalPoint() {
         if (legalPoint(this.e1) && legalScalar(this.e2)
          || legalPoint(this.e2) && legalScalar(this.e1)) {
@@ -3528,7 +3550,7 @@ class LinearInterpolation extends Expression {
             task.prepareBackProp(this.e2)
     }
     toString() {
-        return "LinearInterpolation(" + this.e1 + "," + this.e2 + ")"
+        return "LinearInterpolation(" + this.e1 + ", " + this.e2 + ")"
     }
 }
 
@@ -3540,7 +3562,7 @@ class SmoothInterpolation extends LinearInterpolation {
     }
     interp(t) { return cubicInterpWeight(t) }
     toString() {
-        return "SmoothInterpolation(" + this.e1 + "," + this.e2 + ")"
+        return "SmoothInterpolation(" + this.e1 + ", " + this.e2 + ")"
     }
 }
 
@@ -3911,6 +3933,11 @@ class ConstraintGroup extends Constraint {
     }
 }
 
+function half(x) {
+    if (typeof x == NUMBER) return x * 0.5
+    return new Times(x, 0.5)
+}
+
 // A LayoutObject does not support rendering and does not necessarily
 // know what figure it is part of. It does not introduce any variables by
 // default. Its size is 0 by default.
@@ -3925,10 +3952,10 @@ class LayoutObject extends Expression {
     }
     x() { return this.x_ }
     y() { return this.y_ }
-    x0() { return new Minus(this.x(), new Times(this.w(), 0.5)) }
-    x1() { return new Plus(this.x(), new Times(this.w(), 0.5)) }
-    y0() { return new Minus(this.y(), new Times(this.h(), 0.5)) }
-    y1() { return new Plus(this.y(), new Times(this.h(), 0.5)) }
+    x0() { return new Minus(this.x(), half(this.w())) }
+    x1() { return plus(this.x(), half(this.w())) }
+    y0() { return new Minus(this.y(), half(this.h())) }
+    y1() { return plus(this.y(), half(this.h())) }
     ul() { return new Point(this.x0(), this.y0()) }
     ur() { return new Point(this.x1(), this.y0()) }
     ll() { return new Point(this.x0(), this.y1()) }
@@ -4019,9 +4046,9 @@ class LayoutObject extends Expression {
       const v = this.checkCache(valuation, doGrad)
       if (v) return v
       if (!doGrad) {
-            const x = evaluate(this.x(), valuation),
-                  y = evaluate(this.y(), valuation)
-            return this.recordCache(valuation, doGrad, [x, y])
+        const x = evaluate(this.x(), valuation),
+              y = evaluate(this.y(), valuation)
+        return this.recordCache(valuation, doGrad, [x, y])
       } else {
         const [x, dx] = evaluate(this.x(), valuation, true),
               [y, dy] = evaluate(this.y(), valuation, true)
@@ -4071,8 +4098,8 @@ class LayoutObject extends Expression {
         this.figure.equal(r.x(), this.x())
         this.figure.equal(r.y(), this.y())
         const v2 = this.figure.times(2, legalExpr(v))
-        this.figure.equal(r.w(), new Plus(this.w(), v2))
-        this.figure.equal(r.h(), new Plus(this.h(), v2))
+        this.figure.equal(r.w(), plus(this.w(), v2))
+        this.figure.equal(r.h(), plus(this.h(), v2))
         return r
     }
     // Builder to constrain both the x and y coordinates of a graphical object.
@@ -4406,7 +4433,7 @@ class Point extends LayoutObject {
         return union(exprVariables(this.x()), exprVariables(this.y()))
     }
     toString() {
-        return "Point(" + this.x_ + "," + this.y_ + ")"
+        return `Point(${this.x_}, ${this.y_})`
     }
     at() {
         console.error("Sorry, Point.at() cannot be used because a Point does not know its Figure.")
@@ -4551,12 +4578,13 @@ class Rectangle extends Graphic {
       if (this.cornerRadius == 0) {
         return [ this.ll(), this.lr(), this.ul(), this.ur(), this.cl(), this.cr(), this.uc(), this.lc() ]
       } else {
-        const a = new Times(0.2929, evaluate(this.cornerRadius))
+        const r = this.cornerRadius
+        const a = (typeof r == NUMBER) ? r * 0.2929 : new Times(0.2929, r)
         return [ this.cl(), this.cr(), this.uc(), this.lc(),
-                    new Point(new Plus(this.x0(), a), new Plus(this.y0(), a)),
-                    new Point(new Minus(this.x1(), a), new Plus(this.y0(), a)),
+                    new Point(plus(this.x0(), a), plus(this.y0(), a)),
+                    new Point(new Minus(this.x1(), a), plus(this.y0(), a)),
                     new Point(new Minus(this.x1(), a), new Minus(this.y1(), a)),
-                    new Point(new Plus(this.x0(), a), new Minus(this.y1(), a)) ]
+                    new Point(plus(this.x0(), a), new Minus(this.y1(), a)) ]
       }
     }
     setCornerRadius(r) {
@@ -6144,7 +6172,7 @@ function createText(...text) {
                             result.push(new Whitespace())
                         }
                         let parts = 0
-                        w.split(/Â­/).forEach(part => {
+                        w.split(/­/).forEach(part => {
                             if (parts++) result.push(new Hyphen())
                             result.push(new WordText(part))
                         })
