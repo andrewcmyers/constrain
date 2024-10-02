@@ -2175,7 +2175,7 @@ class Figure {
         if (n == 2) {
             return new Average(legalExpr(args[0]), legalExpr(args[1]))
         }
-        return this.plus(this.times(1/n, args[0]), this.times((n-1)/n, this.average(...args.slice(1))))
+        return plus(times(1/n, args[0]), times((n-1)/n, this.average(...args.slice(1))))
     }
     distance(p1, p2, dims) { return new Distance(legalExpr(p1), legalExpr(p2), dims) }
     nearZero(e, cost) { return new NearZero(this, legalExpr(e), cost) }
@@ -2184,8 +2184,8 @@ class Figure {
     perpendicular(p1, p2, p3, p4) {
         let v1 = new Minus(legalExpr(p2), legalExpr(p1)), v2 = new Minus(legalExpr(p4), legalExpr(p3))
         return new NearZero(this,
-            this.plus(this.times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
-                     this.times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
+            plus(times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
+                 times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
     }
 
 // dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
@@ -2195,8 +2195,8 @@ class Figure {
         case 3:
             let p0 = arguments[0], p1 = arguments[1], p2 = arguments[2]
             return this.equal(
-                this.times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
-                this.times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+                times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
+                times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
         default:
           let result = []
           for (let i = 2; i < arguments.length; i++) {
@@ -2258,14 +2258,14 @@ function terms(expr) {
 function plus(...args) {
     args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
     args = args.flatMap(x => terms(x))
-    const nums = args.filter(x => NUMBER == typeof x)
-    const nonnums = args.filter(x => NUMBER != typeof x)
-    const sum = nums.reduce((x,y) => x+y, 0)
+    const nums = args.filter(x => NUMBER == typeof x),
+          nonnums = args.filter(x => NUMBER != typeof x),
+          sum = nums.reduce((x,y) => x+y, 0)
     switch (nonnums.length) {
         case 0: return sum
-        case 1: return sum == 0 ? nonnums[0] : new Plus(nonnums[0], sum)
-        case 2: return new Plus(...args)
-        default: return new Plus(args[0], plus(...args.slice(1)))
+        case 1: return sum == 0 ? nonnums[0] : new Plus(sum, nonnums[0])
+        default: return sum == 0 ? new Plus(nonnums[0], plus(...nonnums.slice(1)))
+                                : new Plus(sum, plus(...nonnums))
     }
 }
 
@@ -2277,8 +2277,8 @@ function times(...args) {
     switch (nonnums.length) {
         case 0: return product
         case 1: return product == 1 ? nonnums[0] : new Times(product, nonnums[0])
-        case 2: return new Times(...args)
-        default: return new Times(args[0], times(...args.slice(1)))
+        default: return product == 1 ? new Times(nonnums[0], times(...nonnums.slice(1)))
+                                     : new Times(product, times(...nonnums))
     }
 }
 
@@ -6233,7 +6233,7 @@ function createText(...text) {
                             result.push(new Whitespace())
                         }
                         let parts = 0
-                        w.split(/Â­/).forEach(part => {
+                        w.split(/­/).forEach(part => {
                             if (parts++) result.push(new Hyphen())
                             result.push(new WordText(part))
                         })
@@ -6802,7 +6802,7 @@ class Button extends InteractiveObject {
     }
     mousemove(mx, my, e) {
         const [x, y] = evaluate([this.x(), this.y()])
-        if (this.inbounds(mx, my, x, y)) return
+        if (this.inBounds(mx, my, x, y)) return
         if (this.pressed) {
             this.pressed = false
             this.figure.focused = null
