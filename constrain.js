@@ -6735,7 +6735,7 @@ class Button extends InteractiveObject {
     }
     mousemove(mx, my, e) {
         const [x, y] = evaluate([this.x(), this.y()])
-        if (this.inbounds(mx, my, x, y)) return
+        if (this.inBounds(mx, my, x, y)) return
         if (this.pressed) {
             this.pressed = false
             this.figure.focused = null
