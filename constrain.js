@@ -24,7 +24,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = false, DEBUG_TWEENING = true
+      CHECK_NAN = false, DEBUG_TWEENING = false
 const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -1050,7 +1050,7 @@ class Figure {
             this.prevTime = this.nextTime = this.currentTime = t
             this.setupCanvas()
             
-            console.log("tweening case 1: no previous value to use, foreground solve (" +
+            if (DEBUG_TWEENING) console.log("tweening case 1: no previous value to use, foreground solve (" +
                 seconds(rT) + " = " + this.currentTime + ")")
             this.endBackgroundSolve()
             const valuation = this.recordUpdatedValuation(accuracy)
@@ -1124,7 +1124,6 @@ class Figure {
     }
     endBackgroundSolve() {
         if (this.backgroundSolver) {
-            // console.log("ending background solve thread")
             this.unregisterCallback("backgroundSolver")
             delete this.backgroundSolver
         }
@@ -1186,7 +1185,6 @@ class Figure {
 
     // Render the figure using the current renderValue property of variables
     renderFromValues() {
-        // console.log("rendering...")
         for (const g of this.Graphics) {
             if (g.parent === undefined && g.renderIfVisible && g.active())
               g.renderIfVisible()
@@ -1202,7 +1200,6 @@ class Figure {
             this.ctx.lineTo(this.width * this.renderTime, 10)
             this.ctx.stroke()
         }
-        // console.log("done rendering.")
     }
 
 // Frame management. A figure can have multiple frames, each possibly with a
@@ -1242,7 +1239,6 @@ class Figure {
     // is not ready to render, it will just set the is_started
     // flag.
     start() {
-        // console.log("starting figure")
         this.is_started = true
         if (!this.is_ready) {
             console.log("Figure is not ready to render yet.")
