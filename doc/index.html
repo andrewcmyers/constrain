@@ -1589,7 +1589,9 @@ to the following frame once its duration is over.
 <p>
 For complex diagrams, it may be too hard for the solver to find a stable solution
 with all the constraints and variables at once. Often this limitation can be
-worked around by breaking the solving process into a series of <em>stages</em>.
+worked around by breaking solving into a series of <em>stages</em>.
+Stages are also useful if you want to fix part of
+the diagram so that its solution is unaffected by other parts.
 In each stage, some set of the variables are solved for. Variables associated with
 later stages have no value until that stage is reached; variables in earlier stages
 have already been solved and their values cannot change.
