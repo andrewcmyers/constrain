@@ -2113,7 +2113,8 @@ class Figure {
 // ---- Utility methods for creating expressions ----
 
     plus(...args) {
-        return plus(...args)
+        const result = plus(...args)
+        return result
     }
     minus(x, y) {
         if (y == 0) return x
@@ -2234,14 +2235,13 @@ function plus(...args) {
     const inargs = args
     args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
     args = args.flatMap(x => terms(x))
-    const nums = args.filter(x => NUMBER == typeof x)
-    const nonnums = args.filter(x => NUMBER != typeof x)
-    const sum = nums.reduce((x,y) => x+y, 0)
+    const nums = args.filter(x => NUMBER == typeof x),
+          nonnums = args.filter(x => NUMBER != typeof x),
+          sum = nums.reduce((x,y) => x+y, 0)
     switch (nonnums.length) {
         case 0: return sum
         case 1: return sum == 0 ? nonnums[0] : new Plus(nonnums[0], sum)
-        case 2: return new Plus(...args)
-        default: return new Plus(args[0], plus(...args.slice(1)))
+        default: return sum == 0 ? new Plus(...nonnums) : new Plus(sum, plus(...nonnums))
     }
 }
 
@@ -2253,8 +2253,7 @@ function times(...args) {
     switch (nonnums.length) {
         case 0: return product
         case 1: return product == 1 ? nonnums[0] : new Times(product, nonnums[0])
-        case 2: return new Times(...args)
-        default: return new Times(args[0], times(...args.slice(1)))
+        default: return product == 1 ? nonnums[0] : new Times(product, times(...nonnums))
     }
 }
 
