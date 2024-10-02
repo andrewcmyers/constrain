@@ -2234,9 +2234,6 @@ function plus(...args) {
     const inargs = args
     args = args.flat().map(a => legalExpr(a)).filter(x => x !== 0)
     args = args.flatMap(x => terms(x))
-    if (args.length != inargs.length) {
-        console.log("flattened:  " + inargs + " -> " + args)
-    }
     const nums = args.filter(x => NUMBER == typeof x)
     const nonnums = args.filter(x => NUMBER != typeof x)
     const sum = nums.reduce((x,y) => x+y, 0)
