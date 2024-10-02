@@ -6,25 +6,14 @@ const figure = new Constrain.Figure(canvas)
 
 with (figure) {
     const m = margin()
-    const max_levels = 14
+    const max_levels = 15
 
-
-    function dragon(p0, p1, levels) {
-        if (levels == 0) return
-        // console.log(Array(10 - levels).join("  ") + levels + " dragon")
-        const p2 = relative(0.5, 0.5, p0, p1)
-        setLineWidth(times(distance(p0, p1), 0.02))
-        const opacity = 0.5 + 0.5/levels
-        const f = 255*levels/max_levels
-        const c = connector(p0, p2, p2, p1)
-            .setOpacity(opacity)
-        if (levels == 1) {
-            c.setStrokeStyle('#fff')
-        } else {
-            c.setStrokeStyle(`rgb(${f}, ${f}, ${255-f/2})`)
-        }
-        dragon(p0, p2, levels - 1)
-        dragon(p1, p2, levels - 1)
+    function dragon_points(p0, p1, level, sign) {
+        if (level == 0) return [p0]
+        const p2 = relative(0.5, 0.5 * sign, p0, p1)
+        let result = dragon_points(p0, p2, level-1, 1)
+        result = result.concat(dragon_points(p2, p1, level-1, -1))
+        return result
     }
 
     const ll = m.ll(), lr = m.lr()
@@ -33,8 +22,19 @@ with (figure) {
     equal(p0.y(), p1.y(), m.y())
     equal(p0.x(), plus(times(w, ll.x()), times(1 - w, lr.x())))
     equal(p1.x(), plus(times(1 - w, ll.x()), times(w, lr.x())))
-    setStrokeStyle('white')
-    dragon(p1, p0, max_levels)
+
+    for (let level = max_levels - 1; level >= 0; level--) {
+        const pts = dragon_points(p0, p1, level, -1)
+        const opacity = 0.5 + 0.5/(level + 1)
+        const f = 255*(max_levels - level)/max_levels
+        const strokeStyle = (level == max_levels - 1)
+            ? '#fff'
+            : `rgb(${f}, ${f}, ${255-f/2})`
+        const c = connector(...pts, p1)
+            .setOpacity(opacity)
+            .setLineWidth(times(0.05, distance(p0,p1), Math.pow(0.7071, level)))
+            .setStrokeStyle(strokeStyle)
+    }
 }
 
 Constrain.autoResize()
