@@ -30,7 +30,7 @@ with (figure) {
         const strokeStyle = (level == max_levels - 1)
             ? '#fff'
             : `rgb(${f}, ${f}, ${255-f/2})`
-        const c = connector(...pts, p1)
+        const c = connector(p0, ...pts, p1, p1)
             .setOpacity(opacity)
             .setLineWidth(times(0.05, distance(p0,p1), Math.pow(0.7071, level)))
             .setStrokeStyle(strokeStyle)
