@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  
+<body>
+<canvas id=smooth_ex_fig style="width:300px; height:200px"></canvas>
+<script>
+  var figure = new Constrain.Figure("smooth_ex_fig")
+  with (figure) {
+    let frame1 = addFrame(),
+        frame2 = addFrame().setLength(1000),
+        CR = canvasRect().inset(20),
+        s = square().setW(20).setLineWidth(4)
+                   .setFillStyle("white")
+                   .at(linear(frame2, CR.cl(), CR.cr()))
+    align("right", "bottom", advanceButton(),
+          CR.lr().toRight(20))
+    start()
+  }
+</script>
+</body>

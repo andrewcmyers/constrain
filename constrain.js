@@ -822,15 +822,14 @@ class Figure {
             const v = valuation[i], variable = vars[i]
             variable.removeIndex()
             if (v !== undefined) {
-                console.log("updating " + variable + " = " + v)
                 if (variable.renderValue !== v) {
                     variable.renderValue = v
-                    console.log("invalidating cached exprs from renderValue " + variable)
+                    // console.log("invalidating cached exprs from renderValue " + variable)
                     this.invalidateCachedExprs([variable])
                 }
             } else {
                 delete variable.renderValue
-                console.log("invalidating cached exprs from undefined " + variable)
+                // console.log("invalidating cached exprs from undefined " + variable)
                 this.invalidateCachedExprs([variable])
             }
         }
@@ -2650,7 +2649,7 @@ class Expression {
         this.cachedValuation = valuation
         this.cachedDoGrad = doGrad
         this.cachedResult = result
-        console.log("caching " + this + " = " + result + " : valuation " + valuation)
+        // console.log("caching " + this + " = " + result + " : valuation " + valuation)
         for (let v of exprVariables(this)) {
             // console.log("  depends on " + v)
             v.addDependent(this)
@@ -2736,7 +2735,7 @@ class Variable extends Expression {
     // being solved by minimization then its value is specified by the
     // solutionValue property.
     evaluate(valuation, doGrad) {
-        if (valuation === undefined) {
+        if (!valuation) {
             const renderValue = this.renderValue
             if (renderValue !== undefined) return renderValue
             return this.hint
@@ -2897,18 +2896,20 @@ function evaluate(expr, valuation, doGrad) {
                     const result1 = expr.checkCache(valuation, doGrad)
                     if (result1 !== undefined) {
                         const result2 = expr.evaluate(valuation, doGrad)
+                        /*
                         if (!similarResults(result1, result2)) {
                             console.log(`Oops, results disagree: ${result1} != ${result2}`)
                             console.log(`dependencies are: ${Array.from(exprVariables(expr))}`)
                         }
                         console.log("reusing value of " + expr + " = " + result1)
+                        */
                         return result1
                     }
                     const result2 = expr.evaluate(valuation, doGrad)
                     if (CHECK_NAN && checkNaNResult(result2)) {
                         console.error("result is NaN")
                     }
-                    console.log("standard caching for " + expr + " : valuation " + valuation)
+                    // console.log("standard caching for " + expr + " : valuation " + valuation)
                     expr.recordCache(valuation, doGrad, result2)
                     if (valuation) expr.solutionValue = result2
                     return result2
