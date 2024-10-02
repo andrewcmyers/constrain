@@ -2240,8 +2240,9 @@ function plus(...args) {
           sum = nums.reduce((x,y) => x+y, 0)
     switch (nonnums.length) {
         case 0: return sum
-        case 1: return sum == 0 ? nonnums[0] : new Plus(nonnums[0], sum)
-        default: return sum == 0 ? new Plus(...nonnums) : new Plus(sum, plus(...nonnums))
+        case 1: return sum == 0 ? nonnums[0] : new Plus(sum, nonnums[0])
+        default: return sum == 0 ? new Plus(nonnums[0], plus(...nonnums.slice(1)))
+                                : new Plus(sum, plus(...nonnums))
     }
 }
 
@@ -2253,7 +2254,8 @@ function times(...args) {
     switch (nonnums.length) {
         case 0: return product
         case 1: return product == 1 ? nonnums[0] : new Times(product, nonnums[0])
-        default: return product == 1 ? nonnums[0] : new Times(product, times(...nonnums))
+        default: return product == 1 ? new Times(nonnums[0], times(...nonnums.slice(1)))
+                                     : new Times(product, times(...nonnums))
     }
 }
 
