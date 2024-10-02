@@ -29,8 +29,7 @@
 
 [Using constraints to compute the Golden Ratio](https://andrewcmyers.github.io/constrain/examples/spiral.html) (Drag the diamond!)
 
-<img src="images/dragon-thumbnail.png" alt="Dragon thumbnail" width="100" height="100" />
-[Dragon curve](https://andrewcmyers.github.io/constrain/examples/dragon.html)
+<img src="images/dragon-thumbnail.png" alt="Dragon thumbnail" width="100" height="100" /> [Dragon curve](https://andrewcmyers.github.io/constrain/examples/dragon.html)
 
 <img src="images/tex-thumbnail.png" alt="TeX thumbnail" width="100" height="100" />
 [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
