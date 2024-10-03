@@ -25,7 +25,7 @@ with (figure) {
 
     for (let level = max_levels - 1; level >= 0; level--) {
         const pts = dragon_points(p0, p1, level, -1)
-        const opacity = 0.5 + 0.5/(level + 1)
+        const opacity = 0.5 + 0.5/(max_levels - level)
         const f = 255*(max_levels - level)/max_levels
         const strokeStyle = (level == max_levels - 1)
             ? '#fff'
