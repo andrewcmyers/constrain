@@ -5346,7 +5346,8 @@ class HorzLine extends Line {
         super(figure, p1, p2, strokeStyle, lineWidth)
         figure.equal(this.start().y(), this.end().y())
         // Need a stronger constraint to get the line oriented correctly
-        figure.leq(this.start().x(), this.end().x())
+        figure.leq(this.start().x(), this.end().x()).changeCost(10)
+        this.w_ = new Minus(this.p2.x(), this.p1.x())
     }
     x0() {
         return this.p1.x()
@@ -5362,7 +5363,8 @@ class VertLine extends Line {
         super(figure, p1, p2, strokeStyle, lineWidth)
         figure.equal(this.start().x(), this.end().x())
         // Need a stronger constraint to get the line oriented correctly
-        figure.leq(this.start().y(), this.end().y())
+        figure.leq(this.start().y(), this.end().y()).changeCost(10)
+        this.h_ = new Minus(this.p2.y(), this.p1.y())
     }
     y0() {
         return this.p1.y()
