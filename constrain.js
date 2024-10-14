@@ -4552,6 +4552,9 @@ class Group extends Graphic {
     children() {
         return this.objects
     }
+    child(i) {
+        return this.objects[i]
+    }
     align(horz, vert) {
         this.figure.align(horz, vert, ...this.objects)
         return this
