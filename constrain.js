@@ -123,7 +123,12 @@ class Figure {
                 this.name = c.id
             } else {
                 console.error('Could not find any canvas with id "' + canvas + '"')
+                return
             }
+        } else if (typeof canvas == 'undefined' &&
+                document.getElementsByTagName('canvas').length == 1) {
+            this.canvas = canvas = document.getElementsByTagName('canvas')[0]
+            this.name = 'canvas'
         } else {
             console.error("new Figure() expects a canvas or a canvas id")
             return
