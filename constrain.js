@@ -6116,7 +6116,7 @@ class ContainedText {
                 // if (DEBUG) console.log("found best layout at " + guessed_lines)
                 break
             }
-            if (!ly.success && this.verticalAlign == "top" && countItems(ly) == 0) {
+            if (!ly.success && verticalAlign == "top" && countItems(ly) == 0) {
                 guessed_lines--
                 y = y0 + tries
                 if (y > ymax) break
