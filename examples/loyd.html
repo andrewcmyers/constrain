@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <style>
+      pre { column-count: 2 }
+    </style>
+</head>
+<body>
+<p>
+This is the well-known 15-puzzle, designed by Samuel Loyd. Most tiles
+are already in the right place. Click on tiles to move them and
+finish the job.
+</p>
+<div style="text-align: center; padding-top: 4em">
+<canvas id=loyd_puzzle style="width: 250px; height: 250px">
+</canvas>
+<audio id=ssh>
+  <source src="audio/ssh.m4a" type="audio/mp4">
+</audio>
+<audio id=win>
+  <source src="audio/mixkit-ethereal-fairy-win-sound-2019.wav"
+          type="audio/wav">
+</audio>
+<script class=graphics id=constrain_code>
+with (new Constrain.Figure("loyd_puzzle")) {
+    let border = square().setLineWidth(8).setStrokeStyle("#666")
+        .setFillStyle("#aaa")
+    let gridSpace = times(border.w(), 0.25)
+    align("LR", "TB", border, margin(6))
+    const ssh = document.getElementById("ssh"),
+          win = document.getElementById("win")
+    ssh.volume = 0.2
+    const positions = []
+    let emptyPos = 15
+    for (let i = 0; i < 16; i++) {
+        positions[i] = plus(border.ul(),
+                            times(gridSpace, point(0.5, 0.5)),
+                            times(gridSpace,
+                                point(i % 4, Math.floor(i / 4))))
+    }
+    freeze()
+    const grd = ctx.createLinearGradient(0, 0, 15, 40)
+    grd.addColorStop(0, "#fff"); grd.addColorStop(1, "#db9")
+    function tile(n) {
+        const result = square().addText("" + n)
+            .setLineWidth(3)
+            .setFontSize(24)
+            .setFillStyle(grd)
+            .setStrokeStyle("#975")
+            .setCornerRadius(5)
+        result.index = n
+        result.control = new TileControl(result)
+        return result
+    }
+    function winningConfig() {
+        for (let i = 0; i < 15; i++) {
+            if (!tiles[i] || tiles[i].index != i+1) return false
+        }
+        return true
+    }
+    class TileControl extends Constrain.Control {
+        constructor(tile) {
+            super(thisFigure(), tile)
+        }
+        mousedown(x, y, e) {
+          if (this.inBounds(x, y)) {
+            let pos
+            const tile = this.graphic
+            for (let i = 0; i < 16; i++) {
+                if (tiles[i] && tiles[i].index == this.graphic.index) pos = i
+            }
+            const diff = Math.abs(pos - emptyPos)
+            if (diff == 4 ||
+                diff == 1 && Math.floor(pos/4) == Math.floor(emptyPos/4)) {
+              const nf = addFrame().setLength(300)
+              tile.constraint.endBefore(nf)
+              tile.constraint = after(nf,
+                  equal(tile, smooth(nf, positions[pos], positions[emptyPos])))
+              tiles[pos] = undefined
+              tiles[emptyPos] = tile
+              emptyPos = pos
+              advance()
+              if (winningConfig()) win.play()
+              else ssh.play()
+            }
+        }
+      }
+    }
+    const tiles = new Array(15)
+    for (let i = 0; i < 15; i++) {
+        tiles[i] = tile(i+1)
+        equal(tiles[i].w(), minus(gridSpace, 5))
+    }
+    for (let swaps = 0; swaps < 2; ) {
+        const i = Math.floor(Math.random() * 15),
+              j = Math.floor(Math.random() * 15)
+        if (i != j) {
+            const tile = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tile
+            swaps++
+        }
+    }
+    let initial = addFrame()
+    for (let i = 0; i < 15; i++) {
+        tiles[i].constraint = after(initial, equal(tiles[i], positions[i]))
+    }
+    start()
+}
+</script>
+</div>
+<p style="text-align: right">
+Built with <a href="https://andrewcmyers.github.io/constrain">Constrain</a>
+</p>
+<hr>
+<pre id=code>
+</pre>
+<script>
+  document.getElementById("code").innerText =
+    document.getElementById("constrain_code").innerText
+</script>
+</body>
+</html>

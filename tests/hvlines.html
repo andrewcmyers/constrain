@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 200px; height: 200px;
+    }
+  </style>
+</head>
+<body>
+<canvas id=fig1></canvas>
+<script>
+  with (new Constrain.Figure("fig1")) {
+    let S = 70
+    let sq = square().setW(S).setFillStyle(null)
+    align("left", "center",  sq, horzLine().setLineWidth(3).setW(S))
+    align("right", "center",  sq, horzLine().setLineWidth(3).setW(S))
+    align("center", "top", sq, vertLine().setLineWidth(3).setH(S))
+    align("center", "bottom", sq, vertLine().setLineWidth(3).setH(S))
+    start()
+  }
+</script>
+<p>
+The "plus sign" should fit exactly inside the square.
+</p>
+
+</body>
+</html>

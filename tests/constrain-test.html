@@ -44,9 +44,9 @@ let s3 = square (grd, "black", 3),
     equal(s4.h(), 100)
     equal(s4.x1(), minus(canvSize.x1(), 50))
 
-    const l1 = line("black", 3).setEndArrow("bullet").setArrowSize(15).setStartArrow("arrow")
-    pin(l1.p1(), s3.cr())
-    pin(l1.p2(), s4.cl())
+    const l1 = line().setStrokeStyle("black").setLineWidth(3).setEndArrow("bullet").setArrowSize(15).setStartArrow("arrow")
+    pin(l1.start(), s3.cr())
+    pin(l1.end(), s4.cl())
     var t1 = label("Three Squares", 12, "Menlo", "black")
 
     equal(t1.y0(), plus(s3.y1(), 12))

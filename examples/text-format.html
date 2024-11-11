@@ -30,6 +30,7 @@ const canvas = document.getElementsByTagName("canvas")[0]
 Constrain.fullWindowCanvas(canvas)
 var figure = new Constrain.Figure(canvas)
 
+Constrain.setupTouchListeners()
 with (figure) {
 
     let r1 = rectangle(), r2 = rectangle(), e = ellipse(), h = handle(),
