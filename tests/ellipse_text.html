@@ -1,0 +1,23 @@
+<html>
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        max-width: 100%; width: 200px; height: 200px;
+    }
+  </style>
+<body>
+<p>
+The word "frontier" should be visible in the top of the ellipse.
+</p>
+<canvas id=tricolor style="width: 650px; height: 220px"></canvas>
+<script>
+with (new Constrain.Figure("tricolor")) {
+    let cr = canvasRect().inset(4)
+
+    let c2g = ellipse().at(cr).setFillStyle("#ddd").addText("frontier").setInset(0).setVerticalAlign("top").setW(160).setH(100).setInset(4)
+
+    start()
+}
+</script>
