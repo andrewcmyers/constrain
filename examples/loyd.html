@@ -17,7 +17,7 @@ finish the job.
 <canvas id=loyd_puzzle style="width: 250px; height: 250px">
 </canvas>
 <audio id=ssh>
-  <source src="audio/ssh.m4a" type="audio/mp4">
+  <source src="audio/slide.m4a" type="audio/mp4">
 </audio>
 <audio id=win>
   <source src="audio/mixkit-ethereal-fairy-win-sound-2019.wav"
@@ -31,7 +31,7 @@ with (new Constrain.Figure("loyd_puzzle")) {
     align("LR", "TB", border, margin(6))
     const ssh = document.getElementById("ssh"),
           win = document.getElementById("win")
-    ssh.volume = 0.2
+    ssh.volume = 1.0
     const positions = []
     let emptyPos = 15
     for (let i = 0; i < 16; i++) {

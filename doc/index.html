@@ -38,8 +38,12 @@
     }
     textarea { border-width: 3px }
     code { font-family: Menlo, fixed; font-size: 90% }
+    @page {
+        size: auto;
+        margin: 1in;
+    }
     @media print {
-        body { font-size: 11pt; margin: 1in }
+        body { font-size: 11pt; background-color: white }
         pre.code {
             page-break-inside: avoid;
         }

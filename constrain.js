@@ -3792,7 +3792,7 @@ class DrawAfter extends TemporalFilter {
 }
 
 // A Before wraps another object and makes it exist only before
-// after the specified frame.
+// the specified frame.
 class Before extends TemporalFilter {
     constructor(figure, frame, obj) {
         super(figure, obj)
