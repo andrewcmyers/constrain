@@ -2697,7 +2697,7 @@ function legalExpr(e) {
             return e;
     }
     console.error("Illegal expression: " + e)
-    return 0;
+    return 0
 }
 
 // Return the current solved value of e, which is either a number or an expression
