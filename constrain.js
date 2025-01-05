@@ -6948,10 +6948,6 @@ class DOMElementBox extends LayoutObject {
     constructor(figure, id) {
         super()
         if (typeof id == STRING_STR) {
-            this.obj = document.getElementById(id)
-            if (!this.obj) {
-                console.error("Can't find DOM element with id  " + id)
-            }
             this.id = id
         } else {
             this.obj = id
@@ -6965,6 +6961,12 @@ class DOMElementBox extends LayoutObject {
         this.y_ = this.centerY()
     }
     boundingRect() {
+        if (!this.obj) {
+            this.obj = document.getElementById(this.id)
+            if (!this.obj) {
+                console.error("Can't find DOM element with id  " + id)
+            }
+        }
         return this.obj.getBoundingClientRect()
     }
     x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left, "DOM element " + this.id + ".x0") }
