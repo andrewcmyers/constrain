@@ -5642,10 +5642,10 @@ class Font {
         if (fs instanceof Expression) {
             fs = evaluate(fs)
         }
-        if (typeof fs === STRING_STR) {
-            fs = Math.round(this.figure.fontSizeToPixels(fs))
+        if (typeof fs === NUMBER) {
+            fs = fs + "px"
         }
-        const f = (this.fontStyle ? this.fontStyle + " " : "") + fs + "px " + this.fontName
+        const f = (this.fontStyle ? this.fontStyle + " " : "") + fs + " " + this.fontName
         context.font = f
         // console.log("  Setting font to " + f)
     }
