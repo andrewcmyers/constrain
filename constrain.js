@@ -1617,10 +1617,10 @@ class Figure {
                     return value * (96/72)
                 case "em":
                     return value * parentFontSize
-                case "uh":
+                case "vh":
                     if (!this.height) this.setupCanvas()
                     return value * this.height / 100
-                case "uv":
+                case "vw":
                     if (!this.width) this.setupCanvas()
                     return value * this.width / 100
                 default: break
