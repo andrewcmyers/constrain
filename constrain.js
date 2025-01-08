@@ -1618,11 +1618,9 @@ class Figure {
                 case "em":
                     return value * parentFontSize
                 case "vh":
-                    if (!this.height) this.setupCanvas()
-                    return value * this.height / 100
+                    return value * visualViewport.height / 100
                 case "vw":
-                    if (!this.width) this.setupCanvas()
-                    return value * this.width / 100
+                    return value * visualViewport.width / 100
                 default: break
             }
         }
