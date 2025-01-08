@@ -1144,7 +1144,6 @@ class Figure {
             if (cur < now) {
                 if (DEBUG_TWEENING) console.log("aborting background solve for " + cur + " at time " + seconds(T))
                 this.avgSolveTime *= 2
-                // XXX increase target?
                 this.abortBackgroundSolve()
             } else {
                 console.log("already have background solve for " + cur)
@@ -1865,8 +1864,9 @@ class Figure {
             this.equal(...objs.map(o => o.w())),
             this.equal(...objs.map(o => o.h())))
     }
-    // set the direction from g1 to g2, in degrees, where 0 degrees
-    // is upward, 90 is to the right, and so forth.
+    // Set the direction from g1 to g2, in degrees, where 0 degrees
+    // is upward, 90 is to the right, and so forth. The direction can
+    // also be given a compass point, like "N", "wsw", etc.
     direction(g1, g2, dir) {
         const dx = this.minus(g2.target().x(), g1.target().y()),
               dy = this.minus(g2.target().y(), g1.target().y())
@@ -3794,7 +3794,7 @@ class After extends TemporalFilter {
     }
     active() {
         if (this.parent && !this.parent.active()) {
-            return false // XXX ok?
+            return false
         }
         if (!this.figure.currentFrame.isAfter(this.frame)) return false
         return (!this.endFrame ||
@@ -3833,7 +3833,7 @@ class Before extends TemporalFilter {
     }
     active() {
         if (this.parent && !this.parent.active()) {
-            return false // XXX ok?
+            return false
         }
         return !this.figure.currentFrame.isAfter(this.frame)
     }
@@ -3851,7 +3851,7 @@ class InFrame extends TemporalFilter {
             console.log("inFrame with a parent?")
         }
         if (this.parent && !this.parent.active()) {
-            return false // XXX ok?
+            return false
         }
         return this.figure.currentFrame === this.frame
     }
@@ -3919,7 +3919,7 @@ class Constraint extends Temporal {
     // the active component? If c is omitted, checks for the whole stage
     active() {
         if (this.parent && !this.parent.active()) {
-            return false // XXX ok?
+            return false
         }
         if (this.stage > this.figure.activeStage) return false
         const c = this.figure.activeComponent
@@ -5733,7 +5733,7 @@ function findLayout(figure, citems, n, x, y, x0, x1, ymax) {
     }
     const citem = citems[n-1],
           item = citem.item,
-          tc = citem.context, // XXX
+          tc = citem.context,
           fsPixels = figure.fontSizePixels(tc),
           ls =  tc.get('lineSpacing') * fsPixels,
           res0 = item.layout(figure, tc, x, y, x0, x1, ymax)
@@ -6765,7 +6765,7 @@ class Handle extends InteractiveObject {
             { console.error("No current valuation"); return }
         const hx = evaluate(this.x()), hy = evaluate(this.y()),
               expand = e.type == "touchstart" ? 20 : 0,
-              // XXX should use radiusX/radiusX property when available
+              // XXX should use radiusX/radiusY property when available
               r = this.size + expand
         if (sqdist(x - hx, y - hy) <= r * r) {
             this.figure.focused = this
@@ -6776,7 +6776,6 @@ class Handle extends InteractiveObject {
     }
     mouseup(e) {
         if (this.figure.focused == this) {
-            // console.log("Handle lost focus")
             this.figure.focused = null
             if (this.xcon) {
                 this.figure.removeConstraints(this.xcon, this.ycon)
