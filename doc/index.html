@@ -234,12 +234,14 @@ A square (class <code>Square</code>), which is just a rectangle
 constrained to have equal dimensions. The default fill style, stroke style, and
 line width of the figure may optionally be overridden by providing these
 parameters.
+</p>
 
 <h4>ellipse([fillStyle], [strokeStyle], [lineWidth])</h4>
 <p>
 An axis-aligned ellipse (class <code>Ellipse</code>).  The default fill
 style, stroke style, and line width of the figure may optionally be overridden
 by providing these parameters.
+</p>
 
 <pre id="ellipse_ex_code" class=code></pre>
 <div id="ellipse_ex">
@@ -556,6 +558,7 @@ A button that can be used to advance the current state of the animation.
 </script>
 
 <h3>Unrendered objects</h3>
+
 <p>
 Some figure elements act like graphical objects in most respects but do not result in 
 any rendering. These elements are useful for positioning other objects.
@@ -636,6 +639,7 @@ A box containing a set of objects. The box is just large enough to surround all 
 </p>
 
 <h3 id=UserDefined>User-defined graphical objects</h3>
+
 <p>
 The class <code>UserDefined</code> provides a template for building new graphical objects.
 By default, a user-defined object is drawn as a plain gray rectangle, but much fancier
@@ -784,6 +788,7 @@ to be prevented, by passing <code>false</code> as an argument.
 </p>
 
 <h3>Other figure control operations</h3>
+
 <h4>Constrain.fullWindowCanvas(canvas)</h4>
 <p>
 Makes the specified canvas automatically resize to fill the window.
@@ -998,6 +1003,7 @@ Constrain objects <code>obj1</code>, <code>obj2</code>, etc. to have the same wi
 </p>
 
 <h3>Figure element constraint methods</h3>
+
 <p>The following methods of graphical objects and figure elements more generally
 can be used to constrain their positioning and size.</p>
 
@@ -1037,6 +1043,7 @@ order.
 </p>
 
 <h3>Costs</h3>
+
 <p>
 In general, the constraint solver cannot solve every constraint exactly. It
 works by trying to minimize a total cost over all constraints. Every constraint
@@ -1058,7 +1065,9 @@ minima, for example by using <code>leq</code> or <code>geq</code> with a high co
 variables and points forcibly to the correct side of a diagram, even when other constraints
 opppose that motion.
 </p>
+
 <h3>Expressions</h3>
+
 <p>
 Some constraints are built out of expressions. The following expressions are
 supported by the constraint solver. Expressions may have either a scalar
@@ -1181,7 +1190,7 @@ the point is on the left side of the line and positive if on the right side.
 <h4>relative(x, y, a, b)</h4>
 <p>
 The position (x,y) in a coordinate system in which point a is the origin and
-point b is (1,0). Arguments x and y should be scalars.
+point b is (1,0). Arguments x and y must be scalars.
 </p>
 
 <h3>Other expressions</h3>
@@ -1202,8 +1211,11 @@ Wrapping an expression in a <code>DebugExpr</code> object causes the value of
 that expression to be logged to the console whenever it is evaluated or
 differentiated.
 </p>
+
 <h2>Positions</h2>
+
 <h3>Graphical object positioning methods</h3>
+
 <p>
 Graphical objects provide methods that return expressions for scalars and
 points relating to their position in the figure.
@@ -1341,6 +1353,7 @@ object, except moved outward by distance <code>d</code>.
 </p>
 
 <h3>Line positioning methods</h3>
+
 <h4>start(), end()</h4>
 <p>
 These methods return the points corresponding to the start and end of the line.
@@ -1352,10 +1365,12 @@ These methods constrain the start or end of the line to be at the specified poin
 </p>
 
 <h2>Style</h2>
+
 <p>Graphical objects offer some standard methods for controlling their appearance,
 and some object have more specialized methods for this purpose.</p>
 
 <h3>Graphical object style methods</h3>
+
 <p>The following methods return the graphical object while also changing its style
 in the specified way.</p>
 
@@ -1385,6 +1400,7 @@ Graphical objects generally have the ability to hold some text, which is specifi
 by calling the <code>addText</code> method. The argument should be either a string 
 or a text object. After text has been added to a graphical object, the following
 methods can be used to affect how it appears.
+</p>
 
 <h4>setTextStyle(s)</h4>
 <p>Set the fill style with which contained text will be rendered.</p>
@@ -1399,6 +1415,7 @@ By default the line spacing is 1.3.</p>
 <h4>setJustification(j)</h4>
 <p>The justification of text can be either <code>"left"</code> (the default) or
 <code>"center"</code>.
+</p>
 
 <h4>setVerticalAlign(pos)</h4>
 <p>The vertical positioning of text can be either <code>"top"</code> (the default),
@@ -1476,7 +1493,9 @@ lines and connectors.
 <script>
     show_example("linelabel_ex_code", "linelabel_ex")
 </script>
+
 <h3>Text objects</h3>
+
 <p>
 A text object can be created by the method 
 <code>text</code> of <code>Figure</code> objects.  A text
@@ -1581,8 +1600,8 @@ after frame <code>frame1</code> and before frame <code>frame2</code>.
 </p>
 
 <h3>Frame methods</h3>
-<p>
-Frame objects returned by <code>addFrame()</code> support methods for controlling
+
+<p>Frame objects returned by <code>addFrame()</code> have methods for controlling
 animations.
 </p>
 
@@ -1601,6 +1620,7 @@ to the following frame once its duration is over.
 </p>
 
 <h2 id="staged_solving">Staged solving</h2>
+
 <p>
 For complex diagrams, it may be too hard for the solver to find a stable solution
 with all the constraints and variables at once. Often this limitation can be
@@ -1645,6 +1665,7 @@ done for any frame.
 </p>
 
 <h2>The Constrain Solver</h2>
+
 <p>
 Constrain acts like a constraint solver, but it is actually based on minimizing
 loss. This choice makes it more robust in the fact of constraints that cannot
@@ -1677,6 +1698,7 @@ in practice.
 </p>
 
 <h2>Debugging Tips</h2>
+
 <p>
 Sometimes you create a set of constraints and the solver just seems to refuse to find the
 right solution, or it is not consistent about finding the right solution. Automation
@@ -1688,7 +1710,9 @@ One possibility is that your constraints are actually unsolvable, so the solver 
 the best it can by balancing multiple unsolved constraints. Another possibility is that 
 the solver is getting stuck in a local minimum.
 </p>
+
 <h3>Debugging unsolvable constraints</h3>
+
 <ul>
 <li>Try commenting out constraints until you figure out which constraints are causing
 trouble. Then add constraints back in gradually.
@@ -1697,7 +1721,9 @@ If you're trying to understand what is happening with some variable or expressio
 wrap it in a <code>DebugExpr</code>, which will cause its value during solving
 to be logged to the console.
 </ul>
+
 <h3>Escaping local minima</h3>
+
 <ul>
 <li><b>Keep constraints simple</b>. It's always better to express constraints in a
 simple way rather than adding complexity for the solver. For example, if you are expressing
@@ -1740,6 +1766,7 @@ to specify how to render a complex graphical object, <a href="#UserDefined">as d
 </ul>
 
 <h2>Generating printable diagrams</h2>
+
 <p>
 The <code>Constrain.PS</code> and <code>Constrain.PDF</code>
 subpackages (in <kbd>constrain-ps.js</kbd> and <kbd>constrain-pdf.js</kbd>)
@@ -1801,6 +1828,7 @@ should include this package, with a line like the following:
 </pre>
 
 <h3>Embedding fonts</h3>
+
 <p>
 If you use fonts outside the standard set of PostScript fonts, they will not be automatically embedded
 into the generated file. There are various ways to make this happen. One option
@@ -1852,6 +1880,7 @@ Add a directed edge from graph node <code>obj1</code> to graph node <code>obj2</
 </p>
 
 <h3>Graph properties</h3>
+
 <p>
   The layout of a graph is controlled by various graph properties whose default values can be overridden.
 </p>
