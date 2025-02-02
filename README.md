@@ -27,11 +27,11 @@ Cornell University course notes using Constrain for embedded figures: [CS 2112](
 [CS 4120/lexer generation](https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=leximpl),
 [CS 4120/bottom-up parsing](https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=bottomup)
 
-[Simple template page for using Constrain](https://andrewcmyers.github.io/constrain/examples/template.html)
+[Simple template page](https://andrewcmyers.github.io/constrain/examples/template.html)
 
 ## Requirements
 
 - ES6-capable web browser
-    - Tested on Chrome, Opera, Brave, Firefox, Safari (runs best on the first three)
+    - Tested on Chrome, Opera, Brave, Firefox, Safari, Edge (runs best on the first three)
     - Does not work on Internet Explorer or Opera Mini
 - Numeric.js version 1.2.6 (included)
