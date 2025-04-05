@@ -3130,7 +3130,7 @@ class Minus extends BinaryExpression {
     opName() { return "-" }
 }
 
-// An expression x + y
+// An expression x + y. Both x and y may be vectors of the same size.
 class Plus extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.add(a, b) }
@@ -3146,7 +3146,7 @@ class Plus extends BinaryExpression {
     opName() { return "+" }
 }
 
-// The average of two numbers or points
+// The average of two numbers or vectors
 class Average extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.mul(0.5, numeric.add(a, b)) }
@@ -3164,7 +3164,7 @@ class Average extends BinaryExpression {
     w() { return 0 }
 }
 
-// An expression x * y
+// An expression x * y. One of the two may be a vector.
 class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.mul(a, b) }
@@ -3236,7 +3236,7 @@ class NaryExpression extends Expression {
     }
 }
 
-// The minimum of some number of arguments.
+// The minimum of some number of scalar arguments.
 class Min extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
@@ -3272,7 +3272,7 @@ class Min extends NaryExpression {
     toString() { return "min(" + this.args + ")" }
 }
 
-// The maximum of some number of arguments.
+// The maximum of some number of scalar arguments.
 class Max extends NaryExpression {
     constructor(...args) { super(...args) }
     operation(vals) {
