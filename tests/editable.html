@@ -1,0 +1,35 @@
+<html>
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <script src="../editor.js"></script>
+  <style>
+    canvas {
+        background-color: #eee;
+        max-width: 100%; width: 400px; height: 400px
+    }
+    h1 {
+        font-family: sans-serif
+    }
+</style>
+  
+</head>
+<body>
+<h1>Editing test</h1>
+<canvas></canvas>
+<script>
+const canvas = document.getElementsByTagName("canvas")[0]
+
+let figure = new Constrain.EditableFigure(canvas)
+console.log(figure)
+
+with (figure) {
+    square().setFillStyle('red')
+}
+
+</script>
+</body>
+<script>
+    figure.start()
+</script>
+</html>
