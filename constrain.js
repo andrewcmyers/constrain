@@ -226,37 +226,57 @@ class Figure {
         this.canvas.addEventListener('mousedown', e => {
             const x = e.offsetX, y = e.offsetY
             // alternatively: could use clientX/clientY with getBoundingClientRect
-            this.interactives.forEach(i => {
-                if (!i.mousedown(x, y, e)) return false
-            })
-            e.preventDefault()
-            e.stopPropagation()
-            return false
+            let handled = false
+            for (const i of this.interactives) {
+                if (i.mousedown(x, y, e)) {
+                    handled = true
+                    break
+                }
+            }
+            if (handled) {
+                e.preventDefault()
+                e.stopPropagation()
+            }
         })
         this.canvas.addEventListener('mouseup', e => {
             const x = e.offsetX, y = e.offsetY
-            this.interactives.forEach(i => {
-                if (!i.mouseup(e)) return false
-            })
-            e.preventDefault()
-            e.stopPropagation()
-            return false
+            let handled = false
+            for (const i of this.interactives) {
+                if (i.mouseup(x, y, e)) {
+                    handled = true
+                    break
+                }
+            }
+            if (handled) {
+                e.preventDefault()
+                e.stopPropagation()
+            }
         })
         this.canvas.addEventListener('mousemove', e => {
-            if (!this.focused) return false
+            if (!this.hasFocus()) return false
             const x = e.offsetX, y = e.offsetY
-            return this.focused.mousemove(x, y, e)
+            return this.getFocus().mousemove(x, y, e)
         })
         this.canvas.addEventListener('dblclick', e => {
             e.preventDefault()
             e.stopPropagation()
-            return false
         })
         this.canvas.addEventListener('click', e => {
             e.preventDefault()
             e.stopPropagation() 
-            return false
         })
+    }
+    hasFocus() {
+        return !!this.focused
+    }
+    getFocus() {
+        return this.focused
+    }
+    setFocus(obj) {
+        this.focused = obj
+    }
+    loseFocus() {
+        this.focused = null
     }
     initObjects() {
         this.Graphics = []
@@ -266,7 +286,7 @@ class Figure {
         this.numVariables = 0
         this.interactives = []
         this.events = []
-        this.focused = null
+        this.loseFocus()
         this.renderNeeded = false
     }
     // Return the valuation to be used for solving
@@ -385,6 +405,13 @@ class Figure {
                 })
             }
         })
+        this.interactives.forEach(g => {
+            if (g.active() && g.visible()) {
+                g.variables().forEach(v => {
+                    checkIfNeeded(v)
+                })
+            }
+        })
         if (!component) {
             this.stageVariables = solvedVariables
             if (DEBUG && DEBUG_CONSTRAINTS) {
@@ -395,6 +422,7 @@ class Figure {
 
         // Return a function that solves the equation e = e2 for the variable v,
         // given two arguments: the value of e2, and a current valuation array.
+        // XXX this should probably be written in a more OO way
         function solveFor(v, e) {
             if (e == v) {
                 return (v2, valuation) => v2
@@ -1193,16 +1221,10 @@ class Figure {
             if (g.parent === undefined && g.renderIfVisible && g.active())
               g.renderIfVisible()
         }
-        if (false && DEBUG_TWEENING) {
-            this.ctx.strokeStyle = '#f0f';
-            this.ctx.beginPath()
-            this.ctx.moveTo(0,0)
-            this.ctx.lineTo(this.width * this.currentTime, 0)
-            this.ctx.stroke()
-            this.ctx.strokeStyle = '#0f0';
-            this.ctx.moveTo(0, 10)
-            this.ctx.lineTo(this.width * this.renderTime, 10)
-            this.ctx.stroke()
+        // interactives are always drawn on top of ordinary graphics
+        for (const g of this.interactives) {
+            if (g.parent === undefined && g.renderIfVisible && g.active())
+              g.renderIfVisible()
         }
     }
 
@@ -2383,20 +2405,20 @@ function setupTouchListeners() {
                   touch = t.item(0),
                   x = touch.clientX - r.left,
                   y = touch.clientY - r.top
-            if (!figure.focused) return true
+            if (!figure.hasFocus()) return true
             e.preventDefault()
             e.stopImmediatePropagation()
-            return figure.focused.mousemove(x, y, e)
+            return figure.getFocus().mousemove(x, y, e)
         }, {passive: false})
 
     window.addEventListener('touchend',
         e => {
             const figure = canvasToFigure(e.target)
             if (!figure || figure.interactives.length == 0) return true
-            if (!figure.focused) return true
+            if (!figure.hasFocus()) return true
             e.preventDefault()
             e.stopImmediatePropagation()
-            return figure.focused.mouseup(e)
+            return figure.getFocus().mouseup(e.offsetX, e.offsetY, e)
         }, {passive: false})
 }
 
@@ -3915,8 +3937,8 @@ class Constraint extends Temporal {
         this.cost *= cost
         return this
     }
-    // Does this constraint need to be solved for in the specified stage, for
-    // the active component? If c is omitted, checks for the whole stage
+    // Does this constraint need to be solved for in the current stage, for
+    // the active component?
     active() {
         if (this.parent && !this.parent.active()) {
             return false
@@ -6685,7 +6707,6 @@ class UserDefined extends Graphic {
 class InteractiveObject extends LayoutObject {
     constructor(figure) {
         super()
-        figure.Graphics.push(this)
         figure.interactives.push(this)
         this.figure = figure
     }
@@ -6693,7 +6714,7 @@ class InteractiveObject extends LayoutObject {
     active() { return true }
     visible() { return true }
     // Whether (mx, my) is inside the perimeter of this object. By default
-    // this is a bounding box check
+    // this is a bounding box check.
     inBounds(mx, my) {
         const x0 = evaluate(this.x0()),
               x1 = evaluate(this.x1()),
@@ -6702,11 +6723,16 @@ class InteractiveObject extends LayoutObject {
         return (mx >= x0 && mx <= x1 && my >= y0 && my <= y1)
     }
     // Check whether this object responds to the given (x,y) mouseup event,
-    // and perform the appropriate action if so.
-    mouseup(e) {}
+    // and perform the appropriate action if so. Return true if the event
+    // is consumed by this object.
+    mouseup(x, y, e) {}
     // Check whether this object responds to the given (x,y) mousedown event,
-    // and perform the appropriate action if so.
+    // and perform the appropriate action if so. Return true if the event
+    // is consumed by this object.
     mousedown(x, y, e) {}
+    // Allow this object to respond to the given (x,y) mousemove event,
+    // which is normally sent only if the object is focused. Nothing is
+    // returned.
     mousemove(x, y, e) {}
 }
 
@@ -6715,7 +6741,8 @@ InteractiveObject.prototype.visible = Graphic.prototype.visible
 InteractiveObject.prototype.placeOver = Graphic.prototype.placeOver
 InteractiveObject.prototype.placeUnder = Graphic.prototype.placeUnder
 
-// A handle that can be dragged interactively.
+// A handle that can be dragged interactively and is rendered visibly on-screen but
+// not when generating printed output.
 class Handle extends InteractiveObject {
     constructor(figure, strokeStyle, x, y) {
         super(figure)
@@ -6768,18 +6795,19 @@ class Handle extends InteractiveObject {
               // XXX should use radiusX/radiusY property when available
               r = this.size + expand
         if (sqdist(x - hx, y - hy) <= r * r) {
-            this.figure.focused = this
-            return false
-        } else {
+            this.figure.setFocus(this)
             return true
+        } else {
+            return false
         }
     }
-    mouseup(e) {
-        if (this.figure.focused == this) {
-            this.figure.focused = null
+    mouseup(mx, my, e) {
+        if (this.figure.getFocus() === this) {
+            this.figure.loseFocus()
             if (this.xcon) {
                 this.figure.removeConstraints(this.xcon, this.ycon)
             }
+            return true
         }
     }
     mousemove(x, y, e) {
@@ -6834,27 +6862,27 @@ class Button extends InteractiveObject {
         return true
     }
     mousedown(mx, my, e) {
-        if (!this.inBounds(mx, my)) return true
+        if (!this.inBounds(mx, my)) return false
         this.pressed = true
-        this.figure.focused = this
+        this.figure.setFocus(this)
         this.render(this.figure)
-        return false
+        return true
     }
-    mouseup(e) {
+    mouseup(mx, my, e) {
         const [x, y] = evaluate([this.x(), this.y()])
-        if (!this.pressed) return true
+        if (!this.pressed) return false
         this.pressed = false
-        this.figure.focused = null
+        this.figure.loseFocus()
         this.render(this.figure)
         this.activate()
-        return false
+        return true
     }
     mousemove(mx, my, e) {
         const [x, y] = evaluate([this.x(), this.y()])
         if (this.inBounds(mx, my, x, y)) return
-        if (this.pressed) {
+        if (this.pressed) { // unpress if user rolls off
             this.pressed = false
-            this.figure.focused = null
+            this.figure.loseFocus()
             this.render(this.figure)
         }
     }
@@ -6905,14 +6933,17 @@ AdvanceButton.prototype.installHolder = Graphic.prototype.installHolder
 // A Control is a non-rendered object that receives input directed
 // to a particular graphical object.
 class Control extends InteractiveObject {
-    constructor(figure, graphic) {
+    // create a control. For the purposes of receiving input, the margins of the control
+    // are expanded by the specified padding.
+    constructor(figure, graphic, padding) {
         super(figure)
         this.graphic = graphic
+        this.padding = padding || 0
     }
     x() { return this.graphic.x() }
     y() { return this.graphic.y() }
-    w() { return this.graphic.w() }
-    h() { return this.graphic.h() }
+    w() { return this.figure.plus(this.graphic.w(), this.figure.times(2, this.padding)) }
+    h() { return this.figure.plus(this.graphic.h(), this.figure.times(2, this.padding)) }
 }
 
 // A global is an expression whose value may change but is not affected by 
