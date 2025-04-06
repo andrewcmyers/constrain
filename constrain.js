@@ -316,7 +316,9 @@ class Figure {
                 result[i] = 100
             }
             v.solutionValue = result[i]
+            console.log(`initial valuation for ${this.activeVariables[i]} = ${result[i]}`)
         }
+        console.log(`initial values: ${result.length}`)
         return result
     }
     // Create a map from each variable to the set of constraints that mention it.
@@ -511,10 +513,6 @@ class Figure {
             }
             console.error("can't get here")
         }
-        for (const v of solvedVariables) {
-            tryDirectSolve(v)
-        }
-
         function simpleExpr(e) {
             return (e instanceof Variable) || (typeof e == NUMBER) || (e instanceof Global)
         }
@@ -544,6 +542,10 @@ class Figure {
                     }
                 }
             }
+        }
+
+        for (const v of solvedVariables) {
+            tryDirectSolve(v)
         }
 
         if (this.substitutionEnabled) {
@@ -2387,7 +2389,7 @@ function setupTouchListeners() {
                   y = touch.clientY - r.top
             for (let i = 0; i < figure.interactives.length; i++) {
                 const h = figure.interactives[i]
-                if (!h.mousedown(x, y, e)) {
+                if (h.mousedown(x, y, e)) {
                     e.preventDefault()
                     e.stopImmediatePropagation()
                     return false
@@ -6734,6 +6736,9 @@ class InteractiveObject extends LayoutObject {
     // which is normally sent only if the object is focused. Nothing is
     // returned.
     mousemove(x, y, e) {}
+    // Allow this object to respond to the given keydown event, returning true
+    // if the event is consumed by this object.
+    keydown(e) {}
 }
 
 InteractiveObject.prototype.renderIfVisible = Graphic.prototype.renderIfVisible
@@ -6818,7 +6823,6 @@ class Handle extends InteractiveObject {
         this.ycon = new NearZero(this.figure, new Minus(this.y(), y), 10)
         for (let expr of this.x_.dependents) {
             if (expr.hasOwnProperty('cachedResult')) expr.clearCache()
-            // console.log("clearing cached value for "+ expr)
         }
         this.xcon.stage = 0
         this.ycon.stage = 0

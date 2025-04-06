@@ -25,6 +25,8 @@ console.log(figure)
 
 with (figure) {
     square().setFillStyle('red')
+    const p = point(variable('x', 300), variable('y', 300))
+    square().at(p).setFillStyle('green')
 }
 
 </script>
