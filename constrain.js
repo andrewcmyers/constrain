@@ -316,9 +316,9 @@ class Figure {
                 result[i] = 100
             }
             v.solutionValue = result[i]
-            console.log(`initial valuation for ${this.activeVariables[i]} = ${result[i]}`)
+            // console.log(`initial valuation for ${this.activeVariables[i]} = ${result[i]}`)
         }
-        console.log(`initial values: ${result.length}`)
+        // console.log(`initial values: ${result.length}`)
         return result
     }
     // Create a map from each variable to the set of constraints that mention it.

@@ -33,6 +33,8 @@ class EditableGraphic extends Constrain.Control {
         super(figure, graphic, 4)
         this.graphic = graphic
         this.isActive = false
+        this.dragging = false
+        this.min_align_dist = 4
         this.selectionDist2 = 16 // minimum squared distance for selectability
         this.constraints = [] // constraints associated with each coordinate: x0, xc, x1, y0, yc, y1
     }
@@ -49,7 +51,8 @@ class EditableGraphic extends Constrain.Control {
         }
         const figure = this.figure
         this.isActive = true
-        const {evaluated, expr} = this.selectablePts()
+        this.dragging = true
+        const {evaluated, expr, aligns} = this.selectablePts()
         let bestd = this.selectionDist2 + 1, besti = -1
         for (let i = 0; i < evaluated.length; i++) {
             const [x2, y2] = evaluated[i]
@@ -61,25 +64,25 @@ class EditableGraphic extends Constrain.Control {
         }
         if (bestd <= this.selectionDist2) {
             this.selectedIndex = besti
-            this.updateConstraints(expr, besti, x, y)
+            this.updateConstraints(expr[besti], aligns[besti], x, y)
             figure.setFocus(this)
         }
         figure.delayedRender()
         return true
     }
-    updateConstraints(expr, i, x, y) {
-        if (i !== 1 && i != 7) {
-            const xi = i % 3;
+    updateConstraints(expr, aligns, x, y) {
+        if (aligns[0] >= 0) {
+            const xi = aligns[0]
             this.disableConstraints(xi)
             const s = this.constraints[xi] = new Set()
-            if (x !== undefined) s.add(figure.equal(expr[i][0], x))
+            if (x !== undefined) s.add(figure.equal(expr[0], x))
             this.enableConstraints(xi)
         }
-        if (i !== 3 && i != 5) {
-            const yi = 3 + Math.floor(i/3)
+        if (aligns[1] >= 0) {
+            const yi = aligns[1]
             this.disableConstraints(yi)
             const s = this.constraints[yi] = new Set()
-            if (y !== undefined) s.add(figure.equal(expr[i][1], y))
+            if (y !== undefined) s.add(figure.equal(expr[1], y))
             this.enableConstraints(yi)
         }
     }
@@ -102,6 +105,31 @@ class EditableGraphic extends Constrain.Control {
         if (this.figure.getFocus() === this) {
             this.figure.loseFocus()
             this.figure.delayedRender()
+            if (this.dragging) {
+                if (this.bestHorizontal || this.bestVertical) {
+                    const {evaluated, expr, aligns} = this.selectablePts()
+                    const i = this.selectedIndex
+                    if (this.bestHorizontal) {
+                        const j = aligns[i][0]
+                        if (j >= 0) {
+                            this.disableConstraints(j)
+                            this.constraints[j] = new Set()
+                            this.constraints[j].add(this.figure.equal(expr[i][0], this.bestHorizontal.expr))
+                            this.enableConstraints(j)
+                        }
+                    }
+                    if (this.bestVertical) {
+                        const j = aligns[i][1]
+                        if (j >= 0) {
+                            this.disableConstraints(j)
+                            this.constraints[j] = new Set()
+                            this.constraints[j].add(this.figure.equal(expr[i][1], this.bestVertical.expr))
+                            this.enableConstraints(j)
+                        }
+                    }
+                }
+                this.dragging = false
+            }
         }
     }
     mousemove(x, y, e) {
@@ -113,16 +141,19 @@ class EditableGraphic extends Constrain.Control {
 
         if (this.selectedIndex >= 0) {
             const i = this.selectedIndex
-            const {evaluated, expr} = this.selectablePts()
-            this.updateConstraints(expr, i, x, y)
+            const selectables =  this.selectablePts()
+            const {evaluated, expr, aligns} = selectables
+            this.updateConstraints(expr[i], aligns[i], x, y)
+            this.findAlignments(x,y,i,selectables)
             this.figure.delayedRender()
         }
     }
     keydown(e) {
-        if (this.isActive) {
+        if (e.key === ' ' && this.isActive) {
             if (this.selectedIndex >= 0) {
-                const {evaluated, expr} = this.selectablePts()
-                this.updateConstraints(expr, this.selectedIndex)
+                const {evaluated, expr, aligns} = this.selectablePts()
+                const i = this.selectedIndex
+                this.updateConstraints(expr[i], aligns[i])
                 this.selectedIndex = -1
                 this.figure.delayedRender()
             }
@@ -130,18 +161,55 @@ class EditableGraphic extends Constrain.Control {
     }
 
     // Return an array of selectable points both in unevaluated and evaluated form
-    // as an object {evaluated, expr}
+    // as an object o = {evaluated, expr, aligns}
+    // o.aligns is a 2-element array specifying what coordinates each of the selectable points
+    // aligns to, as an index between 0 and 5, or -1 if no alignment on that axis should
+    // occur.
     selectablePts() {
         const g = this.graphic
         const coords = [g.x0(), g.x(), g.x1(), g.y0(), g.y(), g.y1()]
         const values = Constrain.evaluate(coords)
-        const evaluated = [], expr = []
+        const evaluated = [], expr = [], aligns = []
         for (let i = 0; i < 9; i++) {
             const j = i%3, k = 3 + Math.floor(i/3)
             expr[i] = [coords[j], coords[k]]
             evaluated[i] = [values[j], values[k]]
+            aligns[i] = [-1, -1]
+            if (i != 1 && i != 7) aligns[i][0] = j
+            if (i != 3 && i != 5) aligns[i][1] = k
         }
-        return { evaluated, expr }
+        return { evaluated, expr, aligns }
+    }
+    findAlignments(x,y,i,selectable) {
+        const {evaluated, expr, aligns} = selectable
+        const [xi, yi] = aligns[i]
+        const min_align_dist = this.min_align_dist
+        let bestHorizontal = null, bestVertical = null
+        console.log("findAlignments", selectable)
+        for (const io of this.figure.interactives) {
+            if (io === this) continue
+            if (io.selectablePts) {
+                const selectable2 = io.selectablePts()
+                console.log("checking against ", selectable2)
+                for (let j = 0; j < selectable2.evaluated.length; j++) {
+                    const [x2, y2] =  selectable2.evaluated[j]
+                    const dx = Math.abs(x2 - x) 
+                    const dy = Math.abs(y2 - y) 
+                    if (dx < min_align_dist &&
+                        (bestHorizontal === null || dx < bestHorizontal.dist)) {
+                        bestHorizontal = { dist : dx, pos : x2, expr : selectable2.expr[j][0] }
+                        console.log(bestHorizontal)
+                    }
+                    if (dy < min_align_dist &&
+                        (bestVertical === null || Math.abs(y2 - y) < bestVertical.dist)) {
+                        bestVertical = { dist : dy, pos : y2, expr : selectable2.expr[j][1] }
+                        console.log(bestVertical)
+                    }
+                }
+            }
+        }
+        this.bestHorizontal = bestHorizontal
+        this.bestVertical = bestVertical
     }
     render() {
         const ctx = figure.ctx
@@ -168,20 +236,36 @@ class EditableGraphic extends Constrain.Control {
         }
         for (let i = 0; i < selectable.evaluated.length; i++) {
             const [x, y] = selectable.evaluated[i]
-            console.log(x, y)
             ctx.beginPath()
             ctx.arc(x, y, 2, 0, pi2)
-            const j = i%3, k = 3 + Math.floor(i/3)
+            const j = selectable.aligns[i][0], k = selectable.aligns[i][1]
             ctx.fillStyle = "green"
             if (i === this.selectedIndex) {
                 ctx.fillStyle = "magenta"
-            } else if (this.constraints[j] && this.constraints[j].size > 0 ||
-                       this.constraints[k] && this.constraints[k].size > 0) {
+            } else if (j >= 0 && this.constraints[j] && this.constraints[j].size > 0 ||
+                       k >= 0 && this.constraints[k] && this.constraints[k].size > 0) {
                 ctx.fillStyle = "orange"
             } else {
                 ctx.fillStyle = "yellow"
             }
             ctx.fill()
+        }
+        if (this.dragging) {
+            ctx.strokeStyle = "magenta"
+            ctx.setLineDash([5,3])
+            ctx.lineWidth = 0.75
+            if (this.bestHorizontal) {
+                ctx.beginPath()
+                ctx.moveTo(this.bestHorizontal.pos, 0)
+                ctx.lineTo(this.bestHorizontal.pos, this.figure.height)
+                ctx.stroke()
+            }
+            if (this.bestVertical) {
+                ctx.beginPath()
+                ctx.moveTo(0, this.bestVertical.pos)
+                ctx.lineTo(this.figure.width, this.bestVertical.pos)
+                ctx.stroke()
+            }
         }
         ctx.restore()
     }
