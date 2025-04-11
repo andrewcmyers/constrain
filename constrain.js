@@ -600,6 +600,16 @@ class Figure {
             vars[i].removeIndex()
         }
     }
+
+    // Forget all the inverse Hessians accumulated during previous solving
+    // and also information used to estimate velocity
+    discardSolverHints() {
+        for (const v of this.Variables) {
+            delete v.invHessian
+            delete v.prevValue
+        }
+    }
+
     // Add one or more constraints that should be satisfied
     // If an array is passed as an argument, each element is added
     // as a constraint.
@@ -7172,7 +7182,7 @@ function reportPerformance(b) {
     Projection, Conditional, Paths, autoResize, rgbStyle, Global, UserDefined,
     ComputedText, Control,
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
-    Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg,
+    Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg, arrows,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
     setMinimizationAlgorithm, reportPerformance, plus, terms, similarResults,
     UNCMIN_GRADIENT,

@@ -85,6 +85,7 @@ class EditableGraphic extends Constrain.Control {
             if (y !== undefined) s.add(figure.equal(expr[1], y))
             this.enableConstraints(yi)
         }
+        this.figure.discardSolverHints()
     }
     enableConstraints(i) {
         const s = this.constraints[i] || []
@@ -128,6 +129,7 @@ class EditableGraphic extends Constrain.Control {
                         }
                     }
                 }
+                this.figure.discardSolverHints()
                 this.dragging = false
             }
         }
@@ -185,12 +187,10 @@ class EditableGraphic extends Constrain.Control {
         const [xi, yi] = aligns[i]
         const min_align_dist = this.min_align_dist
         let bestHorizontal = null, bestVertical = null
-        console.log("findAlignments", selectable)
         for (const io of this.figure.interactives) {
             if (io === this) continue
             if (io.selectablePts) {
                 const selectable2 = io.selectablePts()
-                console.log("checking against ", selectable2)
                 for (let j = 0; j < selectable2.evaluated.length; j++) {
                     const [x2, y2] =  selectable2.evaluated[j]
                     const dx = Math.abs(x2 - x) 
@@ -198,12 +198,10 @@ class EditableGraphic extends Constrain.Control {
                     if (dx < min_align_dist &&
                         (bestHorizontal === null || dx < bestHorizontal.dist)) {
                         bestHorizontal = { dist : dx, pos : x2, expr : selectable2.expr[j][0] }
-                        console.log(bestHorizontal)
                     }
                     if (dy < min_align_dist &&
                         (bestVertical === null || Math.abs(y2 - y) < bestVertical.dist)) {
                         bestVertical = { dist : dy, pos : y2, expr : selectable2.expr[j][1] }
-                        console.log(bestVertical)
                     }
                 }
             }
@@ -250,6 +248,25 @@ class EditableGraphic extends Constrain.Control {
             }
             ctx.fill()
         }
+
+        function hwline(x1, y1, x2, y2) {
+            ctx.moveTo(x1, y1)
+            ctx.lineTo(x2, y2)
+            ctx.fillStyle = "yellow"
+            ctx.stroke()
+            Constrain.arrows.arrow(ctx, x1, y1, x2, y2, 8)
+            Constrain.arrows.arrow(ctx, x2, y2, x1, y1, 8)
+
+        }
+
+        ctx.beginPath()
+        ctx.lineWidth = 2
+        const yh = y0*0.75 + y1*0.25
+        hwline(x0, yh, x1, yh)
+
+        const xh = x0*0.75 + x1*0.25
+        hwline(xh, y0, xh, y1)
+
         if (this.dragging) {
             ctx.strokeStyle = "magenta"
             ctx.setLineDash([5,3])
