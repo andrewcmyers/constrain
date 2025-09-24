@@ -1731,7 +1731,7 @@ class Figure {
             } else if (Array.isArray(v)) {
                 for (let i = 0; i < v.length; i++) {
                     const variable = new Variable(this, "hint_index_"+i, v[i])
-                    this.equal(variable, new Projection(e, i, v.length))
+                    this.equal(variable, this.projection(e, i, v.length))
                 }
             }
         }
@@ -2133,8 +2133,23 @@ class Figure {
             if (i == 0) return expr.x()
             if (i == 1) return expr.y()
         }
-        if (n == undefined) n = 2
+        if (n === undefined) n = 2
         return new Projection(expr, i, n)
+    }
+    /** Return an array of all projections of an array-valued expression like a
+     * point or or graphical object. n is the size of the array, which is 2 by
+     * default.
+     */
+    projections(expr, n) {
+        if (expr instanceof LayoutObject) {
+            return [expr.x(), expr.y()]
+        }
+        if (n === undefined) n = 2
+        const result = []
+        for (let i = 0; i < n; i++) {
+            result.push(this.projection(expr, i, n))
+        }
+        return result
     }
 
     // Create a point with variables for its coordinates
@@ -2174,18 +2189,17 @@ class Figure {
         return plus(...args)
     }
     minus(x, y) {
-        if (y === 0) return x
-        if (typeof x == NUMBER && typeof y == NUMBER) return x - y
-        return new Minus(legalExpr(x), legalExpr(y))
+        return minus(x, y)
     }
     times(...args) {
         return times(...args)
     }
     divide(x, y) {
-        if (typeof x == NUMBER && typeof y == NUMBER) return x / y
-        return new Divide(legalExpr(x), legalExpr(y))
+        return divide(x, y)
     }
-    abs(e) { return new Abs(legalExpr(e)) }
+    abs(e) {
+        return abs(e)
+    }
     max(...args) {
         args = args.flat().map(a => legalExpr(a))
         return new Max(...args)
@@ -2215,10 +2229,11 @@ class Figure {
     constraintGroup(...c) { return new ConstraintGroup(this, ...c) }
     // constraint that (p1 -> p2) is perpendicular to (p3->p4)
     perpendicular(p1, p2, p3, p4) {
-        let v1 = new Minus(legalExpr(p2), legalExpr(p1)), v2 = new Minus(legalExpr(p4), legalExpr(p3))
+        let v1 = minus(legalExpr(p2), legalExpr(p1)), v2 = minus(legalExpr(p4), legalExpr(p3))
+        let [x1, y1] = this.projections(v1),
+            [x2, y2] = this.projections(v2)
         return new NearZero(this,
-            plus(times(new Projection(v1, 0, 2), new Projection(v2, 0, 2)),
-                 times(new Projection(v1, 1, 2), new Projection(v2, 1, 2))))
+            plus(times(x1, x2), times(y1, y2)))
     }
 
 // dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
@@ -2227,9 +2242,12 @@ class Figure {
         case 0: case 1: case 2: console.error("collinear expects at least 3 points"); return;
         case 3:
             let p0 = arguments[0], p1 = arguments[1], p2 = arguments[2]
+            const [x0, y0] = this.projections(p0),
+                  [x1, y1] = this.projections(p1),
+                  [x2, y2] = this.projections(p2)
             return this.equal(
-                times(this.minus(p1.y(), p0.y()), this.minus(p2.x(), p0.x())),
-                times(this.minus(p2.y(), p0.y()), this.minus(p1.x(), p0.x())))
+                times(this.minus(y1, y0), this.minus(x2, x0)),
+                times(this.minus(y2, y0), this.minus(x1, x0)))
         default:
           let result = []
           for (let i = 2; i < arguments.length; i++) {
@@ -2241,19 +2259,26 @@ class Figure {
 
     between(p0, p1, p2) {
         let a = this.variable("a", 0.5), b = this.minus(1, a)
+        const [x0, y0] = this.projections(p0),
+              [x1, y1] = this.projections(p1),
+              [x2, y2] = this.projections(p2)
         return new ConstraintGroup(this,
             this.geq(a, 0),
             this.leq(a, 1),
-            this.equal(p0.x(), this.plus(this.times(a, p1.x()), this.times(b, p2.x()))),
-            this.equal(p0.y(), this.plus(this.times(a, p1.y()), this.times(b, p2.y())))
+            this.equal(x0, this.plus(this.times(a, x1), this.times(b, x2))),
+            this.equal(y0, this.plus(this.times(a, y1), this.times(b, y2)))
         )
     }
 // dy1/dx1 = dy2/dx2 <==> dy1*dx2 = dy2 * dx1
 // make p0-p1 parallel to p2-p3
     parallel(p0, p1, p2, p3) {
+        const [x0, y0] = this.projections(p0),
+              [x1, y1] = this.projections(p1),
+              [x2, y2] = this.projections(p2),
+              [x3, y3] = this.projections(p3)
         return this.equal(
-          this.times(this.minus(p1.y(), p0.y()), this.minus(p3.x(), p2.x())),
-          this.times(this.minus(p3.y(), p2.y()), this.minus(p1.x(), p0.x())))
+          this.times(this.minus(y1, y0), this.minus(x3, x2)),
+          this.times(this.minus(y3, y2), this.minus(x1, x0)))
     }
 
     // The position (x,y) in a coordinate system in which
@@ -2261,21 +2286,21 @@ class Figure {
     relative(x, y, a, b) {
         x = legalExpr(x); y = legalExpr(y); a = legalExpr(a); b = legalExpr(b)
         let dx = this.minus(b, a),
-            dy = new Point(new Projection(dx, 1, 2), new Neg(new Projection(dx, 0, 2))),
+            dy = new Point(this.projection(dx, 1, 2), new Neg(this.projection(dx, 0, 2))),
             pos = this.plus(a, new Times(x, dx), new Times(y, dy))
-        return this.point(new Projection(pos, 0, 2), new Projection(pos, 1, 2))
+        return this.point(this.projection(pos, 0, 2), this.projection(pos, 1, 2))
     }
     // Signed distance from point p0 to the line p1 -> p2.
     // Distance is negative if the point is on the left side of the line
     // and positive if on the right side.
     ptToLineDist(p0, p1, p2) {
         const f = this
-        const tl = f.times(f.minus(f.projection(p1, 0), f.projection(p0, 0)),
-                           f.minus(f.projection(p2, 1), f.projection(p1, 1)))
-        const tr = f.times(f.minus(f.projection(p1, 1), f.projection(p0, 1)),
-                            f.minus(f.projection(p2, 0), f.projection(p1, 0)))
-        const rad = f.plus(f.sq(f.minus(f.projection(p2, 0), f.projection(p1, 0))),
-                           f.sq(f.minus(f.projection(p2, 1), f.projection(p1, 1))))
+        const [x0, y0] = f.projections(p0),
+              [x1, y1] = f.projections(p1),
+              [x2, y2] = f.projections(p2)
+        const tl = f.times(f.minus(x1, x0), f.minus(y2, y1))
+        const tr = f.times(f.minus(y1, y0), f.minus(x2, x1))
+        const rad = f.plus(f.sq(f.minus(x2, x1)), f.sq(f.minus(y2, y1)))
         return f.divide(f.minus(tr, tl), f.sqrt(rad))
     }
 }
@@ -2313,6 +2338,22 @@ function times(...args) {
         default: return product == 1 ? new Times(nonnums[0], times(...nonnums.slice(1)))
                                      : new Times(product, times(...nonnums))
     }
+}
+
+function minus(x, y) {
+    if (y === 0) return x
+    if (typeof x == NUMBER && typeof y == NUMBER) return x - y
+    return new Minus(legalExpr(x), legalExpr(y))
+}
+
+function divide(x, y) {
+    if (typeof x == NUMBER && typeof y == NUMBER) return x / y
+    return new Divide(legalExpr(x), legalExpr(y))
+}
+
+function abs(x) {
+    if (typeof x == NUMBER) return Math.abs(x)
+    return new Abs(legalExpr(x))
 }
 
 function isFigure(figure) {
@@ -3617,8 +3658,8 @@ class LinearInterpolation extends Expression {
         }
         console.error("Don't know how to interpolate between " + v1 + " and " + v2)
     }
-    x() { return new Projection(this, 0, 2) }
-    y() { return new Projection(this, 1, 2) }
+    x() { return this.figure.projection(this, 0) }
+    y() { return this.figure.projection(this, 1) }
 
     variables() {
         return union(exprVariables(this.e1), exprVariables(this.e2), [this.figure.timeVar])
@@ -3667,6 +3708,9 @@ function cubicInterpWeight(t) {
 // A Projection can be used on an expression that returns an array. It
 // picks out the value of the appropriate component of the array.
 class Projection extends Expression {
+    // index and n are integers
+    // n is the size of the array
+    // index identifies the element to be picked out
     constructor(expr, index, n) {
         super()
         this.expr = expr
@@ -3808,7 +3852,7 @@ class After extends TemporalFilter {
     }
 }
 
-// An After wraps another object and makes it appear only on and
+// A DrawAfter wraps another object and makes it appear only on and
 // after the specified frame. However, it still exists for solving
 // purposes.
 class DrawAfter extends TemporalFilter {
@@ -3857,8 +3901,8 @@ class InFrame extends TemporalFilter {
     }
 }
 
-// A Before wraps another object and makes it appear only before
-// after the specified frame. However, it still exists for solving
+// A DrawBefore wraps another object and makes it appear only before
+// the specified frame. However, it still exists for solving
 // purposes.
 class DrawBefore extends TemporalFilter {
     constructor(figure, frame, obj) {
@@ -4212,8 +4256,8 @@ class LayoutObject extends Expression {
                 this.figure.equal(this.y(), legalExpr(p[1]))
             } else {
                 const o = legalPoint(p)
-                this.figure.equal(this.x(), new Projection(o, 0, 2))
-                this.figure.equal(this.y(), new Projection(o, 1, 2))
+                this.figure.equal(this.x(), this.figure.projection(o, 0))
+                this.figure.equal(this.y(), this.figure.projection(o, 1))
             }
         }
         return this
@@ -5283,10 +5327,12 @@ class Line extends Graphic {
         this.y_.remove()
         this.w_.remove()
         this.h_.remove()
-        this.x_ = new Average(this.p1.x(), this.p2.x())
-        this.y_ = new Average(this.p1.y(), this.p2.y())
-        this.w_ = new Abs(new Minus(this.p2.x(), this.p1.x()))
-        this.h_ = new Abs(new Minus(this.p2.y(), this.p1.y()))
+        const [x1, y1] = figure.projections(this.p1),
+              [x2, y2] = figure.projections(this.p2)
+        this.x_ = figure.average(x1, x2)
+        this.y_ = figure.average(y1, y2)
+        this.w_ = figure.abs(figure.minus(x2, x1))
+        this.h_ = figure.abs(figure.minus(y2, y1))
     }
     // The starting point of the line
     start() {
@@ -5301,7 +5347,8 @@ class Line extends Graphic {
         ctx.beginPath()
         ctx.strokeStyle = this.strokeStyle
         ctx.lineWidth = evaluate(this.lineWidth)
-        const [x1, x2, y1, y2] = evaluate([this.p1.x(), this.p2.x(), this.p1.y(), this.p2.y()])
+        const [x1, y1] = evaluate(this.p1),
+              [x2, y2] = evaluate(this.p2)
         const xd = x2 - x1, yd = y2 - y1,
                 d = norm2d(xd, yd),
                 cosa = xd/d, sina = yd/d
@@ -5358,16 +5405,16 @@ class Line extends Graphic {
         return this
     }
     x0() {
-        return new Min(this.p1.x(), this.p2.x())
+        return new Min(this.figure.projection(this.p1, 0), this.figure.projection(this.p2, 0))
     }
     x1() {
-        return new Max(this.p1.x(), this.p2.x())
+        return new Max(this.figure.projection(this.p1, 0), this.figure.projection(this.p2, 0))
     }
     y0() {
-        return new Min(this.p1.y(), this.p2.y())
+        return new Min(this.figure.projection(this.p1, 1), this.figure.projection(this.p2, 1))
     }
     y1() {
-        return new Max(this.p1.y(), this.p2.y())
+        return new Max(this.figure.projection(this.p1, 1), this.figure.projection(this.p2, 1))
     }
     center() {
         return new Average(this.p1, this.p2)
@@ -5389,13 +5436,13 @@ class HorzLine extends Line {
         figure.equal(this.start().y(), this.end().y())
         // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().x(), this.end().x()).changeCost(10)
-        this.w_ = new Minus(this.p2.x(), this.p1.x())
+        this.w_ = new Minus(figure.projection(this.p2, 0), figure.projection(this.p1, 0))
     }
     x0() {
-        return this.p1.x()
+        return this.figure.projection(this.p1, 0)
     }
     x1() {
-        return this.p2.x()
+        return this.figure.projection(this.p2, 0)
     }
 }
 
@@ -5406,13 +5453,13 @@ class VertLine extends Line {
         figure.equal(this.start().x(), this.end().x())
         // Need a stronger constraint to get the line oriented correctly
         figure.leq(this.start().y(), this.end().y()).changeCost(10)
-        this.h_ = new Minus(this.p2.y(), this.p1.y())
+        this.h_ = figure.minus(figure.projection(this.p2, 1), figure.projection(this.p1, 1))
     }
     y0() {
-        return this.p1.y()
+        return this.figure.projection(this.p1, 1)
     }
     y1() {
-        return this.p2.y()
+        return this.figure.projection(this.p2, 1)
     }
 }
 
