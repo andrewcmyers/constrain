@@ -137,11 +137,12 @@ var ConstrainReveal = function() {
         initialize: function(dir) {
             if (!dir) dir = '.'
             Reveal.initialize({
-                    history: true,
-                    controls: false,
-                    progress: false,
-                    center: false,
-                    margin: 0,
+                    slideNumber: dir.slideNumber || false,
+                    history: dir.history || true,
+                    controls: dir.controls || false,
+                    progress: dir.progress || false,
+                    center: dir.center || false,
+                    margin: dir.margin || 0,
 
 
                     // More info https://github.com/hakimel/reveal.js#dependencies
@@ -164,8 +165,8 @@ var ConstrainReveal = function() {
                                                 Reveal.getIndices().v, 0);
                         }
                     },
-                    width: 1024,
-                    height: 768
+                    width: dir.width || 1024,
+                    height: dir.heigth || 768
             });
 
             Reveal.addEventListener( 'slidechanged', newSlideHook);
