@@ -766,6 +766,20 @@ want a figure pixel to correspond to a PostScript/PDF point, you should set a zo
 of 1 1/3 ≅ 1.333. To make it correspond to a TeX point, the zoom value should
 be 96/72.27 ≅ 1.328.
 </p>
+
+<h4>setMinWidth(width)</h4>
+<p>
+Some figures don't really work at small sizes, such as on mobile devices.
+This method causes the figure to automatically set the zoom so that the figure
+can lay out as if it had a width of at least <code>width</code> HTML pixels.
+</p>
+
+<h4>setMinHeight(height)</h4>
+<p>
+This method is just like <code>setMinWidth()</code>, but sets a minimum figure
+height instead.
+</p>
+
 <h4>thisFigure()</h4>
 <pre class=code>
 with (new Constrain.Figure("figure1")) {
