@@ -188,6 +188,14 @@ class Figure {
         this.height = _height
         this.canvas.width = _width * scale
         this.canvas.height = _height * scale
+
+        if ((this.minWidth && _width < this.minWidth) ||
+            (this.minHeight && _height < this.minHeight)) {
+            const xzoom = (this.minWidth && _width/this.minWidth) || 1,
+                  yzoom = (this.minHeight && _height/this.minHeight) || 1
+            this.zoom = Math.min(xzoom, yzoom)
+        }
+
         this.ctx.setTransform(scale * this.zoom, 0, 0, scale * this.zoom, 0, 0)
 
         if (this.browserZoom) {
@@ -200,6 +208,16 @@ class Figure {
                 }
             }, this.zoomCheckInterval)
         }
+    }
+    // Set minimum width of canvas. Figure will automatically zoom
+    // if the actual width is smaller than w.
+    setMinWidth(w) {
+        this.minWidth = w
+    }
+    // Set minimum height of canvas. Figure will automatically zoom
+    // if the actual height is smaller than h.
+    setMinHeight(h) {
+        this.minHeight = h
     }
     findFadeColor(canvas) {
         let elt = canvas, c
@@ -4461,7 +4479,6 @@ class Graphic extends Box {
     setFontSize(s) {
         if (!this.text) console.error("This object does not contain text")
         this.text.setFontSize(s)
-        console.log("setting font size " + s)
         return this
     }
     // Set font name
@@ -7058,18 +7075,24 @@ class DOMElementBox extends LayoutObject {
         }
         return this.obj.getBoundingClientRect()
     }
-    x0() { return new Global(() => this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left, "DOM element " + this.id + ".x0") }
-    y0() { return new Global(() => this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top, "DOM element " + this.id + ".y0") }
-    w() { return new Global(() => this.boundingRect().width, "DOM element " + this.id + ".w") }
-    h() { return new Global(() => this.boundingRect().height, "DOM element " + this.id + ".h") }
+    x0() { return new Global(() =>
+        (this.boundingRect().left - this.figure.canvas.getBoundingClientRect().left)/this.figure.zoom,
+        "DOM element " + this.id + ".x0") }
+    y0() { return new Global(() =>
+        (this.boundingRect().top - this.figure.canvas.getBoundingClientRect().top)/this.figure.zoom,
+        "DOM element " + this.id + ".y0") }
+    w() { return new Global(() => this.boundingRect().width/this.figure.zoom,
+        "DOM element " + this.id + ".w") }
+    h() { return new Global(() => this.boundingRect().height/this.figure.zoom,
+        "DOM element " + this.id + ".h") }
     x1() { return new Global(() => {
              const b = this.boundingRect()
-             return b.right - this.figure.canvas.getBoundingClientRect().left
+             return (b.right - this.figure.canvas.getBoundingClientRect().left)/this.figure.zoom
            }, "DOM element " + this.id + ".x1")
          }
     y1() { return new Global(() => {
              const b = this.boundingRect()
-             return b.bottom - this.figure.canvas.getBoundingClientRect().top
+             return (b.bottom - this.figure.canvas.getBoundingClientRect().top)/this.figure.zoom
            }, "DOM element " + this.id + ".y1")
          }
     addDependencies(task) {
@@ -7099,18 +7122,27 @@ class CanvasRect extends LayoutObject {
         this.x_ = this.centerX()
         this.y_ = this.centerY()
     }
+    initialize() {
+        if (!this.figure.width) this.figure.setupCanvas()
+    }
     x0() { return 0 }
     x1() { return new Global(() => {
-        if (!this.figure.width) this.figure.setupCanvas()
-        return this.figure.width
+        this.initialize()
+        return this.figure.width/this.figure.zoom
     }, "Max x coordinate of figure " + this.figure.name)}
     y0() { return 0 }
-    y1() { return new Global(() => this.figure.height,
-                             "Max y coordinate of figure " + this.figure.name) }
-    w() { return new Global(() => this.figure.width,
-                             "Width of figure " + this.figure.name)}
-    h() { return new Global(() => this.figure.height,
-                             "Height of figure " + this.figure.name) }
+    y1() { return new Global(() => {
+        this.initialize()
+        return this.figure.height/this.figure.zoom
+    }, "Max y coordinate of figure " + this.figure.name) }
+    w() { return new Global(() => {
+        this.initialize()
+        return this.figure.width/this.figure.zoom
+    }, "Width of figure " + this.figure.name)}
+    h() { return new Global(() => {
+        this.initialize()
+        return this.figure.height/this.figure.zoom
+    }, "Height of figure " + this.figure.name) }
     backprop(task) {}
     addDependencies(task) {}
 }
