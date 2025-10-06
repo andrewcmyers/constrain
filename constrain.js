@@ -3172,6 +3172,7 @@ class BinaryExpression extends Expression {
     variables() {
        return union(exprVariables(this.e1), exprVariables(this.e2))
     }
+    isGraphic() { return this.e1.isGraphic() }
 }
 
 // An expression x - y
@@ -3244,6 +3245,7 @@ class Times extends BinaryExpression {
         }
         return null
     }
+    isGraphic() { return this.e1.isGraphic() || this.e2.isGraphic() }
 }
 
 // An expression x / y
@@ -3796,6 +3798,7 @@ class TemporalFilter extends Temporal {
         this.obj = obj
         obj.installHolder(figure, this, obj) // tell the figure to install this object in the appropriate way
     }
+    isGraphic() { return this.obj.isGraphic && this.obj.isGraphic() }
     x() { return this.obj.x() }
     y() { return this.obj.y() }
     x0() { return this.obj.x0() }
@@ -4309,6 +4312,9 @@ class LayoutObject extends Expression {
     fromDirection(g, dir) {
         this.figure.direction(g, this, dir)
         return this
+    }
+    isGraphic() {
+        return true
     }
 }
 
@@ -5506,8 +5512,8 @@ function argsForEach(args, i, f) {
 function flattenGraphics(objects) {
     return objects.flat().filter(o => {
         if (!o) return false
-        if (o && o.variables) return true
-        console.error("Not a graphical object: " + o)
+        if (o.isGraphic && o.isGraphic()) return true
+        console.error("Not a graphic: " + o)
         return false
     })
 }

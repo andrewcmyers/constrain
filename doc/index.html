@@ -1043,7 +1043,7 @@ return this element.</p>
 <h4>atSameSize(g)</h4>
 <p>Constrain the size and position of this element to be the same as graphic
 <code>g</code>.</p>
-<h4>toRight(g), toLeft(g), above(g), below(g), fromDirection(g, dir)</h4>
+<h4>rightOf(g), leftOf(g), above(g), below(g), fromDirection(g, dir)</h4>
 <p>Constrain the position of this element to be in the specified direction relative
 to element <code>g</code>. Directions may be specified as in the <code>direction()</code>
 function, as either a compass point or in degrees.
@@ -1700,8 +1700,8 @@ into independendent components that are solved independently.
 </p>
 <p>
 Loss terms have an associated cost multiplier; when the cost multiplier is less
-than one, the solver treats the constraint as a soft constraint whose loss may
-not be reducible to zero. Hard constraints, with loss at least one, allow
+than 1, the solver treats the constraint as a soft constraint whose loss may
+not be reducible to zero. Hard constraints, with loss at least 1, allow
 the solver to optimize by performing equational manipulations before trying to
 minimize loss.
 <p>
@@ -2097,17 +2097,10 @@ David S. Kosbie, Edward Pervin, Andrew Mickish, Brad Vander Zanden, and Philippe
 
 </div>
 
-<pre id=startup_code_ex class=code></pre>
-
-<div id=startup_ex>
 <script>
   Constrain.Figures.forEach(f => f.start())
   Constrain.setupTouchListeners()
 </script>
-</div>
-<script>
-  show_example("startup_code_ex", "startup_ex")
-  </script>
 
 <!-- make examples editable -->
 <script>
