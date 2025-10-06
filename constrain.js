@@ -2107,7 +2107,6 @@ class Figure {
         return new ContextTransformer(tc => f(new Context(tc)), createText(...t))
     }
     textFrame(txt, fillStyle) {
-        if (txt && !(txt instanceof ContainedText)) txt = new ContainedText(this, txt)
         return new TextFrame(this, txt, fillStyle)
     }
     label(text, fontSize, fontName, fillStyle) {
@@ -4682,7 +4681,12 @@ class TextFrame extends Graphic {
     // text should be a ContainedText object
     constructor(figure, text, fillStyle) {
         super(figure, fillStyle)
-        this.text = text
+        if (text) {
+            if (text instanceof ContainedText)
+                this.text = text
+            else
+                this.text = new ContainedText(figure, createText(text))
+        }
         figure.positive(this.h())
         figure.positive(this.w())
     }
@@ -6087,12 +6091,16 @@ class ContainedText {
         this.style.set('verticalAlign', this.style.get('verticalAlign') || "center")
         this.style.set('lineSpacing', this.style.get('lineSpacing')
             || Figure_defaults.LINE_SPACING),
+        this.style.set('textStyle', this.style.get('textStyle'))
         this.style.set('fillStyle', this.style.get('strokeStyle'))
         this.style.set('strokeStyle', null)
 
         this.inset = this.style.setDefault('inset', figure.fontSizePixels(this.style) / 3)
         this.font = new Font(figure, this.style)
-        this.text = createText(...text)
+        if (text instanceof ContainedText)
+            this.text = text
+        else
+            this.text = createText(...text)
     }
     setLineSpacing(s) {
         this.style.set('lineSpacing', s)
@@ -6183,7 +6191,10 @@ class ContainedText {
             inset = tc.setDefault('inset', 0),
             justification = this.style.setDefault('justification', "center"),
             verticalAlign = this.style.setDefault('verticalAlign', "center"),
-            fillStyle = this.style.setDefault('fillStyle', "black"),
+            fillStyle = this.style.set('fillStyle',
+                            this.style.get('textStyle') ||
+                            this.style.get('fillStyle') ||
+                            'black'),
             maxh = evaluate(container.h()),
             y0 = evaluate(container.y0()) + fontSize + inset,
             y1 = evaluate(container.y1()) - inset,
