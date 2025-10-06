@@ -3648,6 +3648,7 @@ class LinearInterpolation extends Expression {
         this.e2 = e2
     }
     interp(t) { return t }
+    isGraphic() { return this.e1.isGraphic && this.e1.isGraphic() }
     evaluate(valuation, doGrad) {
         const figure = this.figure, currentFrame = figure.currentFrame
         if (currentFrame.isBefore(this.frame)) {
