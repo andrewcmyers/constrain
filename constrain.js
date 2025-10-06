@@ -4331,11 +4331,7 @@ Average.prototype.y1 = LayoutObject.prototype.y1
 // Check whether o can be used as a layout object and return it if so.
 // Otherwise, log a suitable error message and return a legal layout object.
 function legalLayoutObject(o) {
-    if (o instanceof LayoutObject) return o
-    if (o instanceof TemporalFilter) {
-        const lo = legalLayoutObject(o.obj)
-        return o
-    }
+    if (o.isGraphic && o.isGraphic()) return o;
     console.error("Not a legal graphical object: " + o)
     return new Point()
 }
@@ -4683,9 +4679,9 @@ class Group extends Graphic {
 }
 
 // A TextFrame is a graphical object that doesn't have any rendering but does
-// format contained text into a rectangular shape.
+// format contained text into a rectangular shape. The boundaries of the shape
+// are not determined by the text, unlike a Label.
 class TextFrame extends Graphic {
-    // text should be a ContainedText object
     constructor(figure, text, fillStyle) {
         super(figure, fillStyle)
         if (text) {
