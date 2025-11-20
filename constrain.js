@@ -4443,8 +4443,13 @@ class Graphic extends Box {
         return this
     }
     setTextStyle(s) {
-        if (!this.text) console.error("This object does not contain text")
+        if (!this.text) {
+            console.error("This object does not contain text to style")
+            return
+        }
+        // ugly, but for text, fillStyle and textStyle are the same
         this.text.setFillStyle(s)
+        this.text.style.set('textStyle', s)
         return this
     }
     setLayoutAlgorithm(a) {
