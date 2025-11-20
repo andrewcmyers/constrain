@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+  <style>
+    canvas {
+        background-color: transparent;
+        max-width: 100%; width: 200px; height: 200px;
+    }
+  </style>
+</head>
+<body>
+<canvas id=fig></canvas>
+<script>
+  with (new Constrain.Figure("fig")) {
+    const c = ellipse().setFillStyle("gray").addText("finished").setTextStyle("white")
+        .setW(120)
+        .setH(60)
+    start()
+  }
+</script>
+Text in ellipse should be white.
+
+</body>
+</html>
