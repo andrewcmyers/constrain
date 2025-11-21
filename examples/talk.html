@@ -265,7 +265,7 @@
                 let c1 = drawAfter(f4,
                     connector(s1, p1 = point(), p2 = point(), r1).setEndArrow("arrow")
                       .setLineWidth(2)
-                      .addLabel("a label", 0.5, times(canvasRect().h(), 0.02))
+                      .addLabel("line label", 0.5, times(canvasRect().h(), 0.02))
                 )
   var some_text = " writing is a"
       + " literary technique in which the writer is"
@@ -286,7 +286,9 @@
                 const grd = figure.ctx.createLinearGradient(0, 0, 100, 100)
                 grd.addColorStop(0, "purple")
                 grd.addColorStop(1, "yellow")
-                let e1 = drawAfter(f3, ellipse().setLineWidth(2).setFillStyle(grd)),
+                let e1 = drawAfter(f3, ellipse().setLineWidth(2).setFillStyle(grd)
+                                    .addText("white").setTextStyle("white").setFontSize(20))
+                            ,
                     p3 = point(),
                     c2 = drawAfter(f4, connector(e1, r1).setLineDash([2,2]))
                 group(r1, s1, e1).setX(canvasRect().x())
@@ -310,7 +312,7 @@ fig = new Figure("canv1")</pre>
 with (fig) {
   s = square()<span class=fragment>.setFillStyle("yellow")</span><span class=fragment>.setLineWidth(3)</span></pre>
             <li class=fragment>Graphical objects introduce variables for their position:
-            <ul style="font-size: 80%">
+            <ul style="font-size: 75%">
                <li><kbd>.x()</kbd> : x position (min/max: <kbd>.x0(), .x1()</kbd></li>
                <li><kbd>.y()</kbd> : y position (min/max: <kbd>.y0(), .y1()</kbd></li>
                <li><kbd>.w()</kbd> : width, <kbd>.h()</kbd> : height</li>
@@ -473,7 +475,7 @@ fig3.addFrame()
         <section>
         <h2>Implementation</h2>
           <ul>
-            <li>Everything done online in JavaScript (~6k LoC ECMAScript 6)</li>
+            <li>Everything done online in JavaScript (~7k LoC ECMAScript 6)</li>
             <li class=fragment>Constraint declarations generate a cost function
               <ul>
                 <li> Less fragile for overconstrained problems
@@ -489,7 +491,7 @@ fig3.addFrame()
              </ul>
             <li class=fragment>Animations solved incrementally from previous solution, with
                adaptive tweening to increase frame rate</li>
-            <li class=fragment>Text layout: dynamic programming ala TeX</li>
+            <li class=fragment>Automatic text layout: dynamic programming ala TeX</li>
         </section>
           <section>
             <h2>For more information</h2>
@@ -508,10 +510,10 @@ fig3.addFrame()
         return circle().setFillStyle("#00c").setStrokeStyle(null).setW(10).at(p)
     }
     function lb(n, p) {
-      return label(n).setFillStyle("#00c").setFontName("Menlo").setFontSize(10).at(p)
+      return label(n).setFillStyle("#00c").setFontName("Menlo, Helvetica, Arial").setFontSize(10).at(p)
     }
     setStrokeStyle("#88c")
-    let cr = canvasRect().inset(100),
+    let cr = margin(100),
         s = box(),
         grd = figure.ctx.createLinearGradient(0, 0, 0, 500)
         c = closedCurve(s.uc(), s.center(), s.cr(), s.cr(), s.lr(), s.lc(), s.ll(), s.cl(), s.cl(), s.ul()).setLineWidth(5).setFillStyle(grd).setStrokeStyle("#bcf"),
@@ -535,7 +537,7 @@ fig3.addFrame()
     align("none", "bottom", h1, c)
     align("left", "none", v0, c)
     align("right", "none", v1, c)
-    equal(c.width(), times(0.7, cr.width()))
+    equal(s.width(), times(0.5, cr.width()))
     dot(s.ul());    dot(s.uc());      dot(s.ur())
     dot(s.cl());    dot(s.center());  dot(s.cr())
     dot(s.ll());    dot(s.lc());      dot(s.lr())
