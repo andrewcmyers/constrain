@@ -5034,7 +5034,7 @@ class Polygon extends Graphic {
         points = flattenGraphics(points)
         this.points = points
         const xpts = points.map(p => p.x()), ypts = points.map(p => p.y())
-        const maxx = figure.max(xpts), minx = figure.min(xpts), maxy = figure.max(ypts), miny = figure.min(ypts)
+        const maxx = figure.max(...xpts), minx = figure.min(...xpts), maxy = figure.max(...ypts), miny = figure.min(...ypts)
         this.x_.remove()
         this.x_ = figure.average(minx, maxx)
         this.y_.remove()
@@ -5468,10 +5468,12 @@ class HorzLine extends Line {
         this.w_ = new Minus(figure.projection(this.p2, 0), figure.projection(this.p1, 0))
     }
     x0() {
-        return this.figure.projection(this.p1, 0)
+        const f = this.figure
+        return f.min(f.projection(this.p1, 0), f.projection(this.p2, 0))
     }
     x1() {
-        return this.figure.projection(this.p2, 0)
+        const f = this.figure
+        return f.max(f.projection(this.p1, 0), f.projection(this.p2, 0))
     }
 }
 
@@ -7033,6 +7035,10 @@ class DebugExpr extends Expression {
         super()
         this.expr = expr
         this.name = name
+        if (!expr) {
+            console.error("Expected call: DebugExpr(name, expr)")
+            this.expr = 0
+        }
     }
     evaluate(valuation, doGrad) {
         const r = evaluate(this.expr, valuation, doGrad)
@@ -7089,7 +7095,7 @@ class DOMElementBox extends LayoutObject {
         if (!this.obj) {
             this.obj = document.getElementById(this.id)
             if (!this.obj) {
-                console.error("Can't find DOM element with id  " + id)
+                console.error("Can't find DOM element with id  " + this.id)
             }
         }
         return this.obj.getBoundingClientRect()
