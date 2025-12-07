@@ -1810,6 +1810,7 @@ class Figure {
             case "distribute":
                 if (objlist.length < 2) break
                 const d = new Minus(objlist[1].x0(), objlist[0].x1())
+                this.geq(d, 0)
                 for (let i = 2; i < objlist.length; i++) {
                     result.push(this.equal(new Minus(objlist[i].x0(), objlist[i-1].x1()), d))
                     result.push(this.geq(objlist[i].x0(), objlist[i-1].x1()))
@@ -1857,6 +1858,7 @@ class Figure {
             case "distribute":
                 if (objlist.length < 2) break
                 const d = new Minus(objlist[1].y0(), objlist[0].y1())
+                this.geq(d, 0)
                 for (let i = 2; i < objlist.length; i++) {
                     result.push(this.equal(new Minus(objlist[i].y0(), objlist[i-1].y1()), d))
                     result.push(this.geq(objlist[i].y0(), objlist[i-1].y1()))
