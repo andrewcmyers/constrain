@@ -1885,7 +1885,7 @@ class Figure {
     // Set the direction from g1 to g2, in degrees, where 0 degrees
     // is upward, 90 is to the right, and so forth. The direction can
     // also be given a compass point, like "N", "wsw", etc.
-    direction(g1, g2, dir) {
+    direction(dir, g1, g2) {
         const dx = this.minus(g2.target().x(), g1.target().y()),
               dy = this.minus(g2.target().y(), g1.target().y())
         if (typeof dir == "string") {
@@ -4311,7 +4311,7 @@ class LayoutObject extends Expression {
         return this
     }
     fromDirection(g, dir) {
-        this.figure.direction(g, this, dir)
+        this.figure.direction(dir, g, this)
         return this
     }
     isGraphic() {
