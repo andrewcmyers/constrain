@@ -17,8 +17,9 @@ body {
 
 .reveal {
   font-family: "Cronos Pro", sans-serif;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: normal;
+  background: white;
   color: #444; }
 
 ::selection {
@@ -110,6 +111,7 @@ body {
 .reveal ol ol,
 .reveal ol ul {
   display: block;
+  font-size: 90%;
   margin-left: 40px; }
 
 .reveal dt {
@@ -145,7 +147,7 @@ body {
   width: 90%;
   margin: 20px auto;
   text-align: left;
-  font-size: 0.55em;
+  font-size: 0.7em;
   font-family: monospace;
   line-height: 1.2em;
   word-wrap: break-word;

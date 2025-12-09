@@ -6148,6 +6148,10 @@ class ContainedText {
         this.style.set('fontStyle', s)
         return this
     }
+    setTextStyle(s) {
+        this.style.set('textStyle', s)
+        return this
+    }
     setFillStyle(s) {
         this.style.set('fillStyle', s)
         return this
