@@ -2106,7 +2106,7 @@ class Figure {
     }
 
     textContext(f, ...t) {
-        return new ContextTransformer(tc => f(new Context(tc)), createText(...t))
+        return new ContextTransformer(f, createText(...t))
     }
     textFrame(txt, fillStyle) {
         return new TextFrame(this, txt, fillStyle)
@@ -5888,7 +5888,7 @@ class Label extends Graphic {
             this.font = new Font(figure, style)
             if (fillStyle != null) {
                 this.fillStyle = fillStyle
-                text.setFillStyle(fillStyle)
+                text.setTextStyle(fillStyle)
             } else {
                 this.fillStyle = style.get('textStyle')
             }
@@ -5900,7 +5900,6 @@ class Label extends Graphic {
         }
 
         this.setStrokeStyle(undefined)
-
 
         // Have to override Graphic in the object itself
         this.w_.remove()
@@ -5949,6 +5948,7 @@ class Label extends Graphic {
             let w = 0, items = layout.lines[0].items.reverse()
             for (let i = 0; i < items.length; i++) {
                 const item = items[i]
+                if (item.fillStyle) ctx.fillStyle = item.fillStyle
                 if (item.font) item.font.setContextFont(ctx)
                 if (item.item) item.item.render(ctx, x + w, item.y)
                 w += item.width
@@ -6677,10 +6677,10 @@ class ComputedText extends TextItem {
 }
 
 // A ContextTransformer wraps some text in a context that is modified in
-// some way to change how the text appears.
+// by a function that changes how the text appears.
 class ContextTransformer extends TextItem {
-    // Create a ContextTransformer that wraps the text
-    // and transforms the outer context tc into f(tc).
+    // Create a ContextTransformer that wraps the text and on demand creates a
+    // new context that applies function f to the outer context.
     constructor(f, text) {
         super()
         this.text = (typeof text == STRING_STR) ? new WordText(text) : text
@@ -6691,8 +6691,8 @@ class ContextTransformer extends TextItem {
         tc = this.transformContext(tc, figure)
         return this.text.layout(figure, tc, x, y, x0, x1, ymax)
     }
-    // Transform the outside context in some way. Default
-    // implementation: do nothing to context.
+    // Create a new context that transforms the input context by applying
+    // the function to it.
     transformContext(tc, figure) {
         return this.fun(new Context(tc))
     }
@@ -6702,53 +6702,39 @@ class ContextTransformer extends TextItem {
 }
 
 class SuperscriptText extends ContextTransformer {
-    constructor(text) { super(null, text) }
-    transformContext(tc, figure) {
+    constructor(text) { super(tc => {
         const baseline = tc.get("baseline") || 0,
               font = new Font(figure, tc),
               fontSize = tc.get("fontSize") || Figure_defaults.FONT_SIZE,
               scriptSize = tc.get("scriptSize") || Figure_defaults.SCRIPTSIZE,
               superscriptOffset = tc.get("superscriptOffset") ||
                                   Figure_defaults.SUPERSCRIPT_OFFSET
-        tc = new Context(tc)
-        tc.set('fontSize', fontSize * scriptSize)
-          .set('baseline', baseline + superscriptOffset * fontSize)
-        return tc
+        return tc.set('fontSize', fontSize * scriptSize)
+                 .set('baseline', baseline + superscriptOffset * fontSize)
+      }, text)
     }
 }
 
 class SubscriptText extends ContextTransformer {
-    constructor(text) { super(null, text) }
-    transformContext(tc, figure) {
+    constructor(text) { super(tc => {
         const baseline = tc.get("baseline") || 0,
               font = new Font(figure, tc),
               fontSize = tc.get("fontSize") || Figure_defaults.FONT_SIZE,
               scriptSize = tc.get("scriptSize") || Figure_defaults.SCRIPTSIZE,
               subscriptOffset = tc.get("subscriptOffset") ||
                                 Figure_defaults.SUBSCRIPT_OFFSET
-        tc = new Context(tc)
-        tc.set('fontSize', fontSize * scriptSize)
-          .set('baseline', baseline + subscriptOffset * fontSize)
-        return tc
+        return tc.set('fontSize', fontSize * scriptSize)
+                 .set('baseline', baseline + subscriptOffset * fontSize)
+      }, text)
     }
 }
 
 class ItalicText extends ContextTransformer {
-    constructor(text) { super(null, text) }
-    transformContext(tc, figure) {
-        tc = new Context(tc)
-        tc.set('fontStyle', "italic")
-        return tc
-    }
+    constructor(text) { super(tc => tc.set('fontStyle', "italic"), text) }
 }
 
 class BoldText extends ContextTransformer {
-    constructor(text) { super(null, text) }
-    transformContext(tc, figure) {
-        tc = new Context(tc)
-        tc.set('fontStyle', "bold")
-        return tc
-    }
+    constructor(text) { super(tc => tc.set('fontStyle', "bold"), text) }
 }
 
 // A Graphic intended to be overridden by users with arbitrary
