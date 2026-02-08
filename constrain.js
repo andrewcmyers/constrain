@@ -5884,7 +5884,7 @@ class Label extends Graphic {
         if (fontSize) style.set('fontSize', fontSize)
         if (fontName) style.set('fontName', fontName)
         if (text.layout) {
-            this.text = new ContainedText(figure, text)
+            this.text = new ContainedText(figure, text).setInset(0)
             this.font = new Font(figure, style)
             if (fillStyle != null) {
                 this.fillStyle = fillStyle
