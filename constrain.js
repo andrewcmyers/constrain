@@ -1888,7 +1888,7 @@ class Figure {
     // is upward, 90 is to the right, and so forth. The direction can
     // also be given a compass point, like "N", "wsw", etc.
     direction(dir, g1, g2) {
-        const dx = this.minus(g2.target().x(), g1.target().y()),
+        const dx = this.minus(g2.target().x(), g1.target().x()),
               dy = this.minus(g2.target().y(), g1.target().y())
         if (typeof dir == "string") {
             switch (dir.toLowerCase()) {
@@ -2115,12 +2115,12 @@ class Figure {
         return new Label(this, text, fontSize, fontName, fillStyle)
     }
     // deprecated for client use
-    lineLabel(string, position, offset) {
+    lineLabel(string, position, offset, margin) {
         if (string && typeof string != STRING_STR && !(string instanceof Graphic)
             && string.constructor != ContainedText) {
             string = new ContainedText(this, string)
         }
-        return new LineLabel(this, string, position, offset)
+        return new LineLabel(this, string, position, offset, margin)
     }
     handle(style) {
         return new Handle(this, style)
@@ -6015,13 +6015,14 @@ class Label extends Graphic {
 // offset: (optional) offset toward the port side of
 // the connector.
 class LineLabel {
-    constructor(figure, text, position, offset) {
+    constructor(figure, text, position, offset, margin) {
         this.figure = figure
         this.text = text // may be a Graphic or a string
         this.position = position
         this.offset = offset == undefined ? figure.getFontSize() : offset
         this.strokeStyle = null
         this.textStyle = figure.getTextStyle() || "black"
+        this.margin = margin
         this.font = figure.getFont()
     }
     computeSize() {
@@ -6037,6 +6038,10 @@ class LineLabel {
             let [w, h] = this.text.minimumSize()
             this.computedHeight = h
             this.computedWidth = w
+        }
+        if (margin) {
+            this.computedWidth += margin * 2
+            this.computedHeight += margin * 2
         }
         return [this.computedWidth, this.computedHeight]
     }

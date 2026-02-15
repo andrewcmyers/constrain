@@ -474,11 +474,36 @@ potential line breaks.
 A text object for a line break.
 </p>
 
+<h4>bold(text)<br>
+<p>
+Put the contained text in bold.
+</p>
+
+<h4>italic(text)<br>
+<p>
+Put the contained text in italic.
+</p>
+
 <h4>subscript(text)<br>
 superscript(text)</h4>
 <p>
 A text object that places its text in subscript or superscript position while reducing
 the font size.
+</p>
+
+<h4>textColor(c, ...text)<br>
+<p>
+Put the text in the color c.
+</p>
+
+<h4>fontSize(size, ...text)<br>
+<p>
+Change the size of the text font.
+</p>
+
+<h4>fontName(name, ...text)<br>
+<p>
+Change the font family to the named font.
 </p>
 
 <h4>whitespace()</h4>
@@ -489,6 +514,11 @@ A text object for whitespace that is an allowed position for a line break.
 <h4>negspace(w)</h4>
 <p>
 A text object that moves the position leftward by <code>w</code> pixels.
+</p>
+
+<h4>hyphen()</h4>
+<p>
+Creates a hyphenation point.
 </p>
 
 <h4>numericText(expr, precision)</h4>
@@ -651,7 +681,7 @@ It is the responsibility of the user to define a subclass of <code>UserDefined</
 which the following methods may be overridden:
 
 <div class=inset>
-<h4>draw(context, frame, time, x0, y0, x1, y1)</h4>
+<h4>draw(context, frame, time, x0, x1, y0, y1)</h4>
 <p>
 This method defines how the user-defined object appears.  Draw a user-defined
 object in the graphical context <code>context</code>. The current animation
@@ -876,6 +906,7 @@ may be added by user code.
 <tr><td>fontSize</td><td>The size of the font, in pixels
 <tr><td>fontStyle</td><td>The style of the font, e.g., “italic”, “bold”
 <tr><td>inset</td><td>Inset of text within a containing object
+<tr><td>lineLabelInset</td><td>Inset of a line label
 <tr><td>justification</td><td>The style of contained text justification (left, right, justify)
 <tr><td>layoutAlgorithm</td><td>Text layout algorithm (TeX or greedy)
 <tr><td>lineDash</td><td>The pattern of dashes for lines. An empty array [] signifies no dashes.
@@ -1004,6 +1035,25 @@ same position.
 <h4>collinear(p0, p1, p2, ...)</h4>
 <p>
 Adds and returns a constraint that the specified points all lie in a straight line.
+</p>
+
+<h4>perpendicular(p1, p2, p3, p4)</h4>
+<p>
+Adds and returns a constraint that the vectors from <code>p1</code> to <code>p2</code>
+and from <code>p3</code> to <code>p4</code> are perpendicular.
+</p>
+
+<h4>between(p0, p1, p2)</h4>
+<p>
+Adds and returns a constraint that the point <code>p1</code> lies between
+points <code>p0</code> and <code>p2</code>.
+</p>
+
+<h4>projection(e, i, n)</h4>
+<p>
+For a vector-valued expression <code>e</code>, returns an expression for
+component <code>i</code> of the vector. The dimension of the vector is <code>n</code>,
+and defaults to 2 if the argument is omitted.
 </p>
 
 <h4>constraintGroup(...constraints)</h4>
@@ -1411,6 +1461,11 @@ from the figure itself if the not provided.</p>
 is an array specifying the lengths of the dash segments.
 </p>
 
+<h4>setOpacity(s)</h4>
+<p>Set the opacity of the object, which is fully opaque by default.
+A value of 1 means fully opaque, and 0 means fully transparent.
+</p>
+
 <h4>addText(text)</h4>
 <p>
 Graphical objects generally have the ability to hold some text, which is specified
@@ -1614,6 +1669,12 @@ before frame <code>frame1</code>.
 <p>
 Objects and constraints <code>objs_constraints</code> are only present in the figure
 after frame <code>frame1</code> and before frame <code>frame2</code>.
+</p>
+
+<h4>inFrame(frame, ...objs_constraints)</h4>
+<p>
+Objects and constraints <code>objs_constraints</code> are only present in the figure
+during the specified frame.
 </p>
 
 <h3>Frame methods</h3>
