@@ -163,14 +163,77 @@ with (new Constrain.Figure("bicycle_fig")) {
        point(plus(seatPostTop.x(), 10), seatPostTop.y()))
       .setStrokeStyle("#444").setLineWidth(5)
 
-  // ---------- chainring & chain ----------
+  // ---------- chainring, rear cog & chain ----------
+  const chainringR = 13     // chainring radius (matches setW(26))
+  const cogR = 5            // rear cog radius
+
+  // Chainring circle
   setStrokeStyle("#666")
   setLineWidth(1.5)
-  circle(null, "#666", 1.5).setW(26).at(bb)
+  circle(null, "#666", 1.5).setW(chainringR * 2).at(bb)
 
-  // Chain (dashed)
-  setLineDash([3, 3])
-  line(rearHub, bb).setStrokeStyle("#999").setLineWidth(1)
+  // Rear cog circle
+  circle(null, "#777", 1.2).setW(cogR * 2).at(rearHub)
+
+  // --- Chain geometry ---
+  // The chain wraps around the chainring and rear cog, connected by
+  // two straight tangent runs (top = drive side, bottom = slack side).
+  //
+  // bb is at (rearHub.x + 58, rearHub.y + 12), so the center-to-center
+  // vector is fixed and we can precompute all the tangent angles.
+  const ccDx = 58, ccDy = 12
+  const ccDist = Math.sqrt(ccDx * ccDx + ccDy * ccDy)    // ≈ 59.2
+  const ccAngle = Math.atan2(ccDy, ccDx)                  // ≈ 0.204 rad
+
+  // For external tangents to circles of different radii, the tangent
+  // normal is offset from the perpendicular by asin((R-r)/d).
+  const tangentDelta = Math.asin((chainringR - cogR) / ccDist)
+
+  // Angles where the chain meets each sprocket
+  const topNormal = ccAngle - Math.PI / 2 + tangentDelta  // ≈ -1.23 rad
+  const botNormal = ccAngle + Math.PI / 2 - tangentDelta  // ≈  1.64 rad
+
+  // Helper: point on a sprocket at a given angle
+  function chainPt(center, r, angle) {
+    return point(plus(center.x(), r * Math.cos(angle)),
+                 plus(center.y(), r * Math.sin(angle)))
+  }
+
+  // Build arrays of points along the chain path, then connect with lines.
+  // Chainring wrap: from topNormal → botNormal clockwise (around the
+  //   front/right of the chainring, away from the cog).
+  // Cog wrap: from botNormal → topNormal+2π clockwise (around the
+  //   back/left of the cog, away from the chainring).
+  const nArc = 8
+  const chainringPts = [], cogPts = []
+  for (let i = 0; i <= nArc; i++) {
+    const t = i / nArc
+    chainringPts.push(
+      chainPt(bb, chainringR,
+              topNormal + (botNormal - topNormal) * t))
+    cogPts.push(
+      chainPt(rearHub, cogR,
+              botNormal + (topNormal + 2 * Math.PI - botNormal) * t))
+  }
+
+  setStrokeStyle("#777")
+  setLineWidth(1.2)
+  setLineDash([3, 2])
+
+  // Top run: last cog point → first chainring point
+  line(cogPts[nArc], chainringPts[0])
+
+  // Chainring wrap
+  for (let i = 0; i < nArc; i++)
+    line(chainringPts[i], chainringPts[i + 1])
+
+  // Bottom run: last chainring point → first cog point
+  line(chainringPts[nArc], cogPts[0])
+
+  // Cog wrap
+  for (let i = 0; i < nArc; i++)
+    line(cogPts[i], cogPts[i + 1])
+
   setLineDash([])
 
   // ---------- cranks & pedals ----------
