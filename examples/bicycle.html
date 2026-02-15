@@ -1,0 +1,220 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Constrain Bicycle</title>
+  <script src="https://andrewcmyers.github.io/constrain/numeric-1.2.6.js"></script>
+  <script src="https://andrewcmyers.github.io/constrain/constrain.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 2em;
+      background: #f4f4f0;
+    }
+    h1 { color: #336; margin-bottom: 0.3em }
+    p.subtitle { color: #666; font-size: 11pt; margin-top: 0 }
+    canvas { background: white; border: 1px solid #ddd }
+  </style>
+</head>
+<body>
+<h1>Bicycle</h1>
+<p class="subtitle">Drag the red handle to roll the bicycle.</p>
+
+<canvas id="bicycle_fig" style="width: 660px; height: 360px"></canvas>
+
+<script>
+Constrain.setupTouchListeners()
+
+with (new Constrain.Figure("bicycle_fig")) {
+
+  // =====================================================
+  //  A constraint-based bicycle whose wheels and pedals
+  //  rotate as you drag it horizontally.
+  // =====================================================
+
+  const m = margin(8)
+
+  // ---------- constants ----------
+  const wheelR    = 50       // wheel radius
+  const wheelDiam = wheelR*2
+  const WB        = 185      // wheelbase (hub-to-hub)
+  const spokeN    = 12       // spokes per wheel
+  const crankLen  = 18       // crank arm length
+  const pedalW    = 10       // pedal half-width
+
+  // ---------- drag handle ----------
+  // Horizontal-only handle; y is pinned to the ground line.
+  const dragHandle = handle().setStrokeStyle("#c33")
+  const groundY = minus(m.y1(), 42)
+  equal(dragHandle.y(), minus(groundY, 6))
+  // keep it within the canvas
+  geq(dragHandle.x(), plus(m.x0(), wheelR + 20))
+  leq(dragHandle.x(), minus(m.x1(), wheelR + WB - 20))
+
+  // The bike's horizontal centre follows the handle
+  const bikeX = dragHandle.x()
+
+  // ---------- hubs ----------
+  const rearHub  = point(minus(bikeX, WB/2), minus(groundY, wheelR))
+  const frontHub = point(plus(bikeX, WB/2),  minus(groundY, wheelR))
+
+  // ---------- wheel rotation angle ----------
+  // angle = horizontal_position / radius  (rolls without slipping)
+  const wheelAngle = times(bikeX, 1.0 / wheelR)
+
+  // ---------- helper: draw one wheel ----------
+  function drawWheel(hub) {
+    // Tire
+    setStrokeStyle("#333")
+    setLineWidth(3)
+    circle(null, "#333", 3).setW(wheelDiam).at(hub)
+    // Inner rim highlight
+    setStrokeStyle("#aaa")
+    setLineWidth(0.5)
+    circle(null, "#aaa", 0.5).setW(wheelDiam - 10).at(hub)
+
+    // Spokes — each rotates with wheelAngle
+    setLineWidth(0.8)
+    setStrokeStyle("#bbb")
+    const spokeR = wheelR - 4
+    for (let i = 0; i < spokeN; i++) {
+      const base = (i / spokeN) * 2 * Math.PI
+      const ang = plus(wheelAngle, base)
+      const tip = point(plus(hub.x(), times(spokeR, cos(ang))),
+                        plus(hub.y(), times(spokeR, sin(ang))))
+      line(hub, tip)
+    }
+
+    // Hub cap
+    circle("#c33", "#c33", 1).setW(9).at(hub)
+  }
+
+  drawWheel(rearHub)
+  drawWheel(frontHub)
+
+  // ---------- bicycle frame ----------
+  // All joints positioned relative to hubs for realistic proportions.
+  //
+  //  seatClamp ---topTube--- headTop
+  //      |  \                  |      \  (fork)
+  //      |   seatStay        headTube  \
+  //   seatTube  \              |        frontHub
+  //      |    rearHub    headBot
+  //      bb ----------chainStay--- rearHub
+  //
+  const bb = point(plus(rearHub.x(), 58),        // bottom bracket
+                   plus(rearHub.y(), 12))
+
+  const seatClamp = point(minus(bb.x(), 10),      // top of seat tube
+                          minus(bb.y(), 78))
+
+  const headTop = point(minus(frontHub.x(), 18),   // top of head tube
+                        minus(bb.y(), 68))
+
+  const headBot = point(minus(frontHub.x(), 8),    // bottom of head tube
+                        minus(bb.y(), 20))
+
+  const frameColor = "#2266aa"
+  setStrokeStyle(frameColor)
+
+  // Main triangle
+  setLineWidth(3.5)
+  line(bb, headBot)                       // down tube
+  line(seatClamp, headTop)                // top tube
+  line(bb, seatClamp)                     // seat tube
+
+  // Head tube (thicker)
+  line(headBot, headTop).setLineWidth(5).setStrokeStyle(frameColor)
+
+  // Rear triangle
+  setStrokeStyle(frameColor)
+  setLineWidth(2.5)
+  line(rearHub, seatClamp)                // seat stay
+  line(rearHub, bb)                       // chain stay
+
+  // Fork
+  setLineWidth(3)
+  line(headBot, frontHub).setStrokeStyle(frameColor)
+
+  // ---------- handlebar ----------
+  setStrokeStyle("#555")
+  setLineWidth(3)
+  const barEnd = point(plus(headTop.x(), 14),
+                       minus(headTop.y(), 14))
+  const barGrip = point(plus(barEnd.x(), 10),
+                        plus(barEnd.y(), 5))
+  line(headTop, barEnd)
+  // drop portion
+  const barDrop = point(minus(headTop.x(), 6),
+                        minus(headTop.y(), 6))
+  line(headTop, barDrop)
+  // grip
+  line(barEnd, barGrip).setStrokeStyle("#c33").setLineWidth(5)
+
+  // ---------- seat ----------
+  const seatPostTop = point(minus(seatClamp.x(), 3),
+                            minus(seatClamp.y(), 14))
+  line(seatClamp, seatPostTop).setStrokeStyle("#555").setLineWidth(2.5)
+  // saddle
+  line(point(minus(seatPostTop.x(), 14), seatPostTop.y()),
+       point(plus(seatPostTop.x(), 10), seatPostTop.y()))
+      .setStrokeStyle("#444").setLineWidth(5)
+
+  // ---------- chainring & chain ----------
+  setStrokeStyle("#666")
+  setLineWidth(1.5)
+  circle(null, "#666", 1.5).setW(26).at(bb)
+
+  // Chain (dashed)
+  setLineDash([3, 3])
+  line(rearHub, bb).setStrokeStyle("#999").setLineWidth(1)
+  setLineDash([])
+
+  // ---------- cranks & pedals ----------
+  // Cranks rotate at a geared-up ratio relative to the wheels.
+  // A typical gear ratio ≈ 3 (chainring/cog teeth).
+  const gearRatio = 3.0
+  const crankAngle = times(wheelAngle, gearRatio)
+
+  setLineWidth(2.5)
+
+  // Crank A
+  const crankA = point(plus(bb.x(), times(crankLen, cos(crankAngle))),
+                       plus(bb.y(), times(crankLen, sin(crankAngle))))
+  line(bb, crankA).setStrokeStyle("#555")
+  // Pedal A — stays horizontal (pedals pivot freely on their spindles)
+  line(point(minus(crankA.x(), pedalW), crankA.y()),
+       point(plus(crankA.x(), pedalW), crankA.y()))
+      .setStrokeStyle("#c33").setLineWidth(4)
+
+  // Crank B (opposite side = +π)
+  const crankB = point(minus(bb.x(), times(crankLen, cos(crankAngle))),
+                       minus(bb.y(), times(crankLen, sin(crankAngle))))
+  line(bb, crankB).setStrokeStyle("#555")
+  // Pedal B — stays horizontal
+  line(point(minus(crankB.x(), pedalW), crankB.y()),
+       point(plus(crankB.x(), pedalW), crankB.y()))
+      .setStrokeStyle("#c33").setLineWidth(4)
+
+  // ---------- ground ----------
+  line(point(m.x0(), groundY), point(m.x1(), groundY))
+      .setStrokeStyle("#ccc").setLineWidth(1)
+
+  // ---------- label ----------
+  setFontSize(13)
+  setFontName("Georgia")
+  label("A Bicycle Built by Claude Code with Constrain")
+      .at(point(m.x(), plus(groundY, 22)))
+
+  start()
+}
+</script>
+
+<p style="text-align: right; font-size: 9pt; margin-top: 1em">
+  Built with <a href="https://github.com/andrewcmyers/constrain">Constrain</a>
+</p>
+</body>
+</html>
