@@ -120,9 +120,10 @@ with (new Constrain.Figure("bicycle_fig")) {
   const frameColor = "#2266aa"
   setStrokeStyle(frameColor)
 
-  // Main triangle
+  // Main triangle — down tube meets head tube at the top,
+  // forming a proper front triangle (seat clamp / head top / bb).
   setLineWidth(3.5)
-  line(bb, headBot)                       // down tube
+  line(bb, headTop)                       // down tube
   line(seatClamp, headTop)                // top tube
   line(bb, seatClamp)                     // seat tube
 
