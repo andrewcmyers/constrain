@@ -21,7 +21,7 @@
 </head>
 <body>
 <h1>Bicycle</h1>
-<p class="subtitle">Drag the red handle to roll the bicycle.</p>
+<p class="subtitle">Drag the orange diamond to roll the bicycle.</p>
 
 <canvas id="bicycle_fig" style="width: 660px; height: 360px"></canvas>
 
@@ -47,7 +47,7 @@ with (new Constrain.Figure("bicycle_fig")) {
 
   // ---------- drag handle ----------
   // Horizontal-only handle; y is pinned to the ground line.
-  const dragHandle = handle().setStrokeStyle("#c33")
+  const dragHandle = handle().setStrokeStyle("#c83")
   const groundY = minus(m.y1(), 42)
   equal(dragHandle.y(), minus(groundY, 6))
   // keep it within the canvas
