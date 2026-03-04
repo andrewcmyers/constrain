@@ -6039,7 +6039,7 @@ class LineLabel {
             this.computedHeight = h
             this.computedWidth = w
         }
-        if (margin) {
+        if (this.margin) {
             this.computedWidth += margin * 2
             this.computedHeight += margin * 2
         }
