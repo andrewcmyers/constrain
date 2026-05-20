@@ -1918,6 +1918,45 @@ into JavaScript using <a href="https://peckconsulting.s3.amazonaws.com/fontconve
 to embed fonts directly using a JavaScript-encoded font file.
 </p>
 
+<h2>Interacting with external HTML/JavaScript</h2>
+
+<p>
+Figures offer some hooks to obtain information that can be used externally to the figure.
+</p>
+
+<h4>output(expr, callback)</h4>
+<p>
+Each time the system of constraints is solved, call the function <code>callback</code> with
+the current value of the expression <code>expr</code>.
+</p>
+<pre id="output_ex_code" class=code></pre>
+<div id="output_ex">
+<canvas id=output_ex_fig></canvas>
+<p>
+The square root of 121 is
+<span id=output_span>???</span>
+</p>
+<script>
+  with (new Constrain.Figure("output_ex_fig")) {
+    s = variable("s", 0)
+    equal(times(s, s), 121)
+    output(s, value => {
+      let span = document.getElementById("output_span")
+      span.innerText = value
+    })
+  }
+</script>
+</div>
+<script>
+    show_example("output_ex_code", "output_ex")
+</script>
+
+<h4>registerCallback(callback)</h4>
+<p>
+On every solver step, call the function <code>callback</code> with the following arguments:
+this.solverCallbacks[i].call(it, x0, f0, g0, H1)
+</p>
+
 <h2>Integrating with MathJax</h2>
 <p>
 If you want complex mathematics in your diagram, it can be useful to embed MathJax.

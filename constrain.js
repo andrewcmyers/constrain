@@ -150,6 +150,7 @@ class Figure {
         this.substitutionEnabled = true
     // default styles
         this.style = new Context()
+        this.style.set('figure', this)
         this.setFillStyle("white")
         this.setStrokeStyle("black")
         this.setTextStyle("black")
@@ -404,6 +405,9 @@ class Figure {
                 })
             }
         })
+        for (const [expr, callback] of this.outputs) {
+            expr.variables().forEach(checkIfNeeded)
+        }
         if (!component) {
             this.stageVariables = solvedVariables
             if (DEBUG && DEBUG_CONSTRAINTS) {
@@ -6725,6 +6729,7 @@ class ContextTransformer extends TextItem {
 class SuperscriptText extends ContextTransformer {
     constructor(text) { super(tc => {
         const baseline = tc.get("baseline") || 0,
+              figure = tc.get("figure"),
               font = new Font(figure, tc),
               fontSize = tc.get("fontSize") || Figure_defaults.FONT_SIZE,
               scriptSize = tc.get("scriptSize") || Figure_defaults.SCRIPTSIZE,
@@ -6739,6 +6744,7 @@ class SuperscriptText extends ContextTransformer {
 class SubscriptText extends ContextTransformer {
     constructor(text) { super(tc => {
         const baseline = tc.get("baseline") || 0,
+              figure = tc.get("figure"),
               font = new Font(figure, tc),
               fontSize = tc.get("fontSize") || Figure_defaults.FONT_SIZE,
               scriptSize = tc.get("scriptSize") || Figure_defaults.SCRIPTSIZE,
