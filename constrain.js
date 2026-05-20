@@ -807,11 +807,6 @@ class Figure {
         }
        }
       }
-      for (const output of this.outputs) {
-        const [expr, callback] = output
-        const value = evaluate(expr)
-        callback(value)
-      }
       return true
     }
 
@@ -1046,6 +1041,11 @@ class Figure {
             const valuation = this.recordValuation(true)
             this.applyValuation(valuation)
             this.currentValuation = true
+            for (const output of this.outputs) {
+                const [expr, callback] = output
+                const value = evaluate(expr)
+                callback(value)
+            }
             if (!solved) { // animating solution
                 setTimeout(() => this.renderFrame(false), 16)
             }
