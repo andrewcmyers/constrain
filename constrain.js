@@ -284,6 +284,7 @@ class Figure {
         this.numVariables = 0
         this.interactives = []
         this.events = []
+        this.outputs = []
         this.focused = null
         this.renderNeeded = false
     }
@@ -802,6 +803,11 @@ class Figure {
         }
        }
       }
+      for (const output of this.outputs) {
+        const [expr, callback] = output
+        const value = evaluate(expr)
+        callback(value)
+      }
       return true
     }
 
@@ -869,24 +875,6 @@ class Figure {
         }
     }
 
-    // Register a callback to be invoked at every solver step
-    registerCallback(cb) {
-        for (let i = 0; i < this.solverCallbacks.length; i++) {
-            if (this.solverCallbacks[i] == cb) return
-        }
-        this.solverCallbacks.push(cb)
-    }
-    // Unregister a callback. Either the callback object itself or
-    // its name may be supplied as an argument.
-    unregisterCallback(name) {
-        for (let i = 0; i < this.solverCallbacks.length; i++) {
-            if (this.solverCallbacks[i].name == name ||
-                this.solverCallbacks[i] === name) {
-                this.solverCallbacks = this.solverCallbacks.slice(0, i)
-                                           .concat(this.solverCallbacks.slice(i+1))
-            }
-        }
-    }
     // Run the minimization-based solver. The parameter invHessian is optional, useful
     // for incrementally solving from a previous solution.
     minimizeConstraintLoss(valuation, tol, invHessian) {
@@ -927,6 +915,34 @@ class Figure {
         }
         if (DEBUG && result.message != CALLBACK_RETURNED_TRUE) console.log(result.iterations + " iterations, ", result.message)
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian, result.iterations]
+    }
+
+    // Register a callback to be invoked at every solver step
+    registerCallback(cb) {
+        for (let i = 0; i < this.solverCallbacks.length; i++) {
+            if (this.solverCallbacks[i] == cb) return
+        }
+        this.solverCallbacks.push(cb)
+    }
+    // Unregister a callback. Either the callback object itself or
+    // its name may be supplied as an argument.
+    unregisterCallback(name) {
+        for (let i = 0; i < this.solverCallbacks.length; i++) {
+            if (this.solverCallbacks[i].name == name ||
+                this.solverCallbacks[i] === name) {
+                this.solverCallbacks = this.solverCallbacks.slice(0, i)
+                                           .concat(this.solverCallbacks.slice(i+1))
+            }
+        }
+    }
+
+    // Register an output to be reported at the end of every solve
+    output(expr, callback) {
+        if (typeof callback != 'function') {
+            console.error("output() expects a callback function as the 2nd argument")
+        } else {
+            this.outputs.push([legalExpr(expr), callback])
+        }
     }
 
 // Rendering
