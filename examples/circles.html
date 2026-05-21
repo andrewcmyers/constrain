@@ -17,6 +17,7 @@
     h1 { color: #336; margin-bottom: 0.3em }
     p.subtitle { color: #666; font-size: 11pt; margin-top: 0 }
     canvas { background: white; border: 0px solid #800 }
+    pre { background: #ffe; padding: 1em }
   </style>
 </head>
 <body>
@@ -28,23 +29,18 @@ Packing three circles in a square.
 
 <canvas id="circles" style="width: 500px; height: 500px"></canvas>
 
-<script>
-Constrain.setupTouchListeners()
 
-var figure = new Constrain.Figure("circles")
-with (figure) {
+<script id=script>
+with (new Constrain.Figure("circles")) {
   setFillStyle('#ccc')
   let c1 = circle(), c2 = circle(), c3 = circle()
   let m = margin(0)
-  equal(c1.w(), c2.w(), c3.w())
-  start()
   align("left", "bottom", c1, m)
   align("right", "none", c2, m)
   align("none", "top", c3, m)
 
-  equal(distance(c1, c2), c1.w())
-  equal(distance(c1, c3), c1.w())
-  equal(distance(c2, c3), c1.w())
+  equal(c1.w(), c2.w(), c3.w(),
+        distance(c1, c2), distance(c1, c3), distance(c2, c3))
 
   output(c1.w(),
       diameter =>
@@ -56,6 +52,13 @@ with (figure) {
 <p>
 Diameter of circle is <span id=diameter>?</span>
 </p>
+<p>Code:</p>
+<pre id="code">
+</pre>
+<script>
+  document.getElementById('code').innerText =
+  document.getElementById('script').innerText
+</script>
 
 </body>
 </html>
