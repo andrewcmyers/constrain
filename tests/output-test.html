@@ -1,0 +1,29 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="../numeric-1.2.6.js"></script>
+  <script src="../constrain.js"></script>
+</head>
+
+<body>
+<div id="output_ex">
+<canvas style="width:1; height:1" id=output_ex_fig></canvas>
+<p>
+The square root of 121 is (approximately)
+<span id=output_span>???</span>
+</p>
+<script>
+  async function displayValue(figure) {
+    const value = await figure.output(s)
+    let span = document.getElementById("output_span")
+    span.innerText = value
+  }
+  with (new Constrain.Figure("output_ex_fig")) {
+    s = variable("s", 2)
+    equal(times(s, s), 121)
+    displayValue(thisFigure())
+    start()
+  }
+</script>
+</div>
