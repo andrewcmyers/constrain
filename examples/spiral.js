@@ -73,7 +73,7 @@ async function displayPhi() {
     const t = label("The Golden Ratio is approximately " + await(phi), 30, "Palatino", "yellow")
     align("center", "none", t, border)
     align("none", "top", t, m)
-    figure.render()
+    figure.renderFrame()
 }
 
 figure.start()
