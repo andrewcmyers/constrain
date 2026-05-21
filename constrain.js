@@ -6415,7 +6415,7 @@ function createText(...text) {
                             result.push(new Whitespace())
                         }
                         let parts = 0
-                        w.split(/­/).forEach(part => {
+                        w.split(/\u00AD/).forEach(part => {
                             if (parts++) result.push(new Hyphen())
                             result.push(new WordText(part))
                         })
