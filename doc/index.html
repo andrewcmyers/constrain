@@ -711,12 +711,16 @@ appropriately.
 Figure objects offer some methods for controlling the figure as a whole.
 </p>
 
+<h4>Constrain.Figures</h4>
+
+This is an array containing all current <code>Figure</code> objects.
+
 <h4>start()</h4>
 
 <p>Requests the figure to start rendering when it is ready.
 Figures do not automatically appear; for example, this document
 ends with a loop over the list of all figures (<code>Constrain.Figures</code>),
-telling each one to start:
+telling each one to start.
 </p>
 
 <h4>stop()</h4>
@@ -1927,9 +1931,12 @@ Figures offer some hooks to obtain information that can be used externally to th
 </p>
 
 <h4>output(expr, callback)</h4>
+<h4>output(expr)</h4>
 <p>
-Each time the system of constraints is solved, call the function <code>callback</code> with
-the current value of the expression <code>expr</code>.
+If the callback argument is provided, each time the system of constraints is solved,
+the function <code>callback</code> is called, passing the current value of the expression <code>expr</code>.
+If the second argument is not provided, a <code>Promise</code> is returned that resolves to the
+value of the expression after the next solve.
 </p>
 <pre id="output_ex_code" class=code></pre>
 <div id="output_ex">

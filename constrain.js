@@ -935,8 +935,24 @@ class Figure {
         }
     }
 
-    // Register an output to be reported at the end of every solve
+    // Register an output to be reported at the end of every solve.
+    // If a callback is provided, it is called with the value of expr after
+    // every solve. If no callback is provided, a Promise is returned that
+    // resolves with the value of expr after the next solve.
     output(expr, callback) {
+        if (callback === undefined) {
+            return new Promise(resolve => {
+                const entry = [legalExpr(expr), value => {
+                    // Defer removal to avoid disrupting any in-progress iteration
+                    setTimeout(() => {
+                        const idx = this.outputs.indexOf(entry)
+                        if (idx >= 0) this.outputs.splice(idx, 1)
+                    }, 0)
+                    resolve(value)
+                }]
+                this.outputs.push(entry)
+            })
+        }
         if (typeof callback != 'function') {
             console.error("output() expects a callback function as the 2nd argument")
         } else {
@@ -6399,7 +6415,7 @@ function createText(...text) {
                             result.push(new Whitespace())
                         }
                         let parts = 0
-                        w.split(/­/).forEach(part => {
+                        w.split(/Â­/).forEach(part => {
                             if (parts++) result.push(new Hyphen())
                             result.push(new WordText(part))
                         })
