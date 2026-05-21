@@ -902,6 +902,7 @@ may be added by user code.
 <tr><td>connectionStyle</td><td>The style of connecting objects, either “intersection” or ”magnet”.
 <tr><td>endArrow</td><td>The style of arrow at the end of a line or connector.
 <tr><td>fillStyle</td><td>The color or gradient used to fill shape interiors
+<tr><td>figure</td><td>The current figure
 <tr><td>fontName</td><td>The name of the font family, e.g., “Times”
 <tr><td>fontSize</td><td>The size of the font, in pixels
 <tr><td>fontStyle</td><td>The style of the font, e.g., “italic”, “bold”
@@ -1745,7 +1746,7 @@ done for any frame.
 <h2>The Constrain Solver</h2>
 
 <p>
-Constrain acts like a constraint solver, but it is actually based on minimizing
+Constrain acts like a constraint solver, but it actually works by trying to minimize
 loss. This choice makes it more robust in the fact of constraints that cannot
 be solved, and means that it is also possible to add minimization goals to the
 problem it is solving.
@@ -1757,7 +1758,7 @@ a minimization problem that is passed to the well-known BFGS algorithm. If the s
 of constraints can be decomposed into independently solvable subsets, this is done
 automatically. In addition, each call to <code>freeze()</code> partitions the
 set of variables and constraints into a series of stages whose constraints are decomposed
-into independendent components that are solved independently.
+into separate components that are solved independently.
 </p>
 <p>
 Loss terms have an associated cost multiplier; when the cost multiplier is less
@@ -1933,16 +1934,16 @@ the current value of the expression <code>expr</code>.
 <div id="output_ex">
 <canvas id=output_ex_fig></canvas>
 <p>
-The square root of 121 is
+The square root of 121 is approximately
 <span id=output_span>???</span>
 </p>
 <script>
   with (new Constrain.Figure("output_ex_fig")) {
-    s = variable("s", 0)
+    s = variable("s", 1)
     equal(times(s, s), 121)
     output(s, value => {
       let span = document.getElementById("output_span")
-      span.innerText = value
+      span.innerText = value.toFixed(4)
     })
   }
 </script>
@@ -1951,10 +1952,27 @@ The square root of 121 is
     show_example("output_ex_code", "output_ex")
 </script>
 
-<h4>registerCallback(callback)</h4>
+<h4>registerCallback(cb)</h4>
 <p>
-On every solver step, call the function <code>callback</code> with the following arguments:
-this.solverCallbacks[i].call(it, x0, f0, g0, H1)
+Here parameter <code>cb</code> is an object of class <code>SolverCallback</code>.
+On every solver step, the following method call is made:
+<code>cb.call(it, x0, f0, g0, H1)</code> where the method parameters are as follows:
+</p>
+<ul>
+<li><code>it</code>: the number of solver iterations
+<li><code>x0</code>: values of the variables currently being solved
+<li><code>f0</code>: value of the cost being minimized
+<li><code>g0</code>: gradient of the cost being minimized
+<li><code>H1</code>: approximate inverse Hessian of the cost function
+</ul>
+
+<p>
+Solver callbacks are useful if you want to visualize the action of the solver.
+</p>
+
+<h4>unregisterCallback(cb)</h4>
+<p>
+Remove a callback that was previously registered.
 </p>
 
 <h2>Integrating with MathJax</h2>
