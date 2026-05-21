@@ -64,17 +64,22 @@ for (let i = 0; i < steps; i++) {
     bottomE = be
 }
 
-let c = nearZero(minus(border.w(), canvasRect().x()))
-let success = updateValuation()
+let c = equal(border.w(), margin(20).w())
 
-let mw = border.w().solutionValue, mh = border.h().solutionValue
-let phi = mw/mh
-    t = label("The Golden Ratio is approximately " + phi, 30, "Palatino", "yellow")
-align("center", "none", t, border)
-align("none", "top", t, m)
+let phi_promise = output(divide(border.w(), border.h()))
 
+async function displayPhi() {
+    const phi = await phi_promise
+    const t = label("The Golden Ratio is approximately " + await(phi), 30, "Palatino", "yellow")
+    align("center", "none", t, border)
+    align("none", "top", t, m)
+    figure.render()
+}
+
+figure.start()
+figure.renderFrame()
+displayPhi()
 figure.removeConstraints(c)
 }
 Constrain.autoResize()
 Constrain.setupTouchListeners()
-figure.start()
