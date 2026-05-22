@@ -1342,6 +1342,14 @@ class Figure {
         this.renderFrame(false)
     }
 
+    // throw away solved positions of all variables
+    resetVariables() {
+        for (const v of figure.Variables) {
+            delete v.renderValue
+            delete v.solutionValue
+        }
+    }
+
     // return the next frame to f (or to the current frame if f is omitted),
     // or null if there is no next frame
     nextFrame(f) {
@@ -2948,7 +2956,7 @@ class Variable extends Expression {
     isLegalPoint() {
         return null
     }
-    // record that this expressions value depends on this variable
+    // record that this expression's value depends on this variable
     addDependent(expr) {
         this.dependents.add(expr)
     }

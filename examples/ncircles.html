@@ -34,7 +34,7 @@ Size of square is <span id=side_length>?</span>
 </p>
 
 <script>
-let N = 7
+let N = 12
 
 const figure = new Constrain.Figure("circles")
 let hints = []
@@ -86,7 +86,7 @@ function createFigure() {
 </script>
 
 <script>
-const trials = N*N
+const trials = N*Math.log(N)
 scrambleHints()
 createFigure()
 for (let t = 0; t < trials; t++) {
