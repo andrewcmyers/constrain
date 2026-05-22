@@ -87,7 +87,7 @@ function createFigure() {
   with (figure) {
     setFillStyle('#ccc'); setLineWidth(1)
     const circles = [],
-          R = variable("R", 1000/Math.sqrt(N)),
+          R = variable("R", 250/Math.sqrt(N)),
           D = times(2, R),
           box = margin(0)
     for (let i = 0; i < N; i++) {
