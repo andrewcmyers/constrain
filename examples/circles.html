@@ -85,19 +85,20 @@ function reportSolution(radius, circles) {
 <script id=script>
 function createFigure() {
   with (figure) {
-    setFillStyle('#ccc')
-    const circles = []
-    const R = variable("R", 1000/Math.sqrt(N))
-    const D = times(2, R)
-    let m = margin(0)
+    setFillStyle('#ccc'); setLineWidth(1)
+    const circles = [],
+          R = variable("R", 1000/Math.sqrt(N)),
+          D = times(2, R),
+          box = margin(0)
     for (let i = 0; i < N; i++) {
         const c = circles[i] = circle()
-        equal(circles[i].w(), D)
-        keepInside(c, m)
+        keepInside(c, box)
+        equal(c.w(), D)
         equal(c, point(hints[i][0], hints[i][1]))
-        for (let j = 0; j < i; j++) geq(distance(c, circles[j]), D)
+        for (let j = 0; j < i; j++)
+            geq(distance(c, circles[j]), D)
     }
-    equal(D, m.w()).changeCost(0.001)
+    equal(D, box.w()).changeCost(0.001) // try to inflate
 
     output(R, radius => reportSolution(radius, circles))
     start()
@@ -133,7 +134,8 @@ regenerateFigure()
 <pre id="code">
 </pre>
 <script>
-  document.getElementById('code').innerText = document.getElementById('script').innerText
+  const code = document.getElementById('script').innerText
+  document.getElementById('code').innerText = code.replace(/^.*\n.*\n.*\n/, "").replace(/.*\n.*\n.*\n$/, "")
 </script>
 
 </body>
