@@ -50,7 +50,7 @@ Size of square is <span id=side_length>?</span> (Note: the smallest possible squ
 <script>
 window.N = Number(document.getElementById('number-select').value)
 
-let figure = new Constrain.Figure("circles")
+let figure
 
 let hints,
     best = 0,
@@ -100,7 +100,7 @@ function createFigure() {
         for (let j = 0; j < i; j++)
             geq(distance(c, circles[j]), D)
     }
-    equal(D, box.w()).changeCost(0.001) // try to inflate
+    equal(D, box.w()).changeCost(0.001)
 
     output(R, radius => reportSolution(radius, circles))
     start()
@@ -110,15 +110,14 @@ function createFigure() {
 
 <script>
 function regenerateFigure() {
-    figure.destroy()
+    if (figure) figure.destroy()
     figure = new Constrain.Figure("circles")
     const trials = N*Math.log(N)*2
     best = 0
     startHints()
     scrambleHints()
     createFigure()
-    for (let t = 0; t < trials; t++) {
-        scrambleHints()
+    for (let t = 0; t < trials; t++, scrambleHints()) {
         figure.resetVariables()
         figure.reset()
     }
