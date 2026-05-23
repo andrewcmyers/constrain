@@ -89,7 +89,7 @@ function createFigure() {
   with (figure) {
     setFillStyle('#ccc'); setLineWidth(1)
     const circles = [],
-          R = variable("R", 250/Math.sqrt(N)),
+          R = variable("R", 250/Math.sqrt(N)), // size hint
           D = times(2, R),
           box = margin(0)
     for (let i = 0; i < N; i++) {
@@ -100,7 +100,7 @@ function createFigure() {
         for (let j = 0; j < i; j++)
             geq(distance(c, circles[j]), D)
     }
-    equal(D, box.w()).changeCost(0.001)
+    equal(times(Math.sqrt(N), D), box.w()).changeCost(0.001) // inflate weakly
 
     output(R, radius => reportSolution(radius, circles))
     start()
