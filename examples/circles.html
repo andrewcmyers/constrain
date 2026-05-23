@@ -24,40 +24,120 @@
 <h1>Circles</h1>
 
 <p>
-Packing three circles in a square.
+Packing N unit circles in a square.
 </p>
 
 <canvas id="circles" style="width: 500px; height: 500px"></canvas>
 
+<p>
+Number of circles: <select name="number" id="number-select"
+    onchange="N = Number(event.target.value); regenerateFigure()">
+  <option value=1>1
+  <option value=2>2
+  <option value=3 selected>3
+  <option value=4>4
+  <option value=5>5
+  <option value=6>6
+  <option value=7>7
+  <option value=8>8
+  <option value=9>9
+  </select>
+</p>
+<p>
+Size of square is <span id=side_length>?</span> (Note: the smallest possible square is not always found!)
+</p>
+
+<script>
+window.N = Number(document.getElementById('number-select').value)
+
+let figure = new Constrain.Figure("circles")
+
+let hints,
+    best = 0,
+    best_positions;
+
+function startHints() {
+    hints = []
+    for (let i = 0; i < N; i++) {
+        hints.push([figure.variable("c"+i+"x", 0), figure.variable("c"+i+"y", 0)])
+    }
+    best_positions = []
+    for (i = 0; i < N; i++) best_positions.push(new Array(2))
+}
+
+function scrambleHints() {
+    for (let i = 0; i < N; i++) {
+        hints[i][0].setHint(Math.random() * 500)
+        hints[i][1].setHint(Math.random() * 500)
+    }
+}
+function reportSolution(radius, circles) {
+    if (radius > best) {
+        best = radius
+        for (let i = 0; i < N; i++) {
+            best_positions[i][0] = Constrain.evaluate(circles[i].x())
+            best_positions[i][1] = Constrain.evaluate(circles[i].y())
+        }
+        document.getElementById('side_length').innerText = (500/radius).toFixed(3)
+    }
+}
+
+</script>
 
 <script id=script>
-with (new Constrain.Figure("circles")) {
-  setFillStyle('#ccc')
-  let c1 = circle(), c2 = circle(), c3 = circle()
-  let m = margin(0)
-  align("left", "bottom", c1, m)
-  align("right", "none", c2, m)
-  align("none", "top", c3, m)
+function createFigure() {
+  with (figure) {
+    setFillStyle('#ccc'); setLineWidth(1)
+    const circles = [],
+          R = variable("R", 250/Math.sqrt(N)),
+          D = times(2, R),
+          box = margin(0)
+    for (let i = 0; i < N; i++) {
+        const c = circles[i] = circle()
+        keepInside(c, box)
+        equal(c.w(), D)
+        equal(c, point(hints[i][0], hints[i][1]))
+        for (let j = 0; j < i; j++)
+            geq(distance(c, circles[j]), D)
+    }
+    equal(D, box.w()).changeCost(0.001) // try to inflate
 
-  equal(c1.w(), c2.w(), c3.w(),
-        distance(c1, c2), distance(c1, c3), distance(c2, c3))
-
-  output(c1.w(),
-      diameter =>
-        document.getElementById('diameter').innerText = diameter/500)
-  start()
+    output(R, radius => reportSolution(radius, circles))
+    start()
+  }
 }
 </script>
 
-<p>
-Diameter of circle is <span id=diameter>?</span>
-</p>
+<script>
+function regenerateFigure() {
+    figure.destroy()
+    figure = new Constrain.Figure("circles")
+    const trials = N*Math.log(N)*2
+    best = 0
+    startHints()
+    scrambleHints()
+    createFigure()
+    for (let t = 0; t < trials; t++) {
+        scrambleHints()
+        figure.resetVariables()
+        figure.reset()
+    }
+    for (let i = 0; i < N; i++) {
+        figure.equal(hints[i][0], best_positions[i][0])
+        figure.equal(hints[i][1], best_positions[i][1])
+    }
+    figure.reset()
+}
+
+regenerateFigure()
+</script>
+
 <p>Code:</p>
 <pre id="code">
 </pre>
 <script>
-  document.getElementById('code').innerText =
-  document.getElementById('script').innerText
+  const code = document.getElementById('script').innerText
+  document.getElementById('code').innerText = code.replace(/^.*\n.*\n.*\n/, "").replace(/.*\n.*\n.*\n$/, "")
 </script>
 
 <p style="text-align: right; width: 100%; font-size: 9pt; margin-top: 1em">
