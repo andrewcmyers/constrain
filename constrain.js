@@ -3281,7 +3281,7 @@ class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.mul(a, b) }
     gradop(a, b, da, db) {
-        return [ a * b, numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
+        return [ numeric.mul(a, b), numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
     }
     backprop(task) {
         const a = solvedValue(this.e1),
@@ -3560,7 +3560,7 @@ class Sqrt extends UnaryExpression {
     gradop(a, da) {
         if (a <= 0) return [0, getZeros(da.length)]
         const s = Math.sqrt(a)
-        return [s, numeric.mul(0.5/s), da]
+        return [s, numeric.mul(0.5/s, da)]
     }
     backprop(task) {
         let a = evaluate(this.expr, task.valuation)
@@ -3613,7 +3613,7 @@ class Cos extends UnaryExpression {
     operation(a) { return Math.cos(a) }
     gradop(a, da) { return [ this.operation(a), -Math.sin(a) * da ] }
     backprop(task) {
-        const a = evaluate(this, task.valuation)
+        const a = evaluate(this.expr, task.valuation)
         task.propagate(this.expr, -Math.sin(a) * this.bpDiff)
     }
 }
@@ -3622,7 +3622,7 @@ class Sin extends UnaryExpression {
     operation(a) { return Math.sin(a) }
     gradop(a, da) { return [ this.operation(a), Math.cos(a) * da ] }
     backprop(task) {
-        const a = evaluate(this, task.valuation)
+        const a = evaluate(this.expr, task.valuation)
         task.propagate(this.expr, Math.cos(a) * this.bpDiff)
     }
 }
