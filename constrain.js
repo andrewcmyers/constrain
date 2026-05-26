@@ -16,7 +16,7 @@ const Figures = []
 
 // Various switches and constants control the default appearance of figures.
 
-const USE_BACKPROPAGATION = true,
+const USE_BACKPROPAGATION = false,
       CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
@@ -680,6 +680,8 @@ class Figure {
             let c, dc
             if (doGrad) {
                 [c, dc] = result
+                if (typeof c !== 'number' || isNaN(c)) console.error("costGrad: bad cost from", con.toString(), "c=", c, "result=", result)
+                if (!Array.isArray(dc) || dc.some(isNaN)) console.error("costGrad: bad gradient from", con.toString(), "dc=", dc, "result=", result)
                 dcost = numeric.add(dcost, dc)
             } else {
                 c = result
@@ -689,6 +691,7 @@ class Figure {
         if (!doGrad) {
             return cost
         } else {
+            console.log("costGrad: cost=", cost, "dcost=", dcost, "nConstraints=", this.activeConstraints.length)
             return [cost, dcost]
         }
     }
@@ -902,6 +905,7 @@ class Figure {
         const uncmin_options = {tol, maxit}
         for (const key in minimizationOptions) uncmin_options[key] = minimizationOptions[key]
         uncmin_options.Hinv = invHessian
+        console.log("minimizeConstraintLoss: n=" + valuation.length + " constraints=" + this.activeConstraints.length + " useBackprop=" + USE_BACKPROPAGATION)
         if (doGrad) {
             if (USE_BACKPROPAGATION) {
                 result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
@@ -912,7 +916,7 @@ class Figure {
         } else {
             result = numeric.uncmin(this.totalCost, valuation, undefined, uncmin_options)
         }
-        if (DEBUG && result.message != CALLBACK_RETURNED_TRUE) console.log(result.iterations + " iterations, ", result.message)
+        console.log("minimizeConstraintLoss done: iterations=" + result.iterations + " message=" + result.message + " solution=" + result.solution)
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian, result.iterations]
     }
 
@@ -2932,6 +2936,9 @@ class Expression {
     // support for caching evaluations. Mostly not worthwhile but can pay off for
     // reused expressions.
     checkCache(valuation, doGrad) {
+        // Directional derivative mode (doGrad is a vector): bypass cache
+        // because the direction changes on each call.
+        if (doGrad && doGrad !== true) return undefined
         doGrad = doGrad ? true : false
         if (!this.hasOwnProperty('cachedValuation')) return undefined
         if (this.cachedValuation !== valuation || doGrad > this.cachedDoGrad) {
@@ -2944,6 +2951,8 @@ class Expression {
     }
     // Record a computed value (and optionally gradient) in the cache
     recordCache(valuation, doGrad, result) {
+        // Don't cache directional derivative results
+        if (doGrad && doGrad !== true) return result
         doGrad = doGrad ? true : false
         this.cachedValuation = valuation
         this.cachedDoGrad = doGrad
@@ -3044,21 +3053,32 @@ class Variable extends Expression {
             const substitution = this.substitution
             if (substitution) return evaluate(substitution, valuation, doGrad)
             const v = this.solutionValue
-            if (v !== undefined) return v
-            return this.hint
+            if (v !== undefined) {
+                if (doGrad) return [v, doGrad === true ? getZeros(valuation.length) : 0]
+                return v
+            }
+            const h = this.hint
                    || (console.error("undefined solution variable??"), 0)
+            if (doGrad) return [h, doGrad === true ? getZeros(valuation.length) : 0]
+            return h
         }
         if (DEBUG && this.figure.activeVariables[this.index] !== this) {
             console.error("Variable index does not agree with active variables list")
         }
         if (doGrad) {
-            let g = this.grad, n = valuation.length
-            if (!g || g.length != n) {
-                g = new Array(n).fill(0)
-                g[this.index] = 1
-                this.grad = g // save gradient for later
+            if (doGrad === true) {
+                // Full gradient mode: return unit vector for this variable
+                let g = this.grad, n = valuation.length
+                if (!g || g.length != n) {
+                    g = new Array(n).fill(0)
+                    g[this.index] = 1
+                    this.grad = g // save gradient for later
+                }
+                return [valuation[this.index], g]
+            } else {
+                // Directional derivative mode: doGrad is the direction vector
+                return [valuation[this.index], doGrad[this.index]]
             }
-            return [valuation[this.index], g]
         } else {
             const v = valuation[this.index]
             if (v === undefined) {
@@ -3183,7 +3203,7 @@ function evaluate(expr, valuation, doGrad) {
         evaluationCounts.set(expr, 1 + (evaluationCounts.get(expr) || 0))
     }
     switch (typeof expr) {
-        case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
+        case NUMBER: return !doGrad ? expr : [ expr, doGrad === true ? getZeros(valuation.length) : 0 ]
         case FUNCTION:
             return (expr)(valuation)
         default:
@@ -3194,14 +3214,6 @@ function evaluate(expr, valuation, doGrad) {
                     if (valuation === undefined) valuation = false
                     const result1 = expr.checkCache(valuation, doGrad)
                     if (result1 !== undefined) {
-                        const result2 = expr.evaluate(valuation, doGrad)
-                        /*
-                        if (!similarResults(result1, result2)) {
-                            console.log(`Oops, results disagree: ${result1} != ${result2}`)
-                            console.log(`dependencies are: ${Array.from(exprVariables(expr))}`)
-                        }
-                        console.log("reusing value of " + expr + " = " + result1)
-                        */
                         return result1
                     }
                     const result2 = expr.evaluate(valuation, doGrad)
@@ -3210,11 +3222,11 @@ function evaluate(expr, valuation, doGrad) {
                     }
                     // console.log("standard caching for " + expr + " : valuation " + valuation)
                     expr.recordCache(valuation, doGrad, result2)
-                    if (valuation) expr.solutionValue = result2
+                    if (valuation) expr.solutionValue = doGrad ? result2[0] : result2
                     return result2
                 } else {
                     const r = expr.evaluate(valuation, doGrad)
-                    if (valuation) expr.solutionValue = r
+                    if (valuation) expr.solutionValue = doGrad ? r[0] : r
                     return r
                 }
             }
@@ -3366,8 +3378,8 @@ class BinaryExpression extends Expression {
     evaluate(valuation, doGrad) {
         if (!doGrad || !this.gradop)
             return this.operation(evaluate(this.e1, valuation), evaluate(this.e2, valuation))
-        const [a, da] = evaluate(this.e1, valuation, true)
-        const [b, db] = evaluate(this.e2, valuation, true)
+        const [a, da] = evaluate(this.e1, valuation, doGrad)
+        const [b, db] = evaluate(this.e2, valuation, doGrad)
         CHECK_NAN && checkNaNResult(a)
         CHECK_NAN && checkNaNResult(b)
         return this.gradop(a, b, da, db)
@@ -3595,8 +3607,8 @@ class Distance extends Expression {
               rad = numeric.norm2Squared(numeric.sub(p2, p1))
         return Math.sqrt(rad)
       }
-      const [p1, dp1] = evaluate(this.p1, valuation, true),
-            [p2, dp2] = evaluate(this.p2, valuation, true),
+      const [p1, dp1] = evaluate(this.p1, valuation, doGrad),
+            [p2, dp2] = evaluate(this.p2, valuation, doGrad),
             dpd = numeric.sub(dp2, dp1),
             pd = numeric.sub(p2, p1),
             rad = numeric.norm2Squared(pd),
@@ -3665,7 +3677,7 @@ class UnaryExpression extends Expression {
     gradop(a, da) { console.error("Undefined unary operation") }
     evaluate(valuation, doGrad) {
         if (!doGrad) return this.operation(evaluate(this.expr, valuation))
-        const [a, da] = evaluate(this.expr, valuation, true)
+        const [a, da] = evaluate(this.expr, valuation, doGrad)
         return this.gradop(a, da)
     }
     variables() {
@@ -3712,7 +3724,7 @@ class Sqrt extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return Math.sqrt(a) }
     gradop(a, da) {
-        if (a <= 0) return [0, getZeros(da.length)]
+        if (a <= 0) return [0, typeof da === NUMBER ? 0 : getZeros(da.length)]
         const s = Math.sqrt(a)
         return [s, numeric.mul(0.5/s, da)]
     }
@@ -3735,7 +3747,7 @@ class Sq extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return numeric.dot(a, a) }
     gradop(a, da) {
-        return [numeric.dot(a, a), numeric.mul(2, a, da)]
+        return [numeric.dot(a, a), numeric.dot(numeric.mul(2, a), da)]
     }
     backprop(task) {
         const a = solvedValue(this.expr),
@@ -3751,8 +3763,8 @@ class Sq extends UnaryExpression {
 class Relu extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { if (a <= 0) return 0; else return a }
-    gradop(a, da) { 
-        if (a <= 0) return [0, getZeros(da.length)]
+    gradop(a, da) {
+        if (a <= 0) return [0, typeof da === NUMBER ? 0 : getZeros(da.length)]
         return [a, da]
     }
     backprop(task) {
@@ -3835,7 +3847,7 @@ class Time extends Expression {
     }
     evaluate(valuation, doGrad) {
         const t = this.figure.currentTime
-        return doGrad ? [t, getZeros(valuation.length)] : t
+        return doGrad ? [t, doGrad === true ? getZeros(valuation.length) : 0] : t
     }
     variables() { return new Set() }
     backprop(task) {}
@@ -4416,8 +4428,8 @@ class LayoutObject extends Expression {
               y = evaluate(this.y(), valuation)
         return this.recordCache(valuation, doGrad, [x, y])
       } else {
-        const [x, dx] = evaluate(this.x(), valuation, true),
-              [y, dy] = evaluate(this.y(), valuation, true)
+        const [x, dx] = evaluate(this.x(), valuation, doGrad),
+              [y, dy] = evaluate(this.y(), valuation, doGrad)
         return this.recordCache(valuation, doGrad, [[x, y], [dx, dy]])
       }
     }
@@ -7223,7 +7235,7 @@ class Global extends Expression {
         } else {
             this.renderValue = v
         }
-        return this.recordCache(valuation, doGrad, doGrad ? [v, getZeros(valuation.length)] : v)
+        return this.recordCache(valuation, doGrad, doGrad ? [v, doGrad === true ? getZeros(valuation.length) : 0] : v)
     }
     backprop(task) {}
     addDependencies(task) {
