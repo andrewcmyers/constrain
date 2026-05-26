@@ -898,6 +898,7 @@ class Figure {
                 return false
             }
         }
+        this._solverIterations = 0
         const minimizationOptions = this.minimizationOptions
         const uncmin_options = {tol, maxit}
         for (const key in minimizationOptions) uncmin_options[key] = minimizationOptions[key]
@@ -2366,6 +2367,15 @@ class Figure {
         const rad = f.plus(f.sq(f.minus(x2, x1)), f.sq(f.minus(y2, y1)))
         return f.divide(f.minus(tr, tl), f.sqrt(rad))
     }
+    // an expression that returns the number of iterations the solver has done
+    solverIterations() {
+        this.registerCallback(new SolverCallback("solverIterations",
+            (it, x0, f0, g0, H1) => {
+                console.log("iteration: ", it)
+                this._solverIterations = it
+            }))
+        return new Global(() => this._solverIterations, "solverIterations")
+    }
 }
 
 function terms(expr) {
@@ -3156,12 +3166,9 @@ class BackPropagation {
         }
     }
     // Add this expression as something to minimize
-    addTask(expr, cost) {
+    addTask(expr) {
         this.prepareBackProp(expr)
-        if (isNaN(cost)) {
-            console.error("cost is not a number!?")
-        }
-        expr.bpDiff = cost
+        expr.bpDiff = 1
         expr.bpRoot = true
     }
     // Add this expression to the backpropagation task, along
@@ -4023,7 +4030,11 @@ class Constraint extends Temporal {
         }
     }
     changeCost(cost) {
-        this.cost *= cost
+        this.cost = this.figure.times(cost, this.cost)
+        return this
+    }
+    setCost(cost) {
+        this.cost = legalExpr(cost)
         return this
     }
     // Does this constraint need to be solved for in the specified stage, for
@@ -4052,19 +4063,28 @@ class Constraint extends Temporal {
 class Loss extends Constraint {
     constructor(figure, expr) {
         super(figure)
-        this.expr = expr
+
+        this.expr = legalExpr(expr)
         this.cost = 1
+        this.costExpr = expr // expr * cost
     }
     addToTask(task) {
-        task.addTask(this.expr, this.cost)
+        task.addTask(this.costExpr)
     }
     getCost(valuation, doGrad) {
       if (!doGrad) {
-        const v = evaluate(this.expr, valuation)
-        return v * this.cost
+        const x = evaluate(this.costExpr, valuation)
+        if (typeof x !== NUMBER) {
+            console.error("Loss evaluated to something that is not a number")
+        }
+        return x
       } else {
-        const [x, dx] = evaluate(this.expr, valuation, true)
-        return [x*this.cost, numeric.mul(dx, this.cost)]
+        const [x, dx] = evaluate(this.costExpr, valuation, true)
+        console.log(x, dx)
+        if (typeof x !== NUMBER) {
+            console.error("Loss evaluated to something that is not a number")
+        }
+        return [x, dx]
       }
     }
     variables() {
@@ -4073,6 +4093,16 @@ class Loss extends Constraint {
     toString() {
         return "Loss"
     }
+    changeCost(multiplier) {
+        this.cost = this.figure.times(legalExpr(multiplier), this.cost)
+        this.costExpr = this.figure.times(this.cost, this.expr)
+        return this
+    }
+    setCost(cost) {
+        this.cost = legalExpr(cost)
+        this.costExpr = this.figure.times(this.cost, this.expr)
+        return this
+    }
 }
 
 // A NearZero constraint tries to ensure that its expression is as close to
@@ -4080,7 +4110,7 @@ class Loss extends Constraint {
 class NearZero extends Loss {
     constructor(figure, expr, cost) {
         super(figure, new Sq(expr))
-        this.cost = cost || 1
+        if (cost != undefined && cost !== 1) this.setCost(cost)
     }
     toString() { return "0 ~ " + this.expr }
 }
