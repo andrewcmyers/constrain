@@ -2719,6 +2719,167 @@ function uncmin(fg, x0, callback, options) {
     }
 }
 
+// Conjugate gradient solver for the symmetric positive definite system Ax = b,
+// where A is provided as a function v → Av. Returns the approximate solution x.
+// Terminates early on convergence, negative curvature, or maxiter.
+function cgSolve(Av, b, n, maxiter, tol) {
+    let x = new Array(n).fill(0)
+    let r = numeric.clone(b)  // residual = b - A*0 = b
+    let p = numeric.clone(r)
+    let rr = dot(r, r)
+    const tolSq = tol * tol
+
+    for (let i = 0; i < maxiter; i++) {
+        if (rr < tolSq) break
+        const Ap = Av(p)
+        const pAp = dot(p, Ap)
+        if (pAp <= 0) break // negative curvature; use current best
+        const alpha = rr / pAp
+        x = add(x, mul(alpha, p))
+        r = sub(r, mul(alpha, Ap))
+        const rrNew = dot(r, r)
+        p = add(r, mul(rrNew / rr, p))
+        rr = rrNew
+    }
+    return x
+}
+
+// Matrix-free Levenberg-Marquardt minimization for:
+//
+//   minimize  f(x) = r(x)ᵀr(x) + L(x)
+//
+// where r(x) is a vector of m residuals (from NearZero constraints) and
+// L(x) is a scalar general loss. The Jacobian J of r is never formed.
+// Instead, J is accessed only through two matrix-vector products:
+//   Jv:  the directional derivative of r in direction v (forward mode)
+//   Jtw: the adjoint product Jᵀw (backpropagation)
+//
+// The LM step δ solves  (2JᵀJ + λI)δ = -∇f  via conjugate gradient,
+// where each CG iteration needs only v → 2·Jtw(Jv(v)) + λv.
+//
+// Parameters:
+//   evalSetup(x): evaluate residuals at x, cache expression values for
+//     subsequent Jv/Jtw calls. Returns [r, rCost] where r is the
+//     residual vector (length m) and rCost = rᵀr.
+//   Jv(v): Jacobian-vector product J·v (length m). Computes the
+//     directional derivative of all residuals in direction v, using
+//     values cached by the most recent evalSetup call.
+//   Jtw(w): transposed Jacobian-vector product Jᵀ·w (length n).
+//     Backpropagates weights w through the residual expressions, using
+//     values cached by the most recent evalSetup call.
+//   lossFn: null if no general losses; otherwise:
+//     lossFn(x):       returns scalar L(x)
+//     lossFn(x, true): returns [L(x), ∇L(x)]
+//   x0:       initial variable values (length n)
+//   callback: called as callback(it, x, f, g) each iteration; return true to stop
+//   options:  { tol, maxIterations, lambda, lambdaUp, lambdaDown,
+//               cgMaxIterations, gainHi, gainLo }
+//
+// Returns: { solution, f, gradient, lambda, iterations, message }
+function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
+    if (options === undefined) options = {}
+    const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
+          maxit = options.maxIterations || 1000,
+          cgMaxit = options.cgMaxIterations || 0, // 0 = use min(n, 50)
+          gainHi = options.gainHi || 0.75,
+          gainLo = options.gainLo || 0.25
+    const norm2 = numeric.norm2
+
+    x0 = numeric.clone(x0)
+    const n = x0.length
+    let lambda = options.lambda || 1e-3
+    const lambdaUp = options.lambdaUp || 10
+    const lambdaDown = options.lambdaDown || 10
+
+    // LM matrix-vector product: v → 2Jᵀ(Jv) + λv
+    function lmMatVec(v) {
+        return add(mul(2, Jtw(Jv(v))), mul(lambda, v))
+    }
+
+    // Evaluate at initial point, set up Jacobian products
+    let [r0, rCost0] = evalSetup(x0)
+    let lCost0 = 0, lGrad0 = null
+    if (lossFn) [lCost0, lGrad0] = lossFn(x0, true)
+    let f0 = rCost0 + lCost0
+
+    if (isNaN(f0)) throw new Error('levenbergMarquardt: f(x0) is NaN')
+
+    // Gradient: ∇f = 2Jᵀr + ∇L
+    let g0 = mul(2, Jtw(r0))
+    if (lGrad0) g0 = add(g0, lGrad0)
+
+    let it = 0, msg = ""
+
+    while (it < maxit) {
+        if (!all(isFinite(g0))) {
+            msg = BAD_GRADIENT
+            break
+        }
+        if (norm2(g0) < tol) {
+            msg = "Gradient norm smaller than tol"
+            break
+        }
+
+        // Solve (2JᵀJ + λI)δ = -∇f using CG.
+        const cgIter = cgMaxit > 0 ? cgMaxit : Math.min(n, 50)
+        const step = cgSolve(lmMatVec, neg(g0), n, cgIter, tol * 0.1)
+
+        const nstep = norm2(step)
+        if (nstep < tol) {
+            msg = "Step smaller than tol"
+            break
+        }
+
+        // Predicted reduction = -(gᵀδ + ½δᵀHδ) where H = 2JᵀJ + λI.
+        // Must be computed before evalSetup overwrites cached values.
+        const Hstep = lmMatVec(step)
+        const predicted = -(dot(g0, step) + 0.5 * dot(step, Hstep))
+
+        // Evaluate trial point. This overwrites cached expression values,
+        // so Jv/Jtw now operate at x1.
+        const x1 = add(x0, step)
+        const [r1, rCost1] = evalSetup(x1)
+        let lCost1 = 0, lGrad1 = null
+        if (lossFn) [lCost1, lGrad1] = lossFn(x1, true)
+        const f1 = rCost1 + lCost1
+
+        const actual = f0 - f1
+        const gainRatio = predicted > 0 ? actual / predicted : 0
+
+        if (gainRatio > gainLo && !isNaN(f1)) {
+            // Accept step. Jacobian state is already at x1.
+            x0 = x1
+            r0 = r1
+            f0 = f1
+            g0 = mul(2, Jtw(r0))
+            if (lGrad1) g0 = add(g0, lGrad1)
+            if (gainRatio > gainHi) lambda /= lambdaDown
+        } else {
+            // Reject step. Restore Jacobian state at x0.
+            evalSetup(x0)
+            lambda *= lambdaUp
+        }
+
+        it++
+        if (typeof callback === FUNCTION) {
+            if (callback(it, x0, f0, g0, null)) {
+                msg = CALLBACK_RETURNED_TRUE
+                break
+            }
+        }
+    }
+
+    return {
+        solution: x0,
+        f: f0,
+        gradient: g0,
+        invHessian: null,
+        lambda: lambda,
+        iterations: it,
+        message: msg
+    }
+}
+
 // A frame of the animation. Frames can auto-advance
 // to the next frame or require manual advancing.
 // frame.index gives the index of the frame in the
