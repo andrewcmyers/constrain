@@ -3033,8 +3033,8 @@ function evaluate(expr, valuation, doGrad) {
                     if (valuation === undefined) valuation = false
                     const result1 = expr.checkCache(valuation, doGrad)
                     if (result1 !== undefined) {
-                        const result2 = expr.evaluate(valuation, doGrad)
                         /*
+                        const result2 = expr.evaluate(valuation, doGrad)
                         if (!similarResults(result1, result2)) {
                             console.log(`Oops, results disagree: ${result1} != ${result2}`)
                             console.log(`dependencies are: ${Array.from(exprVariables(expr))}`)
