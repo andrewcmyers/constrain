@@ -1057,8 +1057,16 @@ points <code>p0</code> and <code>p2</code>.
 <h4>projection(e, i, n)</h4>
 <p>
 For a vector-valued expression <code>e</code>, returns an expression for
-component <code>i</code> of the vector. The dimension of the vector is <code>n</code>,
-and defaults to 2 if the argument is omitted.
+component <code>i</code> of the vector. The dimension of the vector is
+<code>n</code>, and defaults to 2 if the argument is omitted.
+</p>
+
+<h4>projections(expr, n)<br>projections(expr)</h4>
+
+<p>
+An array of all projections of an array-valued expression like a
+point or or graphical object. The parameter <code>n</code> is the
+size of the array, which is 2 by default.
 </p>
 
 <h4>constraintGroup(...constraints)</h4>

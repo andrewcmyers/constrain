@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true, REPORT_UNSOLVED_CONSTRAINTS = false,
       CHECK_NAN = false, DEBUG_TWEENING = false, DEBUG_LM = false
 const REPORT_PERFORMANCE = false
 
@@ -551,10 +551,10 @@ class Figure {
 
         // Assign a fresh index to variable v if it is not to be solved directly
         function assignIndex(v) {
-            if (v.substitution && v.substitution.directSolved) {
+            if (v.substitution !== undefined && v.substitution.directSolved) {
                 console.error("Oops, using a direct solved variable")
             }
-            if (v.directSolved || v.substitution) return
+            if (v.directSolved || v.substitution !== undefined) return
             if (component && v.variableComponent() !== component) return
             v.setIndex(i)
             activeVariables.push(v)
@@ -3187,7 +3187,7 @@ class Variable extends Expression {
         }
         if (this.index === undefined) {
             const substitution = this.substitution
-            if (substitution) return evaluate(substitution, valuation, doGrad)
+            if (substitution !== undefined) return evaluate(substitution, valuation, doGrad)
             const v = this.solutionValue
             if (v !== undefined) {
                 if (doGrad) return [v, doGrad === true ? getZeros(valuation.length) : 0]
@@ -3229,10 +3229,10 @@ class Variable extends Expression {
         if (CHECK_NAN && checkNaNResult(this.bpDiff)) {
             console.error("NaN in variable bpDiff")
         }
-        if (this.substitution) task.propagate(this.substitution, this.bpDiff)
+        if (this.substitution !== undefined) task.propagate(this.substitution, this.bpDiff)
     }
     addDependencies(task) {
-        if (this.substitution) task.prepareBackProp(this.substitution)
+        if (this.substitution !== undefined) task.prepareBackProp(this.substitution)
     }
     setHint(v) {
         this.hint = v
@@ -5840,33 +5840,31 @@ class Line extends Graphic {
     }
 }
 
-// A horizontal line, oriented left-to-right
+// A horizontal line, oriented left-to-right (p1 is always on the left side)
 class HorzLine extends Line {
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, p1, p2, strokeStyle, lineWidth)
+        this.w_ = figure.minus(figure.projection(this.p2, 0),
+                               figure.projection(this.p1, 0))
+        this.h_ = 0
         figure.equal(this.start().y(), this.end().y())
-        // Need a stronger constraint to get the line oriented correctly
-        figure.leq(this.start().x(), this.end().x()).changeCost(10)
-        this.w_ = new Minus(figure.projection(this.p2, 0), figure.projection(this.p1, 0))
     }
     x0() {
-        const f = this.figure
-        return f.min(f.projection(this.p1, 0), f.projection(this.p2, 0))
+        return this.figure.projection(this.p1, 0)
     }
     x1() {
-        const f = this.figure
-        return f.max(f.projection(this.p1, 0), f.projection(this.p2, 0))
+        return this.figure.projection(this.p2, 0)
     }
 }
 
-// A vertical line, oriented downward
+// A vertical line, oriented downward (p1 is always above p2)
 class VertLine extends Line {
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, p1, p2, strokeStyle, lineWidth)
+        this.h_ = figure.minus(figure.projection(this.p2, 1),
+                               figure.projection(this.p1, 1))
+        this.w_ = 0
         figure.equal(this.start().x(), this.end().x())
-        // Need a stronger constraint to get the line oriented correctly
-        figure.leq(this.start().y(), this.end().y()).changeCost(10)
-        this.h_ = figure.minus(figure.projection(this.p2, 1), figure.projection(this.p1, 1))
     }
     y0() {
         return this.figure.projection(this.p1, 1)
