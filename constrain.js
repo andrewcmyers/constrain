@@ -16,14 +16,14 @@ const Figures = []
 
 // Various switches and constants control the default appearance of figures.
 
-const USE_BACKPROPAGATION = false,
+const USE_BACKPROPAGATION = true,
       CACHE_ALL_EVALUATIONS = true,
       PROFILE_EVALUATIONS = false,
       REPORT_EVALUATED_EXPRESSIONS = false,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true, REPORT_UNSOLVED_CONSTRAINTS = false,
       CHECK_NAN = false, DEBUG_TWEENING = false
 const REPORT_PERFORMANCE = false
 
@@ -745,6 +745,7 @@ class Figure {
     updateValuation(tol, incremental) {
       let solution, figure = this
       if (PROFILE_EVALUATIONS) evaluations = 0
+      this.totalIterations = 0
       if (!this.components) this.components = []
       figure.timeVar.currentValue = figure.currentTime
       this.invalidateCachedExprs([this.timeVar])
@@ -1013,6 +1014,7 @@ class Figure {
     //   4. have previous, next, and (good) pending valuation.
     //        Simply render interpolated frame.
     renderFrame(animating, frameInterval, frameLength) {
+        console.log("rendering a frame")
         const figure = this,
               rT = figure.realTime,
               t = figure.renderTime,
@@ -3443,11 +3445,26 @@ class Average extends BinaryExpression {
 }
 
 // An expression x * y. One of the two may be a vector.
+// Multiply a value by a Jacobian, columnwise, matching numeric.mul semantics.
+// val is the value (scalar or k-vector), jac is the Jacobian of the other
+// operand (n-vector if that operand is scalar, k×n matrix if k-vector).
+function mulGrad(val, jac) {
+    if (typeof val === 'number') return numeric.mul(val, jac)
+    // val is a k-vector
+    if (typeof jac[0] === 'number') {
+        // jac is 1D (n-vector): other operand was scalar → outer product
+        return val.map(vi => numeric.mul(vi, jac))
+    }
+    // jac is 2D (k×n matrix): other operand was same-dim vector → row-wise scaling
+    return val.map((vi, i) => numeric.mul(vi, jac[i]))
+}
+
 class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.mul(a, b) }
     gradop(a, b, da, db) {
-        return [ numeric.mul(a, b), numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
+        // Product rule: d(a*b) = b*da + a*db, applied columnwise to Jacobians
+        return [numeric.mul(a, b), numeric.add(mulGrad(b, da), mulGrad(a, db))]
     }
     backprop(task) {
         const a = solvedValue(this.e1),
