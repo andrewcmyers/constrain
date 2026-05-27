@@ -1763,14 +1763,42 @@ loss. This choice makes it more robust in the fact of constraints that cannot
 be solved, and means that it is also possible to add minimization goals to the
 problem it is solving.
 </p>
+<h3>Solver algorithm control</h3>
+<p>
+The minimization algorithm used to solve constraints can be changed using the following method:
+<h4>setMinimizationAlgorithm(algname)</h4>
+<p>
+The names of supported algorithms include the following:
+<ul>
+<li><code>UNCMIN_GRADIENT</code>: simple first-order gradient descent.
+<li><code>UNCMIN_BFGS</code>: the second-order BFGS algorithm.
+<li><code>UNCMIN_LBFGS</code>: the L-BFGS algorithm.
+<li><code>LEVENBERG_MARQUARDT</code>: the Levenberg–Marquardt algorithm.
+</ul>
+</p>
+<h4>setMinimizationOptions(options)</h4>
+<p>
+This method gives additional control over the minimization algorithms. Pass an
+options object to this method. Which options are used depends on the algorithm,
+but here are some important properties that can be set:
+<ul>
+<li><code>tol</code>: The accuracy to which the constraints are solved
+<li><code>Hinv</code>: The initial inverse Hessian matrix, for the BFGS and L-BFGS algorithms.
+<li><code>maxIterations</code>: The maximum number of solver iterations that are performed before giving up.
+<li><code>stepSize</code>: The step size used by BFGS.
+<li><code>overshoot</code>: The overshoot allowed by BFGS (0.1 by default).
+<li><code>LBFGS_M</code>: The L parameter for L-BFGS
+<li><code>gainHi</code>: the high-gain threshold for Levenberg-Marquardt
+<li><code>gainLo</code>: the low-gain threshold for Levenberg-Marquardt
+<li><code>lambdaUp</code>: the multiplier for increasing the lambda parameter in Levenberg–Marquardt when the low-gain threshold is not met
+<li><code>lambdaDown</code>: the multiplier for decreasing the lambda parameter in Levenberg–Marquardt when the high-gain threshold is exceeded
+</ul>
+</p>
+<h3>How the solver works</h3>
 <p>
 Constraints are converted into loss terms whose value is always nonnegative and
 is zero when the constraint is solved. The constraints are then converted into
-a minimization problem that is passed to the well-known BFGS algorithm. If the set
-of constraints can be decomposed into independently solvable subsets, this is done
-automatically. In addition, each call to <code>freeze()</code> partitions the
-set of variables and constraints into a series of stages whose constraints are decomposed
-into separate components that are solved independently.
+a minimization problem that is passed to (by default) the well-known BFGS algorithm.
 </p>
 <p>
 Loss terms have an associated cost multiplier; when the cost multiplier is less
@@ -1778,6 +1806,18 @@ than 1, the solver treats the constraint as a soft constraint whose loss may
 not be reducible to zero. Hard constraints, with loss at least 1, allow
 the solver to optimize by performing equational manipulations before trying to
 minimize loss.
+</p>
+<p>
+Each call to <code>freeze()</code> partitions the variables and constraints
+into a series of stages that are solved in sequence. Variables and constraints
+defined in earlier stages are “frozen” during a given stage: their values
+cannot change.</p>
+<p>If during a given stage, the set of constraints can be decomposed into
+independently solvable subsets, this is done automatically. These components of
+the constraint system are then solved separately.  When solving a component,
+variables that can be solved immediately from solutions to other variables, via
+hard constaints are automatically removed from the constraint system and solved
+algebraically after the minimization algorithm is done.
 </p>
 <p>
 Once a solution is found, any new instance of the minimization problem is

@@ -23,7 +23,7 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true, REPORT_UNSOLVED_CONSTRAINTS = false,
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
       CHECK_NAN = false, DEBUG_TWEENING = false, DEBUG_LM = false
 const REPORT_PERFORMANCE = false
 
@@ -47,7 +47,18 @@ const Figure_defaults = {
     CONNECTION_STYLE : 'magnet'
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4, LEVENBERG_MARQUARDT = 5
+const Algorithms = {
+    UNCMIN_GRADIENT: 0,
+    UNCMIN_BFGS: 1,
+    UNCMIN_DFP: 2,
+    UNCMIN_ADAM: 3,
+    UNCMIN_LBFGS: 4,
+    LEVENBERG_MARQUARDT: 5
+}
+
+const { UNCMIN_GRADIENT, UNCMIN_BFGS, UNCMIN_DFP, UNCMIN_ADAM, UNCMIN_LBFGS, LEVENBERG_MARQUARDT } =
+    Algorithms
+
 let algorithm = LEVENBERG_MARQUARDT
 // let algorithm = UNCMIN_BFGS
 
@@ -69,7 +80,7 @@ const defaultMinimizationOptions = {
 
 const {gradient, dot, sub, add, tensor, div, sqrt, mul, transpose, all, isFinite, neg} = numeric
 
-function wrongSizedInvHessian(nvars, invHessian) {
+function wrongSizedInvHessian(algorithm, nvars, invHessian) {
   switch (algorithm) {
     case UNCMIN_BFGS:
     case UNCMIN_DFP: return nvars != invHessian.length
@@ -146,6 +157,7 @@ class Figure {
         this.frameRate = Figure_defaults.FRAMERATE
         this.Frames = []
         this.wrapFrames = false // does advancing from last frame go back to first
+        this.algorithm = algorithm; // use default algorithm
         this.currentStage = 0
         this.numStages = 1
         this.substitutionEnabled = true
@@ -289,6 +301,16 @@ class Figure {
         this.outputs = []
         this.focused = null
         this.renderNeeded = false
+    }
+    setMinimizationAlgorithm(algname) {
+        this.algorithm = Algorithms[algname]
+        if (this.algorithm === undefined) {
+            console.error("Unknown algorithm: ", algname)
+            this.algorithm = algorithm
+        }
+    }
+    setMinimizationOptions(options) {
+        this.minimizationOptions = options
     }
     // Return the valuation to be used for solving
     initialValuation(incremental) {
@@ -768,7 +790,7 @@ class Figure {
             if (DEBUG_CONSTRAINTS) {
                console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
             }
-            if (component.invHessian && wrongSizedInvHessian(this.currentValuation.length, component.invHessian)) {
+            if (component.invHessian && wrongSizedInvHessian(this.algorithm, this.currentValuation.length, component.invHessian)) {
                 delete component.invHessian
                 if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
             }
@@ -913,6 +935,7 @@ class Figure {
         }
         const minimizationOptions = this.minimizationOptions
         const uncmin_options = {tol, maxit}
+        const algorithm = this.algorithm
         for (const key in minimizationOptions) uncmin_options[key] = minimizationOptions[key]
 
         if (algorithm === LEVENBERG_MARQUARDT) {
@@ -925,13 +948,13 @@ class Figure {
             }
             if (doGrad) {
                 if (USE_BACKPROPAGATION) {
-                    result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
+                    result = uncmin(algorithm, (v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
                                     valuation, callback, uncmin_options)
                 } else {
-                    result = uncmin((v,d) => fig.costGrad(v,d), valuation, callback, uncmin_options)
+                    result = uncmin(algorithm, (v,d) => fig.costGrad(v,d), valuation, callback, uncmin_options)
                 }
             } else {
-                result = numeric.uncmin(this.totalCost, valuation, undefined, uncmin_options)
+                result = numeric.uncmin(algorithm, this.totalCost, valuation, undefined, uncmin_options)
             }
         }
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian, result.iterations]
@@ -950,79 +973,27 @@ class Figure {
             w: Math.sqrt(c.cost)
         }))
 
-        let currentX = null
-        let m = 0                // total scalar residuals
-        let resStructure = null  // [{start, len}] per residual expression
-
-        // evalSetup: evaluate all residuals at x, return [r, rᵀr].
-        // Caches expression values for subsequent Jv/Jtw calls.
+        // evalSetup: evaluate all residuals and the Jacobian at x.
+        // Returns [r, rᵀr, J] where r is the residual vector (length m)
+        // and J is the m×n Jacobian matrix.
         function evalSetup(x) {
-            currentX = x
             fig.invalidateCachedExprs(fig.activeVariables)
             const r = []
-            resStructure = []
+            const J = []  // m×n Jacobian, one row per scalar residual
             for (const ri of resExprs) {
-                const v = evaluate(ri.expr, x)
-                const start = r.length
+                const [v, dv] = evaluate(ri.expr, x, true)
                 if (typeof v === 'number') {
                     r.push(ri.w * v)
+                    J.push(numeric.mul(ri.w, dv))  // dv is n-vector
                 } else {
                     for (const vi of v) r.push(ri.w * vi)
+                    for (const row of dv) J.push(numeric.mul(ri.w, row))  // dv is k×n
                 }
-                resStructure.push({ start, len: r.length - start })
             }
-            m = r.length
+            const m = r.length
             let rCost = 0
             for (let i = 0; i < m; i++) rCost += r[i] * r[i]
-            return [r, rCost]
-        }
-
-        // Jv: forward-mode directional derivative, J·v → m-vector
-        function lmJv(v) {
-            const result = new Array(m)
-            for (let k = 0; k < resExprs.length; k++) {
-                const ri = resExprs[k]
-                const { start, len } = resStructure[k]
-                const [, dv] = evaluate(ri.expr, currentX, v)
-                if (len === 1) {
-                    // dv is a scalar (directional derivative of scalar expression)
-                    result[start] = ri.w * dv
-                } else {
-                    // dv is a k-vector (directional derivative of vector expression)
-                    for (let j = 0; j < len; j++) result[start + j] = ri.w * dv[j]
-                }
-            }
-            return result
-        }
-
-        // Jtw: adjoint product using full forward-mode gradient, Jᵀ·w → n-vector
-        function lmJtw(w) {
-            const n = currentX.length
-            let grad = new Array(n).fill(0)
-            for (let k = 0; k < resExprs.length; k++) {
-                const ri = resExprs[k]
-                const { start, len } = resStructure[k]
-                // Skip if all weights for this residual are zero
-                let hasWeight = false
-                for (let j = 0; j < len; j++) {
-                    if (w[start + j] !== 0) { hasWeight = true; break }
-                }
-                if (!hasWeight) continue
-
-                const [, dr] = evaluate(ri.expr, currentX, true)
-                if (len === 1) {
-                    // dr is an n-vector
-                    grad = numeric.add(grad, numeric.mul(w[start] * ri.w, dr))
-                } else {
-                    // dr is a k×n matrix (array of n-vectors)
-                    for (let j = 0; j < len; j++) {
-                        if (w[start + j] !== 0) {
-                            grad = numeric.add(grad, numeric.mul(w[start + j] * ri.w, dr[j]))
-                        }
-                    }
-                }
-            }
-            return grad
+            return [r, rCost, J]
         }
 
         // General loss function for non-NearZero constraints
@@ -1046,7 +1017,7 @@ class Figure {
             }
         }
 
-        return levenbergMarquardt(evalSetup, lmJv, lmJtw, lossFn, valuation, callback, options)
+        return levenbergMarquardt(evalSetup, lossFn, valuation, callback, options)
     }
 
     // Register a callback to be invoked at every solver step
@@ -2666,7 +2637,7 @@ function partition(a, l, r) {
 //   If the computed gradient is infinite or contains NaN, the search terminates.
 // Effects: if callback is a function, it is invoked on each iteration of the algorithm.
 //    If it returns true, the search for the local minimum halts.
-function uncmin(fg, x0, callback, options) {
+function uncmin(algorithm, fg, x0, callback, options) {
     if (options === undefined) options = {}
     const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
           maxit = options.maxIterations || 1000
@@ -2910,40 +2881,76 @@ function cgSolve(Av, b, n, maxiter, tol) {
 //               cgMaxIterations, gainHi, gainLo }
 //
 // Returns: { solution, f, gradient, lambda, iterations, message }
-function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
+// Levenberg-Marquardt minimization using explicit Jacobian and direct solve.
+//
+//   minimize  f(x) = r(x)ᵀr(x) + L(x)
+//
+// where r(x) is a vector of m residuals (from NearZero constraints) and
+// L(x) is a scalar general loss.
+//
+// Parameters:
+//   evalSetup(x): evaluate residuals and Jacobian at x. Returns
+//     [r, rCost, J] where r is the residual vector (length m),
+//     rCost = rᵀr, and J is the m×n Jacobian matrix.
+//   lossFn: null if no general losses; otherwise:
+//     lossFn(x):       returns scalar L(x)
+//     lossFn(x, true): returns [L(x), ∇L(x)]
+//   x0:       initial variable values (length n)
+//   callback: called as callback(it, x, f, g) each iteration; return true to stop
+//   options:  { tol, maxIterations, lambda, lambdaUp, lambdaDown, gainHi, gainLo }
+//
+// Returns: { solution, f, gradient, lambda, iterations, message }
+function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
     if (options === undefined) options = {}
     const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
           maxit = options.maxIterations || 1000,
-          cgMaxit = options.cgMaxIterations || 0, // 0 = use min(n, 50)
           gainHi = options.gainHi || 0.75,
-          gainLo = options.gainLo || 0.25
+          gainLo = options.gainLo || 0.25,
+          gainMax = options.gainMax || 1.3
     const norm2 = numeric.norm2
 
     x0 = numeric.clone(x0)
     const n = x0.length
-    let lambda = options.lambda || 1e-3
-    const lambdaUp = options.lambdaUp || 3
-    const lambdaDown = options.lambdaDown || 3
+    const lambdaUp = options.lambdaUp || 6
+    const lambdaDown = options.lambdaDown || 6
 
-    // LM matrix-vector product: v → 2Jᵀ(Jv) + λv
-    function lmMatVec(v) {
-        return add(mul(2, Jtw(Jv(v))), mul(lambda, v))
-    }
-
-    // Evaluate at initial point, set up Jacobian products
-    let [r0, rCost0] = evalSetup(x0)
+    // Evaluate at initial point
+    let [r0, rCost0, J0] = evalSetup(x0)
     let lCost0 = 0, lGrad0 = null
     if (lossFn) [lCost0, lGrad0] = lossFn(x0, true)
     let f0 = rCost0 + lCost0
 
     if (isNaN(f0)) throw new Error('levenbergMarquardt: f(x0) is NaN')
 
+    // Precompute JᵀJ and Jᵀr from J0, r0
+    let Jt0 = numeric.transpose(J0)       // n×m
+    let JtJ0 = numeric.dot(Jt0, J0)       // n×n
+    let Jtr0 = numeric.dot(Jt0, r0)       // n-vector
+
+    // Adaptive lambda initialization (Marquardt): scale to problem curvature.
+    // lambda = tau * max(diag(JᵀJ)) ensures the first step is conservative
+    // for stiff problems, preventing overshoot into bad basins.
+    let lambda
+    if (options.lambda !== undefined) {
+        lambda = options.lambda
+    } else {
+        let maxDiag = 0
+        for (let i = 0; i < n; i++) maxDiag = Math.max(maxDiag, JtJ0[i][i])
+        const tau = options.tau || 1
+        lambda = tau * maxDiag
+    }
+
+    // Trust region radius: cap step size to prevent overshooting into
+    // bad basins on highly nonlinear problems. Start conservatively
+    // and expand as the solver makes good progress.
+    let Delta = options.trustRadius || Math.sqrt(n)
+
     // Gradient: ∇f = 2Jᵀr + ∇L
-    let g0 = mul(2, Jtw(r0))
+    let g0 = mul(2, Jtr0)
     if (lGrad0) g0 = add(g0, lGrad0)
 
     let it = 0, msg = "", m = r0.length
-    if (DEBUG_LM) console.log(`LM start: n=${n}, m=${m}, f0=${f0}, |g0|=${norm2(g0)}, lambda=${lambda}`)
+    if (DEBUG_LM) console.log(`LM start: n=${n}, m=${m}, f0=${f0}, |g0|=${norm2(g0)}, lambda=${lambda}, Delta=${Delta}`)
 
     while (it < maxit) {
         if (!all(isFinite(g0))) {
@@ -2957,26 +2964,32 @@ function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
             break
         }
 
-        // Solve (2JᵀJ + λI)δ = -∇f using CG.
-        const cgIter = cgMaxit > 0 ? cgMaxit : Math.min(n, 50)
-        const step = cgSolve(lmMatVec, neg(g0), n, cgIter, tol * 0.1)
+        // Form and solve (2JᵀJ + λI)δ = -∇f directly.
+        const H = numeric.mul(2, JtJ0)
+        for (let i = 0; i < n; i++) H[i][i] += lambda
+        let step = numeric.solve(H, neg(g0))
 
-        const nstep = norm2(step)
+        let nstep = norm2(step)
+
+        // Trust region: if step exceeds Delta, scale it down
+        if (nstep > Delta) {
+            step = mul(Delta / nstep, step)
+            nstep = Delta
+        }
+
         if (nstep < tol) {
             msg = "Step smaller than tol"
             if (DEBUG_LM) console.log("LM: step too small at it=" + it + ", |step|=" + nstep + ", f=" + f0)
             break
         }
 
-        // Predicted reduction = -(gᵀδ + ½δᵀHδ) where H = 2JᵀJ + λI.
-        // Must be computed before evalSetup overwrites cached values.
-        const Hstep = lmMatVec(step)
+        // Predicted reduction = -(gᵀδ + ½δᵀHδ).
+        const Hstep = numeric.dot(H, step)
         const predicted = -(dot(g0, step) + 0.5 * dot(step, Hstep))
 
-        // Evaluate trial point. This overwrites cached expression values,
-        // so Jv/Jtw now operate at x1.
+        // Evaluate trial point
         const x1 = add(x0, step)
-        const [r1, rCost1] = evalSetup(x1)
+        const [r1, rCost1, J1] = evalSetup(x1)
         let lCost1 = 0, lGrad1 = null
         if (lossFn) [lCost1, lGrad1] = lossFn(x1, true)
         const f1 = rCost1 + lCost1
@@ -2986,18 +2999,31 @@ function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
 
         if (DEBUG_LM && it < 10) console.log(`LM it=${it}: |step|=${nstep.toFixed(4)}, predicted=${predicted.toFixed(4)}, f0=${f0.toFixed(4)}, f1=${f1.toFixed(4)}, gain=${gainRatio.toFixed(4)}, lambda=${lambda.toFixed(6)}`)
 
-        if (gainRatio > gainLo && !isNaN(f1)) {
-            // Accept step. Jacobian state is already at x1.
+        if (gainRatio > gainLo && gainRatio < gainMax && !isNaN(f1)) {
+            // Accept step — model was reasonably accurate
             x0 = x1
             r0 = r1
             f0 = f1
-            g0 = mul(2, Jtw(r0))
+            // Update cached Jacobian products
+            Jt0 = numeric.transpose(J1)
+            JtJ0 = numeric.dot(Jt0, J1)
+            Jtr0 = numeric.dot(Jt0, r0)
+            g0 = mul(2, Jtr0)
             if (lGrad1) g0 = add(g0, lGrad1)
-            if (gainRatio > gainHi) lambda /= lambdaDown
+            // Lambda update: decrease when model is accurate (gain near 1)
+            if (gainRatio > gainHi) {
+                lambda /= lambdaDown
+            }
+            // Expand trust region on good steps
+            if (gainRatio > gainHi) Delta = Math.max(Delta, 3 * nstep)
         } else {
-            // Reject step. Restore Jacobian state at x0.
-            evalSetup(x0)
+            // Reject step — either gain too low (bad step), gain too high
+            // (model unreliable, likely jumping basins), or NaN.
+            // Shrink trust region and increase lambda to get a more
+            // conservative, gradient-descent-like step next time.
+            Delta = nstep * 0.25
             lambda *= lambdaUp
+            if (DEBUG_LM && gainRatio >= gainMax) console.log(`LM: rejecting step with gain=${gainRatio.toFixed(4)} >= gainMax=${gainMax} (model unreliable)`)
         }
 
         it++
@@ -3089,9 +3115,8 @@ class Expression {
     recordCache(valuation, doGrad, result) {
         // Don't cache directional derivative results
         if (doGrad && doGrad !== true) return result
-        doGrad = doGrad ? true : false
         this.cachedValuation = valuation
-        this.cachedDoGrad = doGrad
+        this.cachedDoGrad = doGrad ? true : false
         this.cachedResult = result
         // console.log("caching " + this + " = " + result + " : valuation " + valuation)
         for (let v of exprVariables(this)) {
@@ -7602,9 +7627,6 @@ function autoResize() {
         )
 }
 
-function setMinimizationAlgorithm(a) {
-    algorithm = a
-}
 function reportPerformance(b) {
     REPORT_PERFORMANCE = b
 }
@@ -7620,7 +7642,7 @@ function reportPerformance(b) {
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
-    setMinimizationAlgorithm, reportPerformance, plus, terms, similarResults,
+    reportPerformance, plus, terms, similarResults,
     uncmin, cgSolve, levenbergMarquardt,
     UNCMIN_GRADIENT,
     UNCMIN_BFGS,
