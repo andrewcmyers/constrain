@@ -23,8 +23,8 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = true, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = false, DEBUG_TWEENING = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
+      CHECK_NAN = false, DEBUG_TWEENING = false, DEBUG_LM = false
 const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -48,8 +48,8 @@ const Figure_defaults = {
 }
 
 const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4, LEVENBERG_MARQUARDT = 5
-// let algorithm = LEVENBERG_MARQUARDT
-let algorithm = UNCMIN_BFGS
+let algorithm = LEVENBERG_MARQUARDT
+// let algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -458,6 +458,7 @@ class Figure {
         // 
         function tryDirectSolve(v) {
             if (v.hasOwnProperty('directSolved')) return v.directSolved
+            if (v.stage < stage) return true // already solved in a previous stage
             if (v.solvePending) return false // prevent cycles in solution strategy
             const s = constraintsByVar.get(v)
             if (!s || s.size == 0) {
@@ -2941,15 +2942,18 @@ function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
     let g0 = mul(2, Jtw(r0))
     if (lGrad0) g0 = add(g0, lGrad0)
 
-    let it = 0, msg = ""
+    let it = 0, msg = "", m = r0.length
+    if (DEBUG_LM) console.log(`LM start: n=${n}, m=${m}, f0=${f0}, |g0|=${norm2(g0)}, lambda=${lambda}`)
 
     while (it < maxit) {
         if (!all(isFinite(g0))) {
             msg = BAD_GRADIENT
+            if (DEBUG_LM) console.log("LM: bad gradient at it=" + it)
             break
         }
         if (norm2(g0) < tol) {
             msg = "Gradient norm smaller than tol"
+            if (DEBUG_LM) console.log("LM: converged (gradient) at it=" + it + ", f=" + f0)
             break
         }
 
@@ -2960,6 +2964,7 @@ function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
         const nstep = norm2(step)
         if (nstep < tol) {
             msg = "Step smaller than tol"
+            if (DEBUG_LM) console.log("LM: step too small at it=" + it + ", |step|=" + nstep + ", f=" + f0)
             break
         }
 
@@ -2978,6 +2983,8 @@ function levenbergMarquardt(evalSetup, Jv, Jtw, lossFn, x0, callback, options) {
 
         const actual = f0 - f1
         const gainRatio = predicted > 0 ? actual / predicted : 0
+
+        if (DEBUG_LM && it < 10) console.log(`LM it=${it}: |step|=${nstep.toFixed(4)}, predicted=${predicted.toFixed(4)}, f0=${f0.toFixed(4)}, f1=${f1.toFixed(4)}, gain=${gainRatio.toFixed(4)}, lambda=${lambda.toFixed(6)}`)
 
         if (gainRatio > gainLo && !isNaN(f1)) {
             // Accept step. Jacobian state is already at x1.
@@ -3578,6 +3585,7 @@ class Average extends BinaryExpression {
 function mulGrad(val, jac) {
     if (typeof val === 'number') return numeric.mul(val, jac)
     // val is a k-vector
+    if (typeof jac === 'number') return numeric.mul(jac, val) // scalar jac (directional mode)
     if (typeof jac[0] === 'number') {
         // jac is 1D (n-vector): other operand was scalar → outer product
         return val.map(vi => numeric.mul(vi, jac))
