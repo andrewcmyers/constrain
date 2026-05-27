@@ -5508,18 +5508,18 @@ class Line extends Graphic {
 class HorzLine extends Line {
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, p1, p2, strokeStyle, lineWidth)
+        this.w_ = figure.minus(figure.projection(this.p2, 0),
+                               figure.projection(this.p1, 0))
+        this.h_ = 0
         figure.equal(this.start().y(), this.end().y())
-        // Need a stronger constraint to get the line oriented correctly
-        figure.leq(this.start().x(), this.end().x()).changeCost(10)
-        this.w_ = new Minus(figure.projection(this.p2, 0), figure.projection(this.p1, 0))
     }
     x0() {
         const f = this.figure
-        return f.min(f.projection(this.p1, 0), f.projection(this.p2, 0))
+        return f.projection(this.p1, 0)
     }
     x1() {
         const f = this.figure
-        return f.max(f.projection(this.p1, 0), f.projection(this.p2, 0))
+        return f.projection(this.p2, 0)
     }
 }
 
@@ -5527,10 +5527,10 @@ class HorzLine extends Line {
 class VertLine extends Line {
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, p1, p2, strokeStyle, lineWidth)
+        this.h_ = figure.minus(figure.projection(this.p2, 1),
+                               figure.projection(this.p1, 1))
+        this.w_ = 0
         figure.equal(this.start().x(), this.end().x())
-        // Need a stronger constraint to get the line oriented correctly
-        figure.leq(this.start().y(), this.end().y()).changeCost(10)
-        this.h_ = figure.minus(figure.projection(this.p2, 1), figure.projection(this.p1, 1))
     }
     y0() {
         return this.figure.projection(this.p1, 1)
