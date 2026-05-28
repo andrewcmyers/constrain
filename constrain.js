@@ -634,6 +634,72 @@ class Figure {
         delete this.components
     }
 
+    // Remove constraints and graphics that can never be active or visible in
+    // the current frame or any future frame.  After calling this, the figure
+    // cannot be rewound to earlier frames.  Useful for figures that
+    // dynamically create many frames (e.g., games) to prevent accumulation of
+    // dead objects that slow solving.  Don't remove variables from
+    // this.Variables or frames from this.Frames, because their indices matter.
+    removeOldFrames() {
+        const currentIndex = this.currentFrame.index
+
+        // Check if a temporal filter is permanently inactive for all frames >= currentIndex.
+        function permanentlyInactive(filter) {
+            if (filter instanceof Before)
+                return currentIndex >= filter.frame.index
+            if (filter instanceof InFrame)
+                return currentIndex > filter.frame.index
+            if (filter instanceof After && filter.endFrame)
+                return currentIndex > filter.endFrame.index
+            return false
+        }
+
+        // Walk parent chain; return true if any ancestor is permanently
+        // inactive for all frames >= currentIndex.
+        function isDead(obj) {
+            let p = obj.parent
+            while (p) {
+                if (permanentlyInactive(p)) return true
+                p = p.parent
+            }
+            return false
+        }
+
+        // For graphics entries (which may themselves be temporal filters),
+        // also check the entry itself since it may be a filter wrapper.
+        function isGraphicDead(g) {
+            let current = g
+            while (current) {
+                if (permanentlyInactive(current)) return true
+                current = current.parent
+            }
+            return false
+        }
+
+        // Remove dead constraints
+        this.Constraints = this.Constraints.filter(c => !isDead(c))
+
+        // Clean up ConstraintGroup internal arrays
+        for (const c of this.Constraints) {
+            if (c.constraints) {
+                c.constraints = c.constraints.filter(child => !isDead(child))
+            }
+        }
+
+        // Remove dead graphics
+        this.Graphics = this.Graphics.filter(g => !isGraphicDead(g))
+
+        // Clear variable dependents sets, which accumulate references to
+        // expressions from removed constraints. They are repopulated lazily
+        // by recordCache when expressions are next evaluated.
+        for (const v of this.Variables) {
+            v.dependents.clear()
+        }
+
+        // Invalidate cached solving data
+        delete this.components
+    }
+
     totalCost(valuation) {
         return this.costGrad(valuation, false)
     }

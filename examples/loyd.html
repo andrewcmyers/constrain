@@ -82,6 +82,7 @@ with (new Constrain.Figure("loyd_puzzle")) {
               tiles[emptyPos] = tile
               emptyPos = pos
               advance()
+              removeOldFrames()
               if (winningConfig()) win.play()
               else ssh.play()
             }
