@@ -59,8 +59,8 @@ const Algorithms = {
 const { UNCMIN_GRADIENT, UNCMIN_BFGS, UNCMIN_DFP, UNCMIN_ADAM, UNCMIN_LBFGS, LEVENBERG_MARQUARDT } =
     Algorithms
 
-let algorithm = LEVENBERG_MARQUARDT
-// let algorithm = UNCMIN_BFGS
+// Default solving algorithm. Can be overridden per figure.
+const algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -1113,7 +1113,7 @@ class Figure {
     //   4. have previous, next, and (good) pending valuation.
     //        Simply render interpolated frame.
     renderFrame(animating, frameInterval, frameLength) {
-        console.log("rendering a frame")
+        if (DEBUG_TWEENING) console.log("rendering a frame")
         const figure = this,
               rT = figure.realTime,
               t = figure.renderTime,
@@ -2763,7 +2763,7 @@ function uncmin(algorithm, fg, x0, callback, options) {
                 ys = dot(y, s)
                 if (ys <= 0) {
                     H1 = numeric.identity(n) // inverse Hessian looks broken, restart
-                    console.log("resetting inverse Hessian estimate")
+                    if (DEBUG_CONSTRAINTS) console.log("resetting inverse Hessian estimate")
                 } else {
                     const Hy = dot(H1, y)
                     H1 = sub(add(H1,
@@ -2849,7 +2849,7 @@ function cgSolve(Av, b, n, maxiter, tol) {
     return x
 }
 
-// Matrix-free Levenberg-Marquardt minimization for:
+//  Levenberg-Marquardt minimization for:
 //
 //   minimize  f(x) = r(x)ᵀr(x) + L(x)
 //
@@ -2904,9 +2904,8 @@ function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
     if (options === undefined) options = {}
     const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
           maxit = options.maxIterations || 1000,
-          gainHi = options.gainHi || 0.75,
-          gainLo = options.gainLo || 0.25,
-          gainMax = options.gainMax || 1.3
+          gainHi = options.gainHi || 0.90,
+          gainLo = options.gainLo || 0.25
     const norm2 = numeric.norm2
 
     x0 = numeric.clone(x0)
@@ -2927,22 +2926,19 @@ function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
     let JtJ0 = numeric.dot(Jt0, J0)       // n×n
     let Jtr0 = numeric.dot(Jt0, r0)       // n-vector
 
-    // Adaptive lambda initialization (Marquardt): scale to problem curvature.
-    // lambda = tau * max(diag(JᵀJ)) ensures the first step is conservative
-    // for stiff problems, preventing overshoot into bad basins.
+    // Adaptive lambda initialization: lambda = tau * max(diag(JᵀJ)).
     let lambda
     if (options.lambda !== undefined) {
         lambda = options.lambda
     } else {
         let maxDiag = 0
         for (let i = 0; i < n; i++) maxDiag = Math.max(maxDiag, JtJ0[i][i])
-        const tau = options.tau || 1
+        const tau = options.tau || 1e-3
         lambda = tau * maxDiag
     }
 
-    // Trust region radius: cap step size to prevent overshooting into
-    // bad basins on highly nonlinear problems. Start conservatively
-    // and expand as the solver makes good progress.
+    // Trust region: cap step size to prevent overshooting into wrong
+    // basins. Start conservatively and expand quickly on good steps.
     let Delta = options.trustRadius || Math.sqrt(n)
 
     // Gradient: ∇f = 2Jᵀr + ∇L
@@ -2968,10 +2964,9 @@ function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
         const H = numeric.mul(2, JtJ0)
         for (let i = 0; i < n; i++) H[i][i] += lambda
         let step = numeric.solve(H, neg(g0))
-
         let nstep = norm2(step)
 
-        // Trust region: if step exceeds Delta, scale it down
+        // Trust region: clamp step to Delta
         if (nstep > Delta) {
             step = mul(Delta / nstep, step)
             nstep = Delta
@@ -2983,7 +2978,7 @@ function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
             break
         }
 
-        // Predicted reduction = -(gᵀδ + ½δᵀHδ).
+        // Predicted reduction uses the (possibly clamped) step.
         const Hstep = numeric.dot(H, step)
         const predicted = -(dot(g0, step) + 0.5 * dot(step, Hstep))
 
@@ -2999,8 +2994,8 @@ function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
 
         if (DEBUG_LM && it < 10) console.log(`LM it=${it}: |step|=${nstep.toFixed(4)}, predicted=${predicted.toFixed(4)}, f0=${f0.toFixed(4)}, f1=${f1.toFixed(4)}, gain=${gainRatio.toFixed(4)}, lambda=${lambda.toFixed(6)}`)
 
-        if (gainRatio > gainLo && gainRatio < gainMax && !isNaN(f1)) {
-            // Accept step — model was reasonably accurate
+        if (gainRatio > gainLo && !isNaN(f1)) {
+            // Accept step
             x0 = x1
             r0 = r1
             f0 = f1
@@ -3010,20 +3005,19 @@ function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
             Jtr0 = numeric.dot(Jt0, r0)
             g0 = mul(2, Jtr0)
             if (lGrad1) g0 = add(g0, lGrad1)
-            // Lambda update: decrease when model is accurate (gain near 1)
+            // Lambda update: decrease on good steps to transition toward
+            // Gauss-Newton. Lambda only increases on rejected steps.
             if (gainRatio > gainHi) {
                 lambda /= lambdaDown
+                // Expand trust region: triple the step size on good steps
+                // so that within a few iterations the trust region is no
+                // longer the binding constraint.
+                Delta = Math.max(Delta, 3 * nstep)
             }
-            // Expand trust region on good steps
-            if (gainRatio > gainHi) Delta = Math.max(Delta, 3 * nstep)
         } else {
-            // Reject step — either gain too low (bad step), gain too high
-            // (model unreliable, likely jumping basins), or NaN.
-            // Shrink trust region and increase lambda to get a more
-            // conservative, gradient-descent-like step next time.
-            Delta = nstep * 0.25
+            // Reject step — increase lambda and shrink trust region
             lambda *= lambdaUp
-            if (DEBUG_LM && gainRatio >= gainMax) console.log(`LM: rejecting step with gain=${gainRatio.toFixed(4)} >= gainMax=${gainMax} (model unreliable)`)
+            Delta = nstep * 0.5
         }
 
         it++
