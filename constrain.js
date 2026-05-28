@@ -2652,7 +2652,7 @@ function uncmin(algorithm, fg, x0, callback, options) {
     const idn = numeric.identity(n)
     const max = Math.max,
         norm2 = numeric.norm2
-    if (options.Hinv && wrongSizedInvHessian(n, options.Hinv)) {
+    if (options.Hinv && wrongSizedInvHessian(algorithm, n, options.Hinv)) {
         throw new Error("Inverse Hessian has wrong dimensions")
     }
     let step, H1 = options.Hinv || mul(numeric.identity(n), options.stepSize || 1)
