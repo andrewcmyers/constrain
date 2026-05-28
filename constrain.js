@@ -24,7 +24,7 @@ const USE_BACKPROPAGATION = true,
       TINY = 1e-17
 
 const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = false, DEBUG_TWEENING = false
+      CHECK_NAN = false, DEBUG_TWEENING = false, DEBUG_LM = false
 const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -47,8 +47,20 @@ const Figure_defaults = {
     CONNECTION_STYLE : 'magnet'
 }
 
-const UNCMIN_GRADIENT = 0, UNCMIN_BFGS = 1, UNCMIN_DFP = 2, UNCMIN_ADAM = 3, UNCMIN_LBFGS = 4
-let algorithm = UNCMIN_BFGS
+const Algorithms = {
+    UNCMIN_GRADIENT: 0,
+    UNCMIN_BFGS: 1,
+    UNCMIN_DFP: 2,
+    UNCMIN_ADAM: 3,
+    UNCMIN_LBFGS: 4,
+    LEVENBERG_MARQUARDT: 5
+}
+
+const { UNCMIN_GRADIENT, UNCMIN_BFGS, UNCMIN_DFP, UNCMIN_ADAM, UNCMIN_LBFGS, LEVENBERG_MARQUARDT } =
+    Algorithms
+
+// Default solving algorithm. Can be overridden per figure.
+const algorithm = UNCMIN_BFGS
 
 const CALLBACK_RETURNED_TRUE = "Callback returned true",
       BAD_SEARCH_DIRECTION = "Search direction has Infinity or NaN",
@@ -68,7 +80,7 @@ const defaultMinimizationOptions = {
 
 const {gradient, dot, sub, add, tensor, div, sqrt, mul, transpose, all, isFinite, neg} = numeric
 
-function wrongSizedInvHessian(nvars, invHessian) {
+function wrongSizedInvHessian(algorithm, nvars, invHessian) {
   switch (algorithm) {
     case UNCMIN_BFGS:
     case UNCMIN_DFP: return nvars != invHessian.length
@@ -145,6 +157,7 @@ class Figure {
         this.frameRate = Figure_defaults.FRAMERATE
         this.Frames = []
         this.wrapFrames = false // does advancing from last frame go back to first
+        this.algorithm = algorithm; // use default algorithm
         this.currentStage = 0
         this.numStages = 1
         this.substitutionEnabled = true
@@ -288,6 +301,16 @@ class Figure {
         this.outputs = []
         this.focused = null
         this.renderNeeded = false
+    }
+    setMinimizationAlgorithm(algname) {
+        this.algorithm = Algorithms[algname]
+        if (this.algorithm === undefined) {
+            console.error("Unknown algorithm: ", algname)
+            this.algorithm = algorithm
+        }
+    }
+    setMinimizationOptions(options) {
+        this.minimizationOptions = options
     }
     // Return the valuation to be used for solving
     initialValuation(incremental) {
@@ -457,6 +480,7 @@ class Figure {
         // 
         function tryDirectSolve(v) {
             if (v.hasOwnProperty('directSolved')) return v.directSolved
+            if (v.stage < stage) return true // already solved in a previous stage
             if (v.solvePending) return false // prevent cycles in solution strategy
             const s = constraintsByVar.get(v)
             if (!s || s.size == 0) {
@@ -549,10 +573,10 @@ class Figure {
 
         // Assign a fresh index to variable v if it is not to be solved directly
         function assignIndex(v) {
-            if (v.substitution && v.substitution.directSolved) {
+            if (v.substitution !== undefined && v.substitution.directSolved) {
                 console.error("Oops, using a direct solved variable")
             }
-            if (v.directSolved || v.substitution) return
+            if (v.directSolved || v.substitution !== undefined) return
             if (component && v.variableComponent() !== component) return
             v.setIndex(i)
             activeVariables.push(v)
@@ -742,6 +766,7 @@ class Figure {
     updateValuation(tol, incremental) {
       let solution, figure = this
       if (PROFILE_EVALUATIONS) evaluations = 0
+      this.totalIterations = 0
       if (!this.components) this.components = []
       figure.timeVar.currentValue = figure.currentTime
       this.invalidateCachedExprs([this.timeVar])
@@ -765,7 +790,7 @@ class Figure {
             if (DEBUG_CONSTRAINTS) {
                console.log(`Solving component in stage ${stage}: ${this.activeVariables.length} minimized variables, ${this.activeConstraints.size} constraints, ${this.postMinActions.length} post-min actions`)
             }
-            if (component.invHessian && wrongSizedInvHessian(this.currentValuation.length, component.invHessian)) {
+            if (component.invHessian && wrongSizedInvHessian(this.algorithm, this.currentValuation.length, component.invHessian)) {
                 delete component.invHessian
                 if (DEBUG) console.log("Discarding wrong-sized inverse Hessian")
             }
@@ -876,6 +901,20 @@ class Figure {
 
     // Run the minimization-based solver. The parameter invHessian is optional, useful
     // for incrementally solving from a previous solution.
+    // Separate NearZero constraints (residuals for LM) from general Loss
+    // constraints in the active constraint set.
+    collectConstraints(constraints) {
+        const nearZeros = [], generalLosses = []
+        for (const c of constraints) {
+            if (c instanceof NearZero) {
+                nearZeros.push(c)
+            } else if (c instanceof Loss) {
+                generalLosses.push(c)
+            }
+        }
+        return { nearZeros, generalLosses }
+    }
+
     minimizeConstraintLoss(valuation, tol, invHessian) {
         let doGrad = true, fig = this
         if (valuation === undefined) {
@@ -884,10 +923,6 @@ class Figure {
         if (valuation.length == 0) {
             if (DEBUG) console.log("  No minimization needed")
             return [valuation, "No minimization needed"]
-        }
-        const task = USE_BACKPROPAGATION ? new BackPropagation(this.activeVariables) : undefined
-        if (USE_BACKPROPAGATION) {
-            this.setupBackPropagation(task)
         }
         let result, callback, maxit = 1000
         if (this.solverCallbacks.length > 0) {
@@ -900,20 +935,89 @@ class Figure {
         }
         const minimizationOptions = this.minimizationOptions
         const uncmin_options = {tol, maxit}
+        const algorithm = this.algorithm
         for (const key in minimizationOptions) uncmin_options[key] = minimizationOptions[key]
-        uncmin_options.Hinv = invHessian
-        if (doGrad) {
-            if (USE_BACKPROPAGATION) {
-                result = uncmin((v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
-                                valuation, callback, uncmin_options)
-            } else {
-                result = uncmin((v,d) => fig.costGrad(v,d), valuation, callback, uncmin_options)
-            }
+
+        if (algorithm === LEVENBERG_MARQUARDT) {
+            result = this.solveLM(valuation, callback, uncmin_options)
         } else {
-            result = numeric.uncmin(this.totalCost, valuation, undefined, uncmin_options)
+            uncmin_options.Hinv = invHessian
+            const task = USE_BACKPROPAGATION ? new BackPropagation(this.activeVariables) : undefined
+            if (USE_BACKPROPAGATION) {
+                this.setupBackPropagation(task)
+            }
+            if (doGrad) {
+                if (USE_BACKPROPAGATION) {
+                    result = uncmin(algorithm, (v,d) => { return d ? fig.bpGrad(v, task) : fig.totalCost(v) },
+                                    valuation, callback, uncmin_options)
+                } else {
+                    result = uncmin(algorithm, (v,d) => fig.costGrad(v,d), valuation, callback, uncmin_options)
+                }
+            } else {
+                result = numeric.uncmin(algorithm, this.totalCost, valuation, undefined, uncmin_options)
+            }
         }
-        if (DEBUG && result.message != CALLBACK_RETURNED_TRUE) console.log(result.iterations + " iterations, ", result.message)
         return [result.solution, result.message != CALLBACK_RETURNED_TRUE, result.invHessian, result.iterations]
+    }
+
+    // Solve using Levenberg-Marquardt, exploiting the sum-of-squares structure
+    // of NearZero constraints.
+    solveLM(valuation, callback, options) {
+        const fig = this
+        const { nearZeros, generalLosses } = this.collectConstraints(this.activeConstraints)
+
+        // Each NearZero wraps Sq(innerExpr) with weight `cost`.
+        // The LM residual is sqrt(cost) * innerExpr, so squaring gives cost * innerExpr².
+        const resExprs = nearZeros.map(c => ({
+            expr: c.expr.expr,   // inner expression (before Sq)
+            w: Math.sqrt(c.cost)
+        }))
+
+        // evalSetup: evaluate all residuals and the Jacobian at x.
+        // Returns [r, rᵀr, J] where r is the residual vector (length m)
+        // and J is the m×n Jacobian matrix.
+        function evalSetup(x) {
+            fig.invalidateCachedExprs(fig.activeVariables)
+            const r = []
+            const J = []  // m×n Jacobian, one row per scalar residual
+            for (const ri of resExprs) {
+                const [v, dv] = evaluate(ri.expr, x, true)
+                if (typeof v === 'number') {
+                    r.push(ri.w * v)
+                    J.push(numeric.mul(ri.w, dv))  // dv is n-vector
+                } else {
+                    for (const vi of v) r.push(ri.w * vi)
+                    for (const row of dv) J.push(numeric.mul(ri.w, row))  // dv is k×n
+                }
+            }
+            const m = r.length
+            let rCost = 0
+            for (let i = 0; i < m; i++) rCost += r[i] * r[i]
+            return [r, rCost, J]
+        }
+
+        // General loss function for non-NearZero constraints
+        let lossFn = null
+        if (generalLosses.length > 0) {
+            lossFn = function(x, doGrad) {
+                // No need to invalidateCachedExprs here; evalSetup already
+                // invalidated for this valuation before lossFn is called.
+                let cost = 0, dcost = doGrad ? new Array(x.length).fill(0) : null
+                for (const con of generalLosses) {
+                    const result = con.getCost(x, doGrad)
+                    if (doGrad) {
+                        const [c, dc] = result
+                        cost += c
+                        dcost = numeric.add(dcost, dc)
+                    } else {
+                        cost += result
+                    }
+                }
+                return doGrad ? [cost, dcost] : cost
+            }
+        }
+
+        return levenbergMarquardt(evalSetup, lossFn, valuation, callback, options)
     }
 
     // Register a callback to be invoked at every solver step
@@ -1009,6 +1113,7 @@ class Figure {
     //   4. have previous, next, and (good) pending valuation.
     //        Simply render interpolated frame.
     renderFrame(animating, frameInterval, frameLength) {
+        if (DEBUG_TWEENING) console.log("rendering a frame")
         const figure = this,
               rT = figure.realTime,
               t = figure.renderTime,
@@ -2532,7 +2637,7 @@ function partition(a, l, r) {
 //   If the computed gradient is infinite or contains NaN, the search terminates.
 // Effects: if callback is a function, it is invoked on each iteration of the algorithm.
 //    If it returns true, the search for the local minimum halts.
-function uncmin(fg, x0, callback, options) {
+function uncmin(algorithm, fg, x0, callback, options) {
     if (options === undefined) options = {}
     const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
           maxit = options.maxIterations || 1000
@@ -2658,7 +2763,7 @@ function uncmin(fg, x0, callback, options) {
                 ys = dot(y, s)
                 if (ys <= 0) {
                     H1 = numeric.identity(n) // inverse Hessian looks broken, restart
-                    console.log("resetting inverse Hessian estimate")
+                    if (DEBUG_CONSTRAINTS) console.log("resetting inverse Hessian estimate")
                 } else {
                     const Hy = dot(H1, y)
                     H1 = sub(add(H1,
@@ -2719,6 +2824,222 @@ function uncmin(fg, x0, callback, options) {
     }
 }
 
+// Conjugate gradient solver for the symmetric positive definite system Ax = b,
+// where A is provided as a function v → Av. Returns the approximate solution x.
+// Terminates early on convergence, negative curvature, or maxiter.
+function cgSolve(Av, b, n, maxiter, tol) {
+    let x = new Array(n).fill(0)
+    let r = numeric.clone(b)  // residual = b - A*0 = b
+    let p = numeric.clone(r)
+    let rr = dot(r, r)
+    const tolSq = tol * tol
+
+    for (let i = 0; i < maxiter; i++) {
+        if (rr < tolSq) break
+        const Ap = Av(p)
+        const pAp = dot(p, Ap)
+        if (pAp <= 0) break // negative curvature; use current best
+        const alpha = rr / pAp
+        x = add(x, mul(alpha, p))
+        r = sub(r, mul(alpha, Ap))
+        const rrNew = dot(r, r)
+        p = add(r, mul(rrNew / rr, p))
+        rr = rrNew
+    }
+    return x
+}
+
+//  Levenberg-Marquardt minimization for:
+//
+//   minimize  f(x) = r(x)ᵀr(x) + L(x)
+//
+// where r(x) is a vector of m residuals (from NearZero constraints) and
+// L(x) is a scalar general loss. The Jacobian J of r is never formed.
+// Instead, J is accessed only through two matrix-vector products:
+//   Jv:  the directional derivative of r in direction v (forward mode)
+//   Jtw: the adjoint product Jᵀw (backpropagation)
+//
+// The LM step δ solves  (2JᵀJ + λI)δ = -∇f  via conjugate gradient,
+// where each CG iteration needs only v → 2·Jtw(Jv(v)) + λv.
+//
+// Parameters:
+//   evalSetup(x): evaluate residuals at x, cache expression values for
+//     subsequent Jv/Jtw calls. Returns [r, rCost] where r is the
+//     residual vector (length m) and rCost = rᵀr.
+//   Jv(v): Jacobian-vector product J·v (length m). Computes the
+//     directional derivative of all residuals in direction v, using
+//     values cached by the most recent evalSetup call.
+//   Jtw(w): transposed Jacobian-vector product Jᵀ·w (length n).
+//     Backpropagates weights w through the residual expressions, using
+//     values cached by the most recent evalSetup call.
+//   lossFn: null if no general losses; otherwise:
+//     lossFn(x):       returns scalar L(x)
+//     lossFn(x, true): returns [L(x), ∇L(x)]
+//   x0:       initial variable values (length n)
+//   callback: called as callback(it, x, f, g) each iteration; return true to stop
+//   options:  { tol, maxIterations, lambda, lambdaUp, lambdaDown,
+//               cgMaxIterations, gainHi, gainLo }
+//
+// Returns: { solution, f, gradient, lambda, iterations, message }
+// Levenberg-Marquardt minimization using explicit Jacobian and direct solve.
+//
+//   minimize  f(x) = r(x)ᵀr(x) + L(x)
+//
+// where r(x) is a vector of m residuals (from NearZero constraints) and
+// L(x) is a scalar general loss.
+//
+// Parameters:
+//   evalSetup(x): evaluate residuals and Jacobian at x. Returns
+//     [r, rCost, J] where r is the residual vector (length m),
+//     rCost = rᵀr, and J is the m×n Jacobian matrix.
+//   lossFn: null if no general losses; otherwise:
+//     lossFn(x):       returns scalar L(x)
+//     lossFn(x, true): returns [L(x), ∇L(x)]
+//   x0:       initial variable values (length n)
+//   callback: called as callback(it, x, f, g) each iteration; return true to stop
+//   options:  { tol, maxIterations, lambda, lambdaUp, lambdaDown, gainHi, gainLo }
+//
+// Returns: { solution, f, gradient, lambda, iterations, message }
+function levenbergMarquardt(evalSetup, lossFn, x0, callback, options) {
+    if (options === undefined) options = {}
+    const tol = Math.max(options.tol || 1e-8, numeric.epsilon),
+          maxit = options.maxIterations || 1000,
+          gainHi = options.gainHi || 0.90,
+          gainLo = options.gainLo || 0.25
+    const norm2 = numeric.norm2
+
+    x0 = numeric.clone(x0)
+    const n = x0.length
+    const lambdaUp = options.lambdaUp || 6
+    const lambdaDown = options.lambdaDown || 6
+
+    // Evaluate at initial point
+    let [r0, rCost0, J0] = evalSetup(x0)
+    let lCost0 = 0, lGrad0 = null
+    if (lossFn) [lCost0, lGrad0] = lossFn(x0, true)
+    let f0 = rCost0 + lCost0
+
+    if (isNaN(f0)) throw new Error('levenbergMarquardt: f(x0) is NaN')
+
+    // Precompute JᵀJ and Jᵀr from J0, r0
+    let Jt0 = numeric.transpose(J0)       // n×m
+    let JtJ0 = numeric.dot(Jt0, J0)       // n×n
+    let Jtr0 = numeric.dot(Jt0, r0)       // n-vector
+
+    // Adaptive lambda initialization: lambda = tau * max(diag(JᵀJ)).
+    let lambda
+    if (options.lambda !== undefined) {
+        lambda = options.lambda
+    } else {
+        let maxDiag = 0
+        for (let i = 0; i < n; i++) maxDiag = Math.max(maxDiag, JtJ0[i][i])
+        const tau = options.tau || 1e-3
+        lambda = tau * maxDiag
+    }
+
+    // Trust region: cap step size to prevent overshooting into wrong
+    // basins. Start conservatively and expand quickly on good steps.
+    let Delta = options.trustRadius || Math.sqrt(n)
+
+    // Gradient: ∇f = 2Jᵀr + ∇L
+    let g0 = mul(2, Jtr0)
+    if (lGrad0) g0 = add(g0, lGrad0)
+
+    let it = 0, msg = "", m = r0.length
+    if (DEBUG_LM) console.log(`LM start: n=${n}, m=${m}, f0=${f0}, |g0|=${norm2(g0)}, lambda=${lambda}, Delta=${Delta}`)
+
+    while (it < maxit) {
+        if (!all(isFinite(g0))) {
+            msg = BAD_GRADIENT
+            if (DEBUG_LM) console.log("LM: bad gradient at it=" + it)
+            break
+        }
+        if (norm2(g0) < tol) {
+            msg = "Gradient norm smaller than tol"
+            if (DEBUG_LM) console.log("LM: converged (gradient) at it=" + it + ", f=" + f0)
+            break
+        }
+
+        // Form and solve (2JᵀJ + λI)δ = -∇f directly.
+        const H = numeric.mul(2, JtJ0)
+        for (let i = 0; i < n; i++) H[i][i] += lambda
+        let step = numeric.solve(H, neg(g0))
+        let nstep = norm2(step)
+
+        // Trust region: clamp step to Delta
+        if (nstep > Delta) {
+            step = mul(Delta / nstep, step)
+            nstep = Delta
+        }
+
+        if (nstep < tol) {
+            msg = "Step smaller than tol"
+            if (DEBUG_LM) console.log("LM: step too small at it=" + it + ", |step|=" + nstep + ", f=" + f0)
+            break
+        }
+
+        // Predicted reduction uses the (possibly clamped) step.
+        const Hstep = numeric.dot(H, step)
+        const predicted = -(dot(g0, step) + 0.5 * dot(step, Hstep))
+
+        // Evaluate trial point
+        const x1 = add(x0, step)
+        const [r1, rCost1, J1] = evalSetup(x1)
+        let lCost1 = 0, lGrad1 = null
+        if (lossFn) [lCost1, lGrad1] = lossFn(x1, true)
+        const f1 = rCost1 + lCost1
+
+        const actual = f0 - f1
+        const gainRatio = predicted > 0 ? actual / predicted : 0
+
+        if (DEBUG_LM && it < 10) console.log(`LM it=${it}: |step|=${nstep.toFixed(4)}, predicted=${predicted.toFixed(4)}, f0=${f0.toFixed(4)}, f1=${f1.toFixed(4)}, gain=${gainRatio.toFixed(4)}, lambda=${lambda.toFixed(6)}`)
+
+        if (gainRatio > gainLo && !isNaN(f1)) {
+            // Accept step
+            x0 = x1
+            r0 = r1
+            f0 = f1
+            // Update cached Jacobian products
+            Jt0 = numeric.transpose(J1)
+            JtJ0 = numeric.dot(Jt0, J1)
+            Jtr0 = numeric.dot(Jt0, r0)
+            g0 = mul(2, Jtr0)
+            if (lGrad1) g0 = add(g0, lGrad1)
+            // Lambda update: decrease on good steps to transition toward
+            // Gauss-Newton. Lambda only increases on rejected steps.
+            if (gainRatio > gainHi) {
+                lambda /= lambdaDown
+                // Expand trust region: triple the step size on good steps
+                // so that within a few iterations the trust region is no
+                // longer the binding constraint.
+                Delta = Math.max(Delta, 3 * nstep)
+            }
+        } else {
+            // Reject step — increase lambda and shrink trust region
+            lambda *= lambdaUp
+            Delta = nstep * 0.5
+        }
+
+        it++
+        if (typeof callback === FUNCTION) {
+            if (callback(it, x0, f0, g0, null)) {
+                msg = CALLBACK_RETURNED_TRUE
+                break
+            }
+        }
+    }
+
+    return {
+        solution: x0,
+        f: f0,
+        gradient: g0,
+        invHessian: null,
+        lambda: lambda,
+        iterations: it,
+        message: msg
+    }
+}
+
 // A frame of the animation. Frames can auto-advance
 // to the next frame or require manual advancing.
 // frame.index gives the index of the frame in the
@@ -2771,6 +3092,9 @@ class Expression {
     // support for caching evaluations. Mostly not worthwhile but can pay off for
     // reused expressions.
     checkCache(valuation, doGrad) {
+        // Directional derivative mode (doGrad is a vector): bypass cache
+        // because the direction changes on each call.
+        if (doGrad && doGrad !== true) return undefined
         doGrad = doGrad ? true : false
         if (!this.hasOwnProperty('cachedValuation')) return undefined
         if (this.cachedValuation !== valuation || doGrad > this.cachedDoGrad) {
@@ -2783,9 +3107,10 @@ class Expression {
     }
     // Record a computed value (and optionally gradient) in the cache
     recordCache(valuation, doGrad, result) {
-        doGrad = doGrad ? true : false
+        // Don't cache directional derivative results
+        if (doGrad && doGrad !== true) return result
         this.cachedValuation = valuation
-        this.cachedDoGrad = doGrad
+        this.cachedDoGrad = doGrad ? true : false
         this.cachedResult = result
         // console.log("caching " + this + " = " + result + " : valuation " + valuation)
         for (let v of exprVariables(this)) {
@@ -2881,23 +3206,34 @@ class Variable extends Expression {
         }
         if (this.index === undefined) {
             const substitution = this.substitution
-            if (substitution) return evaluate(substitution, valuation, doGrad)
+            if (substitution !== undefined) return evaluate(substitution, valuation, doGrad)
             const v = this.solutionValue
-            if (v !== undefined) return v
-            return this.hint
+            if (v !== undefined) {
+                if (doGrad) return [v, doGrad === true ? getZeros(valuation.length) : 0]
+                return v
+            }
+            const h = this.hint
                    || (console.error("undefined solution variable??"), 0)
+            if (doGrad) return [h, doGrad === true ? getZeros(valuation.length) : 0]
+            return h
         }
         if (DEBUG && this.figure.activeVariables[this.index] !== this) {
             console.error("Variable index does not agree with active variables list")
         }
         if (doGrad) {
-            let g = this.grad, n = valuation.length
-            if (!g || g.length != n) {
-                g = new Array(n).fill(0)
-                g[this.index] = 1
-                this.grad = g // save gradient for later
+            if (doGrad === true) {
+                // Full gradient mode: return unit vector for this variable
+                let g = this.grad, n = valuation.length
+                if (!g || g.length != n) {
+                    g = new Array(n).fill(0)
+                    g[this.index] = 1
+                    this.grad = g // save gradient for later
+                }
+                return [valuation[this.index], g]
+            } else {
+                // Directional derivative mode: doGrad is the direction vector
+                return [valuation[this.index], doGrad[this.index]]
             }
-            return [valuation[this.index], g]
         } else {
             const v = valuation[this.index]
             if (v === undefined) {
@@ -2912,10 +3248,10 @@ class Variable extends Expression {
         if (CHECK_NAN && checkNaNResult(this.bpDiff)) {
             console.error("NaN in variable bpDiff")
         }
-        if (this.substitution) task.propagate(this.substitution, this.bpDiff)
+        if (this.substitution !== undefined) task.propagate(this.substitution, this.bpDiff)
     }
     addDependencies(task) {
-        if (this.substitution) task.prepareBackProp(this.substitution)
+        if (this.substitution !== undefined) task.prepareBackProp(this.substitution)
     }
     setHint(v) {
         this.hint = v
@@ -3022,7 +3358,7 @@ function evaluate(expr, valuation, doGrad) {
         evaluationCounts.set(expr, 1 + (evaluationCounts.get(expr) || 0))
     }
     switch (typeof expr) {
-        case NUMBER: return !doGrad ? expr : [ expr, getZeros(valuation.length) ]
+        case NUMBER: return !doGrad ? expr : [ expr, doGrad === true ? getZeros(valuation.length) : 0 ]
         case FUNCTION:
             return (expr)(valuation)
         default:
@@ -3032,28 +3368,18 @@ function evaluate(expr, valuation, doGrad) {
                 if (CACHE_ALL_EVALUATIONS) {
                     if (valuation === undefined) valuation = false
                     const result1 = expr.checkCache(valuation, doGrad)
-                    if (result1 !== undefined) {
-                        /*
-                        const result2 = expr.evaluate(valuation, doGrad)
-                        if (!similarResults(result1, result2)) {
-                            console.log(`Oops, results disagree: ${result1} != ${result2}`)
-                            console.log(`dependencies are: ${Array.from(exprVariables(expr))}`)
-                        }
-                        console.log("reusing value of " + expr + " = " + result1)
-                        */
-                        return result1
-                    }
+                    if (result1 !== undefined) return result1
                     const result2 = expr.evaluate(valuation, doGrad)
                     if (CHECK_NAN && checkNaNResult(result2)) {
                         console.error("result is NaN")
                     }
                     // console.log("standard caching for " + expr + " : valuation " + valuation)
                     expr.recordCache(valuation, doGrad, result2)
-                    if (valuation) expr.solutionValue = result2
+                    if (valuation) expr.solutionValue = doGrad ? result2[0] : result2
                     return result2
                 } else {
                     const r = expr.evaluate(valuation, doGrad)
-                    if (valuation) expr.solutionValue = r
+                    if (valuation) expr.solutionValue = doGrad ? r[0] : r
                     return r
                 }
             }
@@ -3205,8 +3531,8 @@ class BinaryExpression extends Expression {
     evaluate(valuation, doGrad) {
         if (!doGrad || !this.gradop)
             return this.operation(evaluate(this.e1, valuation), evaluate(this.e2, valuation))
-        const [a, da] = evaluate(this.e1, valuation, true)
-        const [b, db] = evaluate(this.e2, valuation, true)
+        const [a, da] = evaluate(this.e1, valuation, doGrad)
+        const [b, db] = evaluate(this.e2, valuation, doGrad)
         CHECK_NAN && checkNaNResult(a)
         CHECK_NAN && checkNaNResult(b)
         return this.gradop(a, b, da, db)
@@ -3270,11 +3596,27 @@ class Average extends BinaryExpression {
 }
 
 // An expression x * y. One of the two may be a vector.
+// Multiply a value by a Jacobian, columnwise, matching numeric.mul semantics.
+// val is the value (scalar or k-vector), jac is the Jacobian of the other
+// operand (n-vector if that operand is scalar, k×n matrix if k-vector).
+function mulGrad(val, jac) {
+    if (typeof val === 'number') return numeric.mul(val, jac)
+    // val is a k-vector
+    if (typeof jac === 'number') return numeric.mul(jac, val) // scalar jac (directional mode)
+    if (typeof jac[0] === 'number') {
+        // jac is 1D (n-vector): other operand was scalar → outer product
+        return val.map(vi => numeric.mul(vi, jac))
+    }
+    // jac is 2D (k×n matrix): other operand was same-dim vector → row-wise scaling
+    return val.map((vi, i) => numeric.mul(vi, jac[i]))
+}
+
 class Times extends BinaryExpression {
     constructor(e1, e2) { super(e1, e2) }
     operation(a, b) { return numeric.mul(a, b) }
     gradop(a, b, da, db) {
-        return [ numeric.mul(a, b), numeric.add(numeric.mul(a, db), numeric.mul(b, da)) ]
+        // Product rule: d(a*b) = b*da + a*db, applied columnwise to Jacobians
+        return [numeric.mul(a, b), numeric.add(mulGrad(b, da), mulGrad(a, db))]
     }
     backprop(task) {
         const a = solvedValue(this.e1),
@@ -3434,8 +3776,8 @@ class Distance extends Expression {
               rad = numeric.norm2Squared(numeric.sub(p2, p1))
         return Math.sqrt(rad)
       }
-      const [p1, dp1] = evaluate(this.p1, valuation, true),
-            [p2, dp2] = evaluate(this.p2, valuation, true),
+      const [p1, dp1] = evaluate(this.p1, valuation, doGrad),
+            [p2, dp2] = evaluate(this.p2, valuation, doGrad),
             dpd = numeric.sub(dp2, dp1),
             pd = numeric.sub(p2, p1),
             rad = numeric.norm2Squared(pd),
@@ -3444,10 +3786,17 @@ class Distance extends Expression {
       let dn
       if (v !== 0) {
         dn = numeric.mul(1/v, pd)
+        this.cachedZeroDn = null // clear stale zero-distance direction
       } else {
-        const ang = randomAngle()
-        dn = [ Math.cos(ang), Math.sin(ang) ]
-        for (let i = 2; i < this.dim; i++) dn.push(Math.random() - 0.5)
+        // Reuse the same random direction for a given zero-distance
+        // evaluation point so that directional-mode (Jv) and
+        // full-gradient-mode (Jtw) see a consistent Jacobian.
+        if (!this.cachedZeroDn) {
+            const ang = randomAngle()
+            this.cachedZeroDn = [ Math.cos(ang), Math.sin(ang) ]
+            for (let i = 2; i < this.dim; i++) this.cachedZeroDn.push(Math.random() - 0.5)
+        }
+        dn = this.cachedZeroDn
       }
       return [v, numeric.dot(dn, dpd)]
     }
@@ -3488,6 +3837,10 @@ class Distance extends Expression {
     variables() {
         return union(exprVariables(this.p1), exprVariables(this.p2))
     }
+    clearCache() {
+        super.clearCache()
+        this.cachedZeroDn = null
+    }
     toString() { return "distance(" + this.p1 + "," + this.p2 + ")" }
 }
 
@@ -3504,7 +3857,7 @@ class UnaryExpression extends Expression {
     gradop(a, da) { console.error("Undefined unary operation") }
     evaluate(valuation, doGrad) {
         if (!doGrad) return this.operation(evaluate(this.expr, valuation))
-        const [a, da] = evaluate(this.expr, valuation, true)
+        const [a, da] = evaluate(this.expr, valuation, doGrad)
         return this.gradop(a, da)
     }
     variables() {
@@ -3521,7 +3874,7 @@ class Abs extends UnaryExpression {
     operation(a) { return Math.abs(a) }
     gradop(a, da) {
         if (a > 0) return [a, da]
-        if (a < 0 || Math.random() < 0.5) return [-a, -da]
+        if (a < 0 || Math.random() < 0.5) return [-a, numeric.neg(da)]
         return [a, da]
     }
     backprop(task) {
@@ -3536,22 +3889,22 @@ class Abs extends UnaryExpression {
     }
 }
 
-// The expression -x
+// The expression -x (x can be a scalar or a vector)
 class Neg extends UnaryExpression {
     constructor(e) { super(e) }
-    operation(a) { return -a }
-    gradop(a, da) { return [-a, -da] }
+    operation(a) { return numeric.neg(a) }
+    gradop(a, da) { return [numeric.neg(a), numeric.neg(da)] }
     backprop(task) {
         task.propagate(this.expr, -this.bpDiff)
     }
 }
 
-// The square root operation
+// The square root operation (only works on scalars)
 class Sqrt extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return Math.sqrt(a) }
     gradop(a, da) {
-        if (a <= 0) return [0, getZeros(da.length)]
+        if (a <= 0) return [0, typeof da === NUMBER ? 0 : getZeros(da.length)]
         const s = Math.sqrt(a)
         return [s, numeric.mul(0.5/s, da)]
     }
@@ -3574,7 +3927,7 @@ class Sq extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return numeric.dot(a, a) }
     gradop(a, da) {
-        return [numeric.dot(a, a), numeric.mul(2, a, da)]
+        return [numeric.dot(a, a), numeric.dot(numeric.mul(2, a), da)]
     }
     backprop(task) {
         const a = solvedValue(this.expr),
@@ -3590,8 +3943,8 @@ class Sq extends UnaryExpression {
 class Relu extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { if (a <= 0) return 0; else return a }
-    gradop(a, da) { 
-        if (a <= 0) return [0, getZeros(da.length)]
+    gradop(a, da) {
+        if (a <= 0) return [0, typeof da === NUMBER ? 0 : getZeros(da.length)]
         return [a, da]
     }
     backprop(task) {
@@ -3604,7 +3957,7 @@ class Relu extends UnaryExpression {
 class Cos extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return Math.cos(a) }
-    gradop(a, da) { return [ this.operation(a), -Math.sin(a) * da ] }
+    gradop(a, da) { return [ this.operation(a), numeric.mul(-Math.sin(a), da) ] }
     backprop(task) {
         const a = evaluate(this.expr, task.valuation)
         task.propagate(this.expr, -Math.sin(a) * this.bpDiff)
@@ -3613,7 +3966,7 @@ class Cos extends UnaryExpression {
 class Sin extends UnaryExpression {
     constructor(e) { super(e) }
     operation(a) { return Math.sin(a) }
-    gradop(a, da) { return [ this.operation(a), Math.cos(a) * da ] }
+    gradop(a, da) { return [ this.operation(a), numeric.mul(Math.cos(a), da) ] }
     backprop(task) {
         const a = evaluate(this.expr, task.valuation)
         task.propagate(this.expr, Math.cos(a) * this.bpDiff)
@@ -3674,7 +4027,7 @@ class Time extends Expression {
     }
     evaluate(valuation, doGrad) {
         const t = this.figure.currentTime
-        return doGrad ? [t, getZeros(valuation.length)] : t
+        return doGrad ? [t, doGrad === true ? getZeros(valuation.length) : 0] : t
     }
     variables() { return new Set() }
     backprop(task) {}
@@ -4255,8 +4608,8 @@ class LayoutObject extends Expression {
               y = evaluate(this.y(), valuation)
         return this.recordCache(valuation, doGrad, [x, y])
       } else {
-        const [x, dx] = evaluate(this.x(), valuation, true),
-              [y, dy] = evaluate(this.y(), valuation, true)
+        const [x, dx] = evaluate(this.x(), valuation, doGrad),
+              [y, dy] = evaluate(this.y(), valuation, doGrad)
         return this.recordCache(valuation, doGrad, [[x, y], [dx, dy]])
       }
     }
@@ -5504,7 +5857,7 @@ class Line extends Graphic {
     }
 }
 
-// A horizontal line, oriented left-to-right
+// A horizontal line, oriented left-to-right (p1 is always on the left side)
 class HorzLine extends Line {
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, p1, p2, strokeStyle, lineWidth)
@@ -5514,16 +5867,14 @@ class HorzLine extends Line {
         figure.equal(this.start().y(), this.end().y())
     }
     x0() {
-        const f = this.figure
-        return f.projection(this.p1, 0)
+        return this.figure.projection(this.p1, 0)
     }
     x1() {
-        const f = this.figure
-        return f.projection(this.p2, 0)
+        return this.figure.projection(this.p2, 0)
     }
 }
 
-// A vertical line, oriented downward
+// A vertical line, oriented downward (p1 is always above p2)
 class VertLine extends Line {
     constructor(figure, p1, p2, strokeStyle, lineWidth) {
         super(figure, p1, p2, strokeStyle, lineWidth)
@@ -7062,7 +7413,7 @@ class Global extends Expression {
         } else {
             this.renderValue = v
         }
-        return this.recordCache(valuation, doGrad, doGrad ? [v, getZeros(valuation.length)] : v)
+        return this.recordCache(valuation, doGrad, doGrad ? [v, doGrad === true ? getZeros(valuation.length) : 0] : v)
     }
     backprop(task) {}
     addDependencies(task) {
@@ -7268,9 +7619,6 @@ function autoResize() {
         )
 }
 
-function setMinimizationAlgorithm(a) {
-    algorithm = a
-}
 function reportPerformance(b) {
     REPORT_PERFORMANCE = b
 }
@@ -7286,7 +7634,8 @@ function reportPerformance(b) {
     evaluate, SolverCallback, fullWindowCanvas, setupTouchListeners, getFigureByName,
     Figure_defaults, isFigure, statistics, solvedValue, drawLineEndSeg,
     evaluate, sqdist, exprVariables, DebugExpr, defaultMinimizationOptions,
-    setMinimizationAlgorithm, reportPerformance, plus, terms, similarResults,
+    reportPerformance, plus, terms, similarResults,
+    uncmin, cgSolve, levenbergMarquardt,
     UNCMIN_GRADIENT,
     UNCMIN_BFGS,
     UNCMIN_LBFGS,
