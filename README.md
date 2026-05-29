@@ -26,7 +26,7 @@
 
 <img src="images/tex-thumbnail.png" alt="TeX thumbnail" width="100" height="100" /> [TeX-style text formatting](https://andrewcmyers.github.io/constrain/examples/text-format.html)
 
-<img src="images/bicycle-thumbnail.png" alt="bicycle thumbnail" width="100" height="100" /> [Animated bicycle Claude](https://andrewcmyers.github.io/constrain/examples/bicycle.html)
+<img src="images/bicycle-thumbnail.png" alt="bicycle thumbnail" width="100" height="100" /> [Animated bicycle](https://andrewcmyers.github.io/constrain/examples/bicycle.html)
 
 <img src="images/sort-thumbnail.png" alt="sorting thumbnail" width="100" height="100" />
 [Animated insertion sort](https://andrewcmyers.github.io/constrain/examples/sort.html)
