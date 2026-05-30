@@ -1,0 +1,179 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="../numeric-1.2.6.js"></script>
+    <script src="../constrain.js"></script>
+    <script src="../constrain-sorting.js"></script>
+    <style>
+      body { font-family: Optima, sans-serif; margin: 2em; background: #f8f8f8 }
+      h1 { color: #345; font-size: 1.5em }
+      .controls { margin-bottom: 0.5em }
+      #data { font-size: 16px; padding: 4px 8px; width: 30ex }
+      button { font-size: 16px; padding: 4px 12px; margin-left: 4px; cursor: pointer }
+      canvas { background-color: white; display: block; margin-top: 1em; border: 1px solid #ddd }
+      canvas { width: 100%; height: 150px }
+      p.note { font-size: 90%; color: #666; max-width: 60ex }
+    </style>
+</head>
+<body>
+<h1>Quicksort</h1>
+<div class="controls">
+    <input id="data" type="text" value="5, 3, 8, 1, 9, 2, 7, 4"
+           placeholder="e.g. 5, 3, 8, 1">
+    <button id="sortBtn">Sort</button>
+</div>
+<canvas id="sort_canvas"></canvas>
+<p class="note">
+    Enter comma-separated numbers and click Sort to watch quicksort
+    animate. The leftmost element of each subarray is chosen as the pivot.
+    Click the arrow to step through, or let it auto-advance.
+</p>
+
+<script>
+const canvas = document.getElementById("sort_canvas")
+
+document.getElementById("sortBtn").addEventListener("click", runSort)
+document.getElementById("data").addEventListener("keydown", e => {
+    if (e.key === "Enter") runSort()
+})
+
+let currentFigure = null
+
+function runSort() {
+    const raw = document.getElementById("data").value
+    const data = raw.split(/[,\s]+/).map(s => s.trim()).filter(s => s.length > 0).map(Number)
+    if (data.length < 2 || data.some(isNaN)) {
+        alert("Please enter at least two valid numbers, separated by commas.")
+        return
+    }
+
+    const n = data.length
+
+    if (currentFigure) currentFigure.destroy()
+
+    with (currentFigure = new Constrain.Figure("sort_canvas")) {
+        setFontSize(18)
+
+        // Region and highlight styles
+        setStyle('partitionFill', '#e0e0e0')
+        setStyle('partitionStroke', '#bbb')
+        setStyle('partitionLineWidth', 2)
+        setStyle('partitionPadding', 8)
+        setStyle('rightStroke', '#2070e0')
+        setStyle('pivotStroke', '#c04080')
+
+        const m = margin(5)
+        const sa = sortingArray(data)
+
+        // Partition background (light gray, slightly larger)
+        sa.addRegion("partition")
+        // Green regions for elements already on the correct side of pivot
+        sa.addRegion("leftDone")
+        sa.addRegion("rightDone")
+
+        // Highlights: pivot (magenta), left pointer (orange), right pointer (blue)
+        sa.addHighlight("pivot")
+        sa.addHighlight("left")
+        sa.addHighlight("right")
+
+        align("LR", "center", sa, m)
+
+        // Quicksort with leftmost pivot
+        function qsort(lo, hi) {
+            if (lo >= hi) return
+
+            sa.setRegion("partition", lo, hi)
+
+            const pivot = sa.valueAt(lo)
+            let i = lo + 1, j = hi
+
+            // Highlight pivot and show initial pointer positions
+            sa.moveHighlight("pivot", lo)
+            sa.moveHighlight("left", i)
+            sa.moveHighlight("right", j)
+            sa.step({ autoAdvance: false })
+
+            while (i <= j) {
+                // Scan left pointer rightward
+                while (i <= j && sa.valueAt(i) <= pivot) {
+                    i++
+                    if (i <= j) {
+                        sa.moveHighlight("left", i)
+                        sa.setRegion("leftDone", lo + 1, i - 1)
+                        sa.step()
+                    }
+                }
+                if (i > j) {
+                    sa.setRegion("leftDone", lo + 1, i - 1)
+                    sa.step()
+                    break
+                }
+
+                // Scan right pointer leftward
+                while (i <= j && sa.valueAt(j) > pivot) {
+                    j--
+                    if (i <= j) {
+                        sa.moveHighlight("right", j)
+                        sa.setRegion("rightDone", j + 1, hi)
+                        sa.step()
+                    }
+                }
+                if (i > j) {
+                    sa.setRegion("rightDone", j + 1, hi)
+                    sa.step()
+                    break
+                }
+
+                // Swap and move pointers inward
+                if (i < j) {
+                    sa.swap(i, j)
+                    i++
+                    j--
+                    if (i <= j) {
+                        sa.moveHighlight("left", i)
+                        sa.moveHighlight("right", j)
+                        sa.setRegion("leftDone", lo + 1, i - 1)
+                        sa.setRegion("rightDone", j + 1, hi)
+                        sa.step()
+                    }
+                } else {
+                    break
+                }
+            }
+
+            // Place pivot: swap with position j
+            sa.hideHighlight("pivot")
+            sa.hideHighlight("left")
+            sa.hideHighlight("right")
+            sa.hideRegion("leftDone")
+            sa.hideRegion("rightDone")
+            if (j > lo) {
+                sa.swap(lo, j)
+            } else {
+                sa.step()
+            }
+
+            // Recurse (child calls overwrite the partition region directly)
+            qsort(lo, j - 1)
+            qsort(j + 1, hi)
+        }
+
+        qsort(0, n - 1)
+        sa.finish()
+
+        align("right", "bottom", advanceButton(), m.inset(5))
+        start()
+    }
+}
+
+runSort()
+</script>
+
+<hr>
+<p style="text-align: right; font-size: 90%">
+Built with <a href="https://andrewcmyers.github.io/constrain">Constrain</a>
+</p>
+</body>
+</html>

@@ -23,8 +23,9 @@ const USE_BACKPROPAGATION = true,
       COMPARE_GRADIENTS = false,
       TINY = 1e-17
 
-const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false, REPORT_UNSOLVED_CONSTRAINTS = false,
-      CHECK_NAN = false, DEBUG_TWEENING = false, DEBUG_LM = false
+const DEBUG = false, DEBUG_GROUPS = false, DEBUG_CONSTRAINTS = false,
+      REPORT_UNSOLVED_CONSTRAINTS = false, CHECK_NAN = false,
+      DEBUG_TWEENING = false, DEBUG_LM = false
 const REPORT_PERFORMANCE = false
 
 const NUMBER = "number", FUNCTION = "function", OBJECT_STR = "object", STRING_STR = "string"
@@ -2093,7 +2094,7 @@ class Figure {
             this.geq(g1.x0(), g2.x0()),
             this.geq(g1.y0(), g2.y0()))
     }
-    // keep g1 and g2 the same size
+    // keep all objs the same size
     sameSize(...objs) {
         return new ConstraintGroup(this,
             this.equal(...objs.map(o => o.w())),

@@ -31,6 +31,9 @@
 <img src="images/sort-thumbnail.png" alt="sorting thumbnail" width="100" height="100" />
 [Animated insertion sort](https://andrewcmyers.github.io/constrain/examples/sort.html)
 
+<img src="images/sort-thumbnail.png" alt="sorting thumbnail" width="100" height="100" />
+[Animated quicksort](https://andrewcmyers.github.io/constrain/examples/quicksort.html)
+
 Cornell University course notes using Constrain for embedded figures: [CS 2112](https://www.cs.cornell.edu/courses/cs2112/2019fa/lectures/lecture.html?id=objects),
 [CS 4120/lexer generation](https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=leximpl),
 [CS 4120/bottom-up parsing](https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=bottomup)

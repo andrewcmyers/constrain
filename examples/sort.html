@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="../numeric-1.2.6.js"></script>
     <script src="../constrain.js"></script>
+    <script src="../constrain-sorting.js"></script>
     <style>
       body { font-family: Optima, sans-serif; margin: 2em; background: #f8f8f8 }
       h1 { color: #345; font-size: 1.5em }
@@ -13,6 +14,7 @@
       button { font-size: 16px; padding: 4px 12px; margin-left: 4px; cursor: pointer }
       canvas { background-color: white; display: block; margin-top: 1em; border: 1px solid #ddd }
       p.note { font-size: 90%; color: #666; max-width: 60ex }
+      canvas { width: 100%; height: 150px }
     </style>
 </head>
 <body>
@@ -22,7 +24,7 @@
            placeholder="e.g. 5, 3, 8, 1">
     <button id="sortBtn">Sort</button>
 </div>
-<canvas id="sort_canvas" style="width: 600px; height: 150px"></canvas>
+<canvas id="sort_canvas"></canvas>
 <p class="note">
     Enter comma-separated numbers and click Sort to watch insertion sort
     animate. Click the arrow to step through, or let it auto-advance.
@@ -30,7 +32,6 @@
 
 <script>
 const canvas = document.getElementById("sort_canvas")
-let figure = null
 
 document.getElementById("sortBtn").addEventListener("click", runSort)
 document.getElementById("data").addEventListener("keydown", e => {
@@ -45,160 +46,27 @@ function runSort() {
         return
     }
 
-    if (figure) { figure.destroy(); figure = null }
-
     const n = data.length
-    const boxW = Math.min(55, Math.floor(520 / n))
-    const gap = Math.max(3, Math.floor(boxW * 0.1))
-    const totalW = n * (boxW + gap) + 80
-    canvas.style.width = Math.max(350, totalW) + "px"
-    canvas.style.height = "150px"
-
-    const arr = data.slice()
 
     with (new Constrain.Figure("sort_canvas")) {
-        figure = thisFigure()
-        const fontSize = Math.min(20, Math.max(11, Math.floor(boxW * 0.38)))
-        setFontSize(fontSize)
+        setFontSize(18)
 
-        // Lay out relative to canvas
-        const cr = canvasRect()
+        const m = margin(5)
 
-        // Slot positions (center x for each array index)
-        const slotX = []
-        for (let i = 0; i < n; i++) {
-            slotX[i] = plus(cr.x0(), 25 + boxW / 2, i * (boxW + gap))
-        }
+        const sa = sortingArray(data)
 
-        freeze()
-
-        // --- Green backgrounds for sorted slots (created first to render behind) ---
-        const sortedBg = []
-        for (let i = 0; i < n; i++) {
-            const bg = square()
-                .setFillStyle("#b5d8a0")
-                .setStrokeStyle("#7ab35e")
-                .setLineWidth(3)
-                .setCornerRadius(5)
-            equal(bg.w(), boxW + 8)
-            equal(bg.x(), slotX[i])
-            sortedBg.push(bg)
-        }
-
-        // --- Create box graphics for each element ---
-        const boxes = []
-        for (let i = 0; i < n; i++) {
-            const b = square()
-                .addText("" + arr[i])
-                .setCornerRadius(3)
-                .setLineWidth(1.5)
-                .setStrokeStyle("#456")
-                .setFillStyle("#dde4ea")
-            equal(b.w(), boxW)
-            boxes.push(b)
-        }
-
-        // Highlight box tracks the element being inserted
-        const highlight = square()
-            .setFillStyle(null)
-            .setStrokeStyle("#e07020")
-            .setLineWidth(3)
-            .setCornerRadius(3)
-        equal(highlight.w(), boxW + 4)
-
-        // Vertically center everything against the canvas
-        align("none", "center", ...sortedBg, ...boxes, highlight, cr)
-
-        // --- Position constraints: only constrain x (y handled by align) ---
-        const posConstraint = new Array(n)
-        let highlightConstraint = null
-
-        const initial = addFrame()
-        for (let i = 0; i < n; i++) {
-            posConstraint[i] = after(initial,
-                equal(boxes[i].x(), slotX[i]))
-        }
-        // Hide highlight offscreen initially
-        highlightConstraint = after(initial,
-            equal(highlight.x(), -100))
-
-        // boxAt[slot] = index into boxes[] for the box currently at that slot
-        const boxAt = new Array(n)
-        for (let i = 0; i < n; i++) boxAt[i] = i
-
-        const slideTime = 800
-
-        // --- Generate insertion sort frames ---
-        // Each step has a brief showFrame (highlight jumps to element)
-        // followed by an auto-advancing slideFrame (element slides).
-        // endCurrentFrame checks the NEXT frame's autoAdvance, so:
-        //   showFrame (length=1) ends → next is slideFrame (autoAdvance) → auto-advances
-        //   slideFrame ends → next is showFrame (no autoAdvance) → waits for click
-        //
+        // Generate insertion sort steps
         for (let i = 1; i < n; i++) {
-            const insertBoxIdx = boxAt[i]
-            const insertValue = arr[i]
-
-            // Find insertion point
+            const insertValue = sa.valueAt(i)
             let j = i
-            while (j > 0 && arr[j - 1] > insertValue) j--
+            while (j > 0 && sa.valueAt(j - 1) > insertValue) j--
 
-            const moving = j < i
-
-            // Show frame: highlight jumps to the element.
-            // Length=1 so endCurrentFrame fires and can auto-advance.
-            const showFrame = addFrame().setLength(1)
-
-            // Reveal sorted background for slot i (will be sorted after this step).
-            // sortedBg[0] has no drawAfter wrapper so it's always visible.
-            drawAfter(showFrame, sortedBg[i])
-
-            // Highlight tracks the inserted box from here until next step
-            highlightConstraint.endBefore(showFrame)
-            highlightConstraint = after(showFrame,
-                equal(highlight.x(), boxes[insertBoxIdx].x()))
-
-            if (moving) {
-                // Slide frame: auto-advance from showFrame into this.
-                const slideFrame = addFrame().setLength(slideTime).setAutoAdvance(true)
-
-                // Shift elements at slots j..i-1 rightward by one
-                for (let k = i - 1; k >= j; k--) {
-                    const bIdx = boxAt[k]
-                    posConstraint[bIdx].endBefore(slideFrame)
-                    posConstraint[bIdx] = after(slideFrame,
-                        equal(boxes[bIdx].x(),
-                            smooth(slideFrame, slotX[k], slotX[k + 1])))
-                    boxAt[k + 1] = bIdx
-                }
-
-                // Move inserted element from slot i to slot j
-                posConstraint[insertBoxIdx].endBefore(slideFrame)
-                posConstraint[insertBoxIdx] = after(slideFrame,
-                    equal(boxes[insertBoxIdx].x(),
-                        smooth(slideFrame, slotX[i], slotX[j])))
-                boxAt[j] = insertBoxIdx
-
-                // Update logical array
-                const tmp = arr[i]
-                for (let k = i; k > j; k--) arr[k] = arr[k - 1]
-                arr[j] = tmp
-            } else {
-                // Already in place — just re-anchor
-                posConstraint[insertBoxIdx].endBefore(showFrame)
-                posConstraint[insertBoxIdx] = after(showFrame,
-                    equal(boxes[insertBoxIdx].x(), slotX[i]))
-            }
-
+            sa.highlight(i).markSorted(i).insert(i, j)
         }
+        sa.finish()
 
-        // Final frame: hide highlight
-        const finalFrame = addFrame().setLength(200)
-        highlightConstraint.endBefore(finalFrame)
-        highlightConstraint = after(finalFrame,
-            equal(highlight.x(), -100))
-
-        align("right", "bottom", advanceButton(), cr.inset(10))
+        align("right", "bottom", advanceButton(), m.inset(5))
+        align("LR", "center", sa, m)
         start()
     }
 }
