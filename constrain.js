@@ -5535,7 +5535,9 @@ class Polygon extends Graphic {
             }
             ctx.closePath()
         }
+        if (this.hasOwnProperty('opacity')) ctx.globalAlpha = evaluate(this.opacity)
         this.fill()
+        ctx.globalAlpha = 1
         if (this.strokeStyle != null) {
             ctx.setLineDash(this.lineDash || [])
             ctx.strokeStyle = this.strokeStyle
