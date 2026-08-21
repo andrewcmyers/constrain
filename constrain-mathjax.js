@@ -24,7 +24,11 @@
         const svg = MathJax.tex2svg(input, displayMath).childNodes[0],
               data = new XMLSerializer().serializeToString(svg)
 
+        this.svg = svg
         this.img = document.createElement('img')
+        // Attaching the source SVG lets constrain-pdf.js draw this image as
+        // vector graphics; jsPDF itself has no SVG decoder.
+        this.img.svgSource = svg
         this.img.src = "data:image/svg+xml;base64, " + window.btoa(unescape(encodeURIComponent(data)))
         const w = svg_length(svg.width.baseVal, figure),
               h = svg_length(svg.height.baseVal, figure)

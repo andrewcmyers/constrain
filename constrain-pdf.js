@@ -247,6 +247,28 @@ function colorToRGB(s) {
   return [r, g, b]
 }
 
+// How much larger than its final size a fallback bitmap image is rendered.
+const RASTER_OVERSAMPLING = 4
+
+/** Draw img into an offscreen canvas of at least w x h pixels, so that it can be
+ *  added to a PDF as a bitmap. Returns null if the image has not loaded yet. */
+function rasterize(img, w, h) {
+    if (!img.complete || !img.naturalWidth) return null
+    let canvas = img.rasterized
+    if (!canvas || canvas.width < w) {
+        canvas = document.createElement("canvas")
+        canvas.width = Math.max(1, Math.ceil(w))
+        canvas.height = Math.max(1, Math.ceil(h))
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height)
+        img.rasterized = canvas
+    }
+    return canvas
+}
+
+// Drawing operations that must happen after the figure has been rendered, because
+// they are asynchronous. Set up by PrintJob.print().
+let deferred = []
+
 function override_jsPDF(jspdf, ctx, figure) {
     const prototype = jspdf.context2d.constructor.prototype,
         Point = jspdf.internal.Point
@@ -306,6 +328,33 @@ function override_jsPDF(jspdf, ctx, figure) {
     prototype.clip = function(rule) {
         jspdf.clip(rule)
     }
+    // jsPDF has no SVG decoder, so drawImage() reports images like the ones
+    // produced by MathJax as having type 'UNKNOWN'. Images that carry their
+    // source SVG element are instead handed to the svg2pdf.js plugin, which
+    // renders them as vector graphics. svg2pdf draws into the jsPDF document
+    // directly rather than through the 2D context, and it is asynchronous, so
+    // the drawing is deferred until the rest of the figure has been rendered.
+    if (!prototype.drawBitmap) prototype.drawBitmap = prototype.drawImage
+    prototype.drawImage = function(img, x, y, w, h) {
+        const svg = img && img.svgSource
+        if (!svg || arguments.length != 5)
+            return prototype.drawBitmap.apply(this, arguments)
+        // Convert to PDF coordinates: svg2pdf does not see the 2D context transform.
+        const m = this.ctx.transform,
+              px = m.sx * x + m.shx * y + m.tx,
+              py = m.shy * x + m.sy * y + m.ty,
+              pw = m.sx * w,
+              ph = m.sy * h
+        if (typeof jspdf.svg === "function") {
+            deferred.push(() => jspdf.svg(svg, { x: px, y: py, width: pw, height: ph }))
+            return
+        }
+        // Without svg2pdf.js, settle for embedding the image as a bitmap.
+        const raster = rasterize(img, pw * RASTER_OVERSAMPLING, ph * RASTER_OVERSAMPLING)
+        if (raster) return prototype.drawBitmap.call(this, raster, x, y, w, h)
+        console.error("Constrain: cannot draw SVG images (such as MathJax math) into PDF." +
+            " Load the svg2pdf.js plugin for jsPDF to get vector output.")
+    }
 }
 
 class PrintJob {
@@ -322,7 +371,7 @@ class PrintJob {
         this.fontFiles.push([filename, data])
         return this
     }
-    print() {
+    async print() {
         const figure = this.figure
         const save_ctx = figure.ctx
         const orientation = (figure.width > figure.height) ? "l" : "p"
@@ -340,14 +389,21 @@ class PrintJob {
             output.addFont(filename, family, variant, fontWeight, encoding)
         }
         const pc = output.context2d
+        deferred = []
         override_jsPDF(output, save_ctx, figure)
         figure.ctx = pc
 
-        figure.renderFrame(false)
-        output.save("constrain-figure.pdf")
-
-        figure.ctx = save_ctx;
-        figure.renderFrame(false)
+        try {
+            figure.renderFrame(false)
+            // Deferred SVG drawing lands on top of the rest of the figure.
+            output.setPage(1)
+            for (const draw of deferred) await draw()
+            output.save("constrain-figure.pdf")
+        } finally {
+            deferred = []
+            figure.ctx = save_ctx
+            figure.renderFrame(false)
+        }
     }
 }
 
@@ -393,7 +449,8 @@ class PrintButton extends Constrain.Button {
         ctx.restore()
     }
     activate() {
-        this.printJob.print()
+        this.printJob.print().catch(e =>
+            console.error("Constrain: PDF generation failed", e))
     }
     addFont(filename, family, variant, fontWeight, encoding) {
         this.printJob.addFont(filename, family, variant, fontWeight, encoding)

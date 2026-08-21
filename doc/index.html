@@ -1897,7 +1897,7 @@ to specify how to render a complex graphical object, <a href="#UserDefined">as d
 </li>
 </ul>
 
-<h2>Generating printable diagrams</h2>
+<h2 id="printing">Generating printable diagrams</h2>
 
 <p>
 The <code>Constrain.PS</code> and <code>Constrain.PDF</code>
@@ -1958,6 +1958,18 @@ should include this package, with a line like the following:
 <pre>
     &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"&gt;&lt;/script&gt;
 </pre>
+<p>
+jsPDF cannot draw SVG images, which are what MathJax objects are made of. To get
+mathematics into PDF output, also include
+<a href="https://github.com/yWorks/svg2pdf.js">the svg2pdf.js plugin</a> for jsPDF, after jsPDF itself:
+<pre>
+    &lt;script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js"&gt;&lt;/script&gt;
+</pre>
+The plugin renders MathJax formulas as vector graphics. Without it, formulas are
+embedded as bitmaps instead. Because svg2pdf.js works asynchronously, formulas are
+drawn on top of the rest of the figure, and <code>PrintJob.print()</code> returns a
+promise that resolves once the output has been generated.
+</p>
 
 <h3>Embedding fonts</h3>
 
@@ -2043,6 +2055,11 @@ an additional method to create MathJax objects. (<a href="../tests/mathjax.html"
 Create a graphical object that shows the specified formula. The optional <code>displayMath</code>
 parameter controls whether MathJax considers it to be “display math” in TeX's nomenclature. The size
 of the rendered object is determined by the figure's current font size.
+</p>
+<p>
+MathJax objects are rendered as SVG images, which jsPDF cannot draw by itself. Figures
+containing mathematics that are printed to PDF should therefore also load the
+svg2pdf.js plugin, as described under <a href="#printing">Generating printable diagrams</a>.
 </p>
 
 <h2>Graphs</h2>
