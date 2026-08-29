@@ -14,29 +14,33 @@
 </head>
 <script type="text/javascript"
         id="MathJax-script"
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"></script>
+        src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"
+        integrity="sha384-KKWa9jJ1MZvssLeOoXG6FiOAZfAgmzsIIfw8BXwI9+kYm0lPCbC6yTQPBC00F1/L"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.js"
+        integrity="sha384-fZk+ZPjF3zxts+t/37VfVVgHD3LQA1vGIkLG8b0YhJgrYDLvZwVV+7HS5CXEtu5/"
+        crossorigin="anonymous"></script>
 <body>
 <h1>Interactive Pythagorean Theorem</h1>
 
 <div id=content>
 
 <p>
-The Pythagorean Theorem says that for any right triangle
-with perpendicular sides \(a\) and \(b\), and long side (hypoteneuse) \(c\),
+The Pythagorean Theorem says that for any right triangle with
+perpendicular sides \(a\) and \(b\), and long side (hypoteneuse) \(c\),
 the equation \(a^2 + b^2 = c^2\) holds. We can see that this is true by
-considering the following diagram. You can drag the diamond to change the shape
-of the right triangles shown in yellow.
+considering the following diagram. You can drag the diamond to change
+the shape of the right triangles shown in yellow.
 </p>
 
 <canvas style="width: 700px; height: 400px"></canvas>
 
 <p>
-The big squares have the same size and the 4 right triangles that each big square
-contains also have exactly the same size, so the remaining space in each big square
-must have the same area. That means the areas of the pink square (\(a^2\)) and the green square
-(\(b^2\)) must add up to the area of the blue square (\(c^2\)).
+The big squares have the same size and the 4 right triangles that each
+big square contains also have exactly the same size, so the remaining
+space in each big square must have the same area. That means the areas
+of the pink square (\(a^2\)) and the green square (\(b^2\)) must add up
+to the area of the blue square (\(c^2\)).
 </p>
 
 <p style="text-align: right; font-size: 10pt">Built using <a href="https://andrewcmyers.github.io/constrain">Constrain</a></p>
@@ -116,10 +120,14 @@ with (figure) {
     const cl2 = label("c")
     equal(cl1.y(), cl2.y())
     equal(minus(cl2.x(), s2.x0()), minus(cl1.x(), s1.x0()))
-    connector(cl1.center().toLeft(nx).toTop(ny), asq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
-    connector(cl1.center().toRight(nx).toBottom(ny), bsq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
-    connector(cl2.center().toLeft(nx).toTop(ny), p2.toRight(ny).toTop(nx)).setEndArrow("arrow")
-    connector(cl2.center().toRight(nx).toBottom(ny), p1.toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl1.center().toLeft(nx).toTop(ny),
+              asq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl1.center().toRight(nx).toBottom(ny),
+              bsq.ll().toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl2.center().toLeft(nx).toTop(ny),
+              p2.toRight(ny).toTop(nx)).setEndArrow("arrow")
+    connector(cl2.center().toRight(nx).toBottom(ny),
+              p1.toRight(ny).toTop(nx)).setEndArrow("arrow")
     
     const hand = handle()
     geq(hand.x(), s1.x0())
