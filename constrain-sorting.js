@@ -42,6 +42,10 @@ class SortingArray extends Box {
     //     highlightStroke: highlight border color (default: "#e07020")
     //     sortedFill:      sorted background fill (default: "#b5d8a0")
     //     sortedStroke:    sorted background stroke (default: "#7ab35e")
+    // The height of the element boxes is the height of the SortingArray
+    // itself, so it is set with setH(); the sorted region and the highlights
+    // are sized relative to it. Without a setH(), nothing constrains the
+    // height and the solver falls back to its default of 100.
     constructor(figure, values) {
         super(figure)
         const f = figure
@@ -99,7 +103,7 @@ class SortingArray extends Box {
                 .setStrokeStyle(boxStroke)
                 .setFillStyle(boxFill)
             f.equal(b.w(), boxW)
-            f.equal(f.plus(b.h(), 4), this.sortedRect.h())
+            f.equal(b.h(), this.h())
             this.boxes.push(b)
         }
 
@@ -110,6 +114,11 @@ class SortingArray extends Box {
             .setLineWidth(3)
             .setCornerRadius(3)
         f.equal(this.highlightGraphic.w(), f.plus(boxW, this._sortedPad))
+        f.equal(this.highlightGraphic.h(), f.plus(this.h(), this._sortedPad))
+
+        // The sorted region is padded by _sortedPad on every side, like the
+        // named regions created by addRegion().
+        f.equal(this.sortedRect.h(), f.plus(this.h(), this._sortedPad * 2))
 
         // Vertically center everything within this box
         f.align("none", "center",
@@ -253,6 +262,7 @@ class SortingArray extends Box {
             .setLineWidth(3)
             .setCornerRadius(3)
         f.equal(g.w(), f.plus(this.boxW, this._sortedPad))
+        f.equal(g.h(), f.plus(this.h(), this._sortedPad))
         f.align("none", "center", g, this)
         const constraint = f.after(this._initialFrame,
             f.equal(g.x(), -1000))
