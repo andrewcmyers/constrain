@@ -2540,6 +2540,10 @@ class Figure {
     }
 }
 
+function figure(canvas) {
+    return new Figure(canvas)
+}
+
 function terms(expr) {
     if (expr instanceof Plus) {
         return terms(expr.e1).concat(terms(expr.e2))
@@ -7693,7 +7697,7 @@ function reportPerformance(b) {
 }
 
   return ({
-    Figure, Figures, Frame, Variable, LayoutObject, Graphic, GraphicalObject: Graphic,
+    Figure, Figures, figure, Frame, Variable, LayoutObject, Graphic, GraphicalObject: Graphic,
     Point, Box, Line, Connector, Rectangle, Square, Circle, Ellipse, Polygon,
     ContainedText, Context, TextItem, createText, InteractiveObject,
     CanvasRect, Button, LineLabel, Group, ConstraintGroup, Loss, Font, Corners,
